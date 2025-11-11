@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 interface Member {
   id: string;
@@ -14,6 +16,7 @@ interface Member {
 }
 
 const Members = () => {
+  const { toast } = useToast();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,6 +41,27 @@ const Members = () => {
       setMembers(formattedMembers);
     }
     setLoading(false);
+  };
+
+  const handleRoleChange = async (memberId: string, newRole: string) => {
+    const { error } = await supabase
+      .from('user_roles')
+      .update({ role: newRole as any })
+      .eq('user_id', memberId);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Member role updated successfully',
+      });
+      fetchMembers();
+    }
   };
 
   const getRoleBadgeVariant = (role: string) => {
@@ -82,13 +106,24 @@ const Members = () => {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-3">
                 {member.class_year && (
                   <p className="text-sm text-muted-foreground capitalize">{member.class_year}</p>
                 )}
-                <Badge variant={getRoleBadgeVariant(member.role)} className="capitalize">
-                  {member.role.replace('-', ' ')}
-                </Badge>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Role</label>
+                  <Select value={member.role} onValueChange={(value) => handleRoleChange(member.id, value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="prospect">Prospect</SelectItem>
+                      <SelectItem value="member">Member</SelectItem>
+                      <SelectItem value="board">Board</SelectItem>
+                      <SelectItem value="e-board">E-Board</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardContent>
             </Card>
           ))}

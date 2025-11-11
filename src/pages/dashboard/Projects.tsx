@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Github, Calendar, User } from 'lucide-react';
 import { format } from 'date-fns';
+import { ProjectModal } from '@/components/ProjectModal';
 
 interface Project {
   id: string;
@@ -21,6 +22,7 @@ const Projects = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [userRole, setUserRole] = useState<string>('prospect');
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -67,7 +69,7 @@ const Projects = () => {
           <p className="text-muted-foreground">Active club projects</p>
         </div>
         {canManageProjects && (
-          <Button>
+          <Button onClick={() => setIsModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Create Project
           </Button>
@@ -120,6 +122,12 @@ const Projects = () => {
           ))}
         </div>
       )}
+
+      <ProjectModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchProjects}
+      />
     </div>
   );
 };

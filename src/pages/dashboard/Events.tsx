@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Plus, Calendar, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
+import { EventModal } from '@/components/EventModal';
 
 interface Event {
   id: string;
@@ -21,6 +22,7 @@ const Events = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [userRole, setUserRole] = useState<string>('prospect');
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -68,7 +70,7 @@ const Events = () => {
           <p className="text-muted-foreground">Upcoming club events</p>
         </div>
         {canManageEvents && (
-          <Button>
+          <Button onClick={() => setIsModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Create Event
           </Button>
@@ -117,6 +119,12 @@ const Events = () => {
           ))}
         </div>
       )}
+
+      <EventModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchEvents}
+      />
     </div>
   );
 };

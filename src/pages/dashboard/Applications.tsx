@@ -19,21 +19,48 @@ const Applications = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string>('prospect');
 
   useEffect(() => {
     if (user) {
-      fetchApplications();
+      fetchUserRole();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user && userRole) {
+      fetchApplications();
+    }
+  }, [user, userRole]);
+
+  const fetchUserRole = async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .order('role', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (data) {
+      setUserRole(data.role);
+    }
+  };
 
   const fetchApplications = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('applications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    let query = supabase.from('applications').select('*');
+
+    // Board and e-board can see all applications
+    const canSeeAll = userRole === 'board' || userRole === 'e-board';
+    if (!canSeeAll) {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (!error && data) {
       setApplications(data);
