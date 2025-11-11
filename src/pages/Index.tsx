@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Instagram, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import claudeLogo from "@/assets/claude-logo.png";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -11,7 +10,7 @@ const Index = () => {
       <div className="max-w-4xl w-full text-center space-y-8">
         <div className="flex justify-center mb-6">
           <img 
-            src={claudeLogo} 
+            src="/claude-logo.png" 
             alt="Claude Logo" 
             className="h-24 w-24 md:h-32 md:w-32 animate-in fade-in zoom-in duration-500"
           />

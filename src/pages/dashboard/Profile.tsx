@@ -51,11 +51,18 @@ const Profile = () => {
 
   const uploadFile = async (file: File, bucket: string, folder: string) => {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user!.id}.${fileExt}`;
-    const filePath = `${folder}/${fileName}`;
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `${folder}/${user!.id}/${fileName}`;
 
-    // Delete old file if exists
-    await supabase.storage.from(bucket).remove([filePath]);
+    // Delete old files in this folder
+    const { data: existingFiles } = await supabase.storage
+      .from(bucket)
+      .list(`${folder}/${user!.id}`);
+    
+    if (existingFiles && existingFiles.length > 0) {
+      const filesToDelete = existingFiles.map(file => `${folder}/${user!.id}/${file.name}`);
+      await supabase.storage.from(bucket).remove(filesToDelete);
+    }
 
     const { error: uploadError } = await supabase.storage
       .from(bucket)
