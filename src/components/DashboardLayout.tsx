@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { NavLink } from '@/components/NavLink';
+import { NavLink } from '@/components/ui/navigation-link';
 import {
   LayoutDashboard,
   FileText,
