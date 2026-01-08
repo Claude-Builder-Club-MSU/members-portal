@@ -83,15 +83,15 @@ const Applications = () => {
   const canReviewApplications = role === 'board' || role === 'e-board';
 
   return (
-    <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-6'}`}>
-      <div className={`flex justify-between items-center ${isMobile ? 'flex-col gap-4' : ''}`}>
+    <div className={'space-y-6 p-6'}>
+      <div className={`flex justify-between items-center`}>
         <div>
-          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Applications</h1>
+          <h1 className={'text-3xl font-bold'}>Applications</h1>
           <p className="text-muted-foreground">
-            {canReviewApplications ? 'Review and manage applications' : 'Submit and track your applications'}
+            Manage Applications
           </p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className={isMobile ? 'w-full' : ''}>
+        <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           New Application
         </Button>

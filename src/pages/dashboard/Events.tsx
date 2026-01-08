@@ -4,7 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Dialog,
   DialogContent,
@@ -12,27 +18,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Calendar, MapPin, Users, Trophy, CheckCircle } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, Trophy, CheckCircle, Eye, Edit, QrCode } from 'lucide-react';
 import { format } from 'date-fns';
 import { EventModal } from '@/components/EventModal';
+import QRCodeLib from 'qrcode';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventAttendance = Database['public']['Tables']['event_attendance']['Row'];
 
-interface EventWithAttendance extends Event {
-  userAttendance?: EventAttendance;
-  attendanceCount: number;
-}
-
 const Events = () => {
   const { user, role } = useAuth();
+  const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [events, setEvents] = useState<EventWithAttendance[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [attendanceMap, setAttendanceMap] = useState<Map<string, EventAttendance>>(new Map());
+  const [attendanceCounts, setAttendanceCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<EventWithAttendance | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [generatingQR, setGeneratingQR] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && role) {
@@ -43,7 +50,6 @@ const Events = () => {
   const fetchEvents = async () => {
     if (!user || !role) return;
 
-    // Fetch events that the user's role is allowed to see
     const { data: eventsData, error: eventsError } = await supabase
       .from('events')
       .select('*')
@@ -62,33 +68,29 @@ const Events = () => {
       return;
     }
 
-    // Fetch user's attendance records
     const { data: attendanceData } = await supabase
       .from('event_attendance')
       .select('*')
       .eq('user_id', user.id);
 
-    const attendanceMap = new Map(
+    const newAttendanceMap = new Map(
       attendanceData?.map(a => [a.event_id, a]) || []
     );
 
-    // Fetch attendance counts for each event
-    const eventsWithData = await Promise.all(
+    const counts = new Map<string, number>();
+    await Promise.all(
       eventsData.map(async (event) => {
         const { count } = await supabase
           .from('event_attendance')
           .select('*', { count: 'exact', head: true })
           .eq('event_id', event.id);
-
-        return {
-          ...event,
-          userAttendance: attendanceMap.get(event.id),
-          attendanceCount: count || 0,
-        };
+        counts.set(event.id, count || 0);
       })
     );
 
-    setEvents(eventsWithData);
+    setEvents(eventsData);
+    setAttendanceMap(newAttendanceMap);
+    setAttendanceCounts(counts);
     setLoading(false);
   };
 
@@ -128,22 +130,162 @@ const Events = () => {
     fetchEvents();
   };
 
-  const handleViewDetails = (event: EventWithAttendance) => {
+  const handleEditEvent = (event: Event) => {
+    setEditingEvent(event);
+    setIsModalOpen(true);
+  };
+
+  const handleViewDetails = (event: Event) => {
     setSelectedEvent(event);
     setIsDetailsModalOpen(true);
   };
 
+  const handleGenerateQR = async (event: Event) => {
+    setGeneratingQR(event.id);
+
+    try {
+      const { data: existingQR } = await supabase
+        .from('event_qr_codes')
+        .select('qr_code_url, token')
+        .eq('event_id', event.id)
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingQR?.qr_code_url) {
+        window.open(existingQR.qr_code_url, '_blank');
+        setGeneratingQR(null);
+        return;
+      }
+
+      const token = crypto.randomUUID();
+      const qrUrl = `${window.location.origin}/checkin/${token}`;
+
+      const qrCodeDataUrl = await QRCodeLib.toDataURL(qrUrl, {
+        width: 512,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      });
+
+      const response = await fetch(qrCodeDataUrl);
+      const blob = await response.blob();
+
+      const fileName = `${event.id}_${token}.png`;
+      const filePath = `qr-codes/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('events')
+        .upload(filePath, blob, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('events')
+        .getPublicUrl(filePath);
+
+      const { error: qrError } = await supabase
+        .from('event_qr_codes')
+        .insert({
+          event_id: event.id,
+          token,
+          points: event.points,
+          qr_code_url: publicUrl,
+        });
+
+      if (qrError) throw qrError;
+
+      toast({
+        title: 'Success',
+        description: 'QR code generated successfully!',
+      });
+
+      window.open(publicUrl, '_blank');
+    } catch (error: any) {
+      console.error('Error generating QR code:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to generate QR code',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingQR(null);
+    }
+  };
+
+  const generateGoogleCalendarLink = (event: Event) => {
+    const startDate = new Date(event.event_date);
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+
+    const formatDate = (date: Date) => {
+      return date.toISOString().replace(/-|:|\.\d\d\d/g, '');
+    };
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: event.name,
+      dates: `${formatDate(startDate)}/${formatDate(endDate)}`,
+      details: event.description || '',
+      location: event.location || '',
+    });
+
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  };
+
+  const generateAppleCalendarLink = (event: Event) => {
+    const startDate = new Date(event.event_date);
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+
+    const formatDate = (date: Date) => {
+      return date.toISOString().replace(/-|:|\.\d\d\d/g, '');
+    };
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      `DTSTART:${formatDate(startDate)}`,
+      `DTEND:${formatDate(endDate)}`,
+      `SUMMARY:${event.name}`,
+      `DESCRIPTION:${event.description || ''}`,
+      `LOCATION:${event.location || ''}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    return URL.createObjectURL(blob);
+  };
+
+  const handleAddToAppleCalendar = (event: Event) => {
+    const icsUrl = generateAppleCalendarLink(event);
+    const link = document.createElement('a');
+    link.href = icsUrl;
+    link.download = `${event.name}.ics`;
+    link.click();
+    URL.revokeObjectURL(icsUrl);
+  };
+
   const canManageEvents = role === 'board' || role === 'e-board';
 
-  const isEventFull = (event: EventWithAttendance) => {
-    return event.rsvp_required && event.attendanceCount >= event.max_attendance;
+  const isEventFull = (event: Event) => {
+    const count = attendanceCounts.get(event.id) || 0;
+    return event.rsvp_required && count >= event.max_attendance;
   };
 
   const getEventTypeLabel = (event: Event) => {
-    // Check if it's open to all roles
-    const allRoles: Database['public']['Enums']['app_role'][] = ['prospect', 'member', 'board', 'e-board'];
-    const isOpen = allRoles.every(r => event.allowed_roles.includes(r));
-    return isOpen ? 'Open Meeting' : 'Closed Meeting';
+    const isOpenToProspects = event.allowed_roles.includes('prospect');
+
+    if (isOpenToProspects) {
+      return 'Open Meeting';
+    } else if (event.rsvp_required) {
+      return 'Closed Meeting';
+    } else {
+      return 'Internal Meeting';
+    }
   };
 
   return (
@@ -154,7 +296,10 @@ const Events = () => {
           <p className="text-muted-foreground">Upcoming club events</p>
         </div>
         {canManageEvents && (
-          <Button onClick={() => setIsModalOpen(true)}>
+          <Button onClick={() => {
+            setEditingEvent(null);
+            setIsModalOpen(true);
+          }}>
             <Plus className="h-4 w-4 mr-2" />
             Create Event
           </Button>
@@ -179,11 +324,13 @@ const Events = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {events.map((event) => {
             const isFull = isEventFull(event);
-            const hasRSVPed = !!event.userAttendance;
-            const hasAttended = event.userAttendance?.attended || false;
+            const userAttendance = attendanceMap.get(event.id);
+            const hasRSVPed = !!userAttendance;
+            const hasAttended = userAttendance?.attended || false;
+            const attendanceCount = attendanceCounts.get(event.id) || 0;
 
             return (
-              <Card key={event.id}>
+              <Card key={event.id} className="min-w-[300px]">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-3">
                     <CardTitle className="text-lg flex-1">{event.name}</CardTitle>
@@ -192,13 +339,43 @@ const Events = () => {
                     </Badge>
                   </div>
                   <div className="space-y-2 text-sm text-muted-foreground mt-3">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      <span>{format(new Date(event.event_date), 'PPP p')}</span>
-                    </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <div className="flex items-center gap-2 cursor-pointer group w-fit">
+                          <Calendar className="h-4 w-4 group-hover:text-orange-600 transition-colors" />
+                          <span className="underline decoration-transparent group-hover:decoration-orange-600 group-hover:text-orange-600 transition-all">
+                            {format(new Date(event.event_date), isMobile ? 'MMM d, h:mm a' : 'PPP p')}
+                          </span>
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-2" align="start">
+                        <div className="space-y-1">
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start gap-2 hover:bg-orange-50 dark:hover:bg-orange-950 hover:text-orange-600 transition-colors"
+                            onClick={() => window.open(generateGoogleCalendarLink(event), '_blank')}
+                          >
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" />
+                            </svg>
+                            <span className="text-sm">Add to Google</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start gap-2 hover:bg-orange-50 dark:hover:bg-orange-950 hover:text-orange-600 transition-colors"
+                            onClick={() => handleAddToAppleCalendar(event)}
+                          >
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+                            </svg>
+                            <span className="text-sm">Add to Apple</span>
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
-                      <span>{event.location}</span>
+                      <span className={isMobile ? 'text-xs' : ''}>{event.location}</span>
                     </div>
                     {event.points > 0 && (
                       <div className="flex items-center gap-2 text-primary">
@@ -208,16 +385,16 @@ const Events = () => {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {event.description && (
-                    <p className="text-sm text-muted-foreground">{event.description}</p>
+                <CardContent className="space-y-3">
+                  {event.description && !isMobile && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
                   )}
 
                   {event.rsvp_required && (
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Users className="h-4 w-4" />
-                        {event.attendanceCount} / {event.max_attendance} RSVPs
+                        {attendanceCount} / {event.max_attendance} RSVPs
                       </div>
                       {isFull && !hasRSVPed && (
                         <Badge variant="destructive">Full</Badge>
@@ -232,34 +409,62 @@ const Events = () => {
                     </div>
                   )}
 
-                  {event.rsvp_required ? (
-                    hasRSVPed ? (
+                  <div className="space-y-2">
+                    {!canManageEvents && (
                       <Button
                         className="w-full"
                         variant="outline"
-                        onClick={() => handleCancelRSVP(event.id)}
-                        disabled={hasAttended}
+                        onClick={() => handleViewDetails(event)}
                       >
-                        {hasAttended ? 'Already Attended' : 'Cancel RSVP'}
+                        <Eye className="h-4 w-4 mr-2" />
+                        {isMobile ? 'Details' : 'View Details'}
                       </Button>
-                    ) : (
+                    )}
+
+                    {!canManageEvents && event.rsvp_required && role !== 'prospect' && (
+                      hasRSVPed ? (
+                        <Button
+                          className="w-full"
+                          variant="outline"
+                          onClick={() => handleCancelRSVP(event.id)}
+                          disabled={hasAttended}
+                        >
+                          {hasAttended ? 'Attended' : isMobile ? 'Cancel' : 'Cancel RSVP'}
+                        </Button>
+                      ) : (
+                        <Button
+                          className="w-full"
+                          onClick={() => handleRSVP(event.id)}
+                          disabled={isFull}
+                        >
+                          {isFull ? 'Full' : 'RSVP'}
+                        </Button>
+                      )
+                    )}
+
+                    {canManageEvents && (
                       <Button
                         className="w-full"
-                        onClick={() => handleRSVP(event.id)}
-                        disabled={isFull}
+                        variant="outline"
+                        onClick={() => handleEditEvent(event)}
                       >
-                        {isFull ? 'Event Full' : 'RSVP Now'}
+                        <Edit className="h-4 w-4 mr-2" />
+                        {isMobile ? 'Edit' : 'Edit Details'}
                       </Button>
-                    )
-                  ) : (
-                    <Button
-                      className="w-full"
-                      variant="outline"
-                      onClick={() => handleViewDetails(event)}
-                    >
-                      View Details
-                    </Button>
-                  )}
+                    )}
+
+                    {canManageEvents && (
+                      <Button
+                        className="w-full"
+                        variant="default"
+                        onClick={() => handleGenerateQR(event)}
+                        disabled={generatingQR === event.id}
+                      >
+                        <QrCode className="h-4 w-4 mr-2" />
+                        {generatingQR === event.id ? 'Generating...' : isMobile ? 'QR Code' : 'Generate QR Code'}
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -269,20 +474,23 @@ const Events = () => {
 
       <EventModal
         open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingEvent(null);
+        }}
         onSuccess={fetchEvents}
+        existingEvent={editingEvent}
       />
 
-      {/* Event Details Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl">{selectedEvent?.name}</DialogTitle>
-            <DialogDescription>
-              <Badge variant={selectedEvent?.rsvp_required ? 'default' : 'secondary'} className="mt-2">
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant={selectedEvent?.rsvp_required ? 'default' : 'secondary'}>
                 {selectedEvent && getEventTypeLabel(selectedEvent)}
               </Badge>
-            </DialogDescription>
+            </div>
           </DialogHeader>
           {selectedEvent && (
             <div className="space-y-6">
@@ -336,7 +544,7 @@ const Events = () => {
                   <p className="text-sm font-medium">Attendance</p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Users className="h-4 w-4" />
-                    {selectedEvent.attendanceCount} / {selectedEvent.max_attendance} RSVPs
+                    {attendanceCounts.get(selectedEvent.id) || 0} / {selectedEvent.max_attendance} RSVPs
                   </div>
                 </div>
               )}

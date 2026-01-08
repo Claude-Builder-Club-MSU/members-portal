@@ -45,25 +45,26 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
 
   const getMenuItems = () => {
-    const baseItems = [
-      { title: 'Applications', url: '/dashboard/applications', icon: FileText },
-      { title: 'Events', url: '/dashboard/events', icon: Calendar },
-    ];
+    // Define each menu item up front for consistent order
+    const dashboard = { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard };
+    const events = { title: 'Events', url: '/dashboard/events', icon: Calendar };
+    const classes = { title: 'Classes', url: '/dashboard/classes', icon: BookOpen };
+    const projects = { title: 'Projects', url: '/dashboard/projects', icon: FolderKanban };
+    const applications = { title: 'Applications', url: '/dashboard/applications', icon: FileText };
+    const members = { title: 'Members', url: '/dashboard/members', icon: Users };
+    const prospects = { title: 'Prospects', url: '/dashboard/prospects', icon: UserPlus };
 
     if (role === 'prospect') {
-      return baseItems;
+      // Prospects get only Events and Applications
+      return [events, applications];
     }
 
-    const memberItems = [
-      { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-      { title: 'Classes', url: '/dashboard/classes', icon: BookOpen },
-      { title: 'Projects', url: '/dashboard/projects', icon: FolderKanban },
-      ...baseItems,
-    ];
+    // Members get: Dashboard, Events, Classes, Projects, Applications
+    const memberItems = [dashboard, events, classes, projects, applications];
 
+    // E-board and Board additionally see Members and Prospects (after Applications)
     if (role === 'e-board' || role === 'board') {
-      memberItems.push({ title: 'Members', url: '/dashboard/members', icon: Users });
-      memberItems.push({ title: 'Prospects', url: '/dashboard/prospects', icon: UserPlus });
+      memberItems.push(members, prospects);
     }
 
     return memberItems;

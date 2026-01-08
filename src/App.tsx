@@ -16,6 +16,7 @@ import Projects from "./pages/dashboard/Projects";
 import Members from "./pages/dashboard/Members";
 import Profile from "./pages/dashboard/Profile";
 import Prospects from "./pages/dashboard/Prospects";
+import Checkin from "./pages/CheckIn";
 
 const queryClient = new QueryClient();
 

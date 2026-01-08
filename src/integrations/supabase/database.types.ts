@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
@@ -244,6 +242,86 @@ export type Database = {
           },
         ]
       }
+      event_checkins: {
+        Row: {
+          id: string
+          event_id: string
+          user_id: string
+          checked_in_at: string
+          points_awarded: number
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          user_id: string
+          checked_in_at?: string
+          points_awarded: number
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          user_id?: string
+          checked_in_at?: string
+          points_awarded?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_checkins_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_checkins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_qr_codes: {
+        Row: {
+          id: string
+          event_id: string
+          token: string
+          points: number
+          active: boolean
+          created_at: string
+          expires_at: string | null
+          qr_code_url: string | null
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          token: string
+          points: number
+          active?: boolean
+          created_at?: string
+          expires_at?: string | null
+          qr_code_url?: string | null
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          token?: string
+          points?: number
+          active?: boolean
+          created_at?: string
+          expires_at?: string | null
+          qr_code_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_qr_codes_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           allowed_roles: Database["public"]["Enums"]["app_role"][]
@@ -428,12 +506,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      cleanup_old_applications: { Args: never; Returns: undefined }
+      checkin_user_for_event: {
+        Args: {
+          p_token: string
+        }
+        Returns: Json
+      }
+      cleanup_old_applications: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       delete_application_files: {
         Args: { application_id: string }
         Returns: undefined
       }
-      generate_qr_token: { Args: never; Returns: string }
+      delete_storage_object: {
+        Args: {
+          bucket_name: string
+          file_path: string
+        }
+        Returns: undefined
+      }
+      generate_qr_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_profile: {
         Args: { _user_id: string }
         Returns: {
@@ -472,6 +569,8 @@ export type Database = {
     }
   }
 }
+
+// ... rest of the file stays the same
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 

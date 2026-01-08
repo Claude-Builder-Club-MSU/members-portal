@@ -1,0 +1,116 @@
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { CheckCircle, XCircle, Trophy } from 'lucide-react';
+
+const Checkin = () => {
+    const { token } = useParams<{ token: string }>();
+    const { user, loading } = useAuth();
+    const navigate = useNavigate();
+    const [checking, setChecking] = useState(false);
+    const [result, setResult] = useState<{
+        success: boolean;
+        message: string;
+        points_awarded?: number;
+        event_name?: string;
+    } | null>(null);
+
+    useEffect(() => {
+        if (!loading && !user) {
+            navigate('/auth');
+        } else if (user && token) {
+            handleCheckin();
+        }
+    }, [user, loading, token]);
+
+    const handleCheckin = async () => {
+        if (!token || checking) return;
+
+        setChecking(true);
+
+        try {
+            const { data, error } = await supabase.rpc('checkin_user_for_event', {
+                p_token: token,
+            });
+
+            if (error) throw error;
+
+            setResult(data as {
+                success: boolean;
+                message: string;
+                points_awarded?: number;
+                event_name?: string;
+            });
+        } catch (error: any) {
+            console.error('Check-in error:', error);
+            setResult({
+                success: false,
+                message: 'Failed to check in. Please try again.',
+            });
+        } finally {
+            setChecking(false);
+        }
+    };
+
+    if (loading || checking) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-orange-50/20 to-background dark:from-background dark:via-orange-950/10 dark:to-background">
+                <div className="text-center space-y-4">
+                    <div className="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p className="text-muted-foreground">Checking you in...</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-orange-50/20 to-background dark:from-background dark:via-orange-950/10 dark:to-background p-4">
+            <Card className="w-full max-w-md">
+                <CardHeader className="text-center">
+                    <div className="flex justify-center mb-4">
+                        {result?.success ? (
+                            <div className="w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                                <CheckCircle className="h-12 w-12 text-green-600 dark:text-green-400" />
+                            </div>
+                        ) : (
+                            <div className="w-20 h-20 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                                <XCircle className="h-12 w-12 text-red-600 dark:text-red-400" />
+                            </div>
+                        )}
+                    </div>
+                    <CardTitle className="text-2xl">
+                        {result?.success ? 'Check-in Successful!' : 'Check-in Failed'}
+                    </CardTitle>
+                    <CardDescription>{result?.message}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {result?.success && result.points_awarded && (
+                        <div className="bg-orange-50 dark:bg-orange-950 rounded-lg p-4 text-center">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                                <Trophy className="h-6 w-6 text-orange-600" />
+                                <span className="text-3xl font-bold text-orange-600">
+                                    +{result.points_awarded}
+                                </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Points Awarded</p>
+                            {result.event_name && (
+                                <p className="text-sm font-medium mt-2">{result.event_name}</p>
+                            )}
+                        </div>
+                    )}
+                    <Button
+                        className="w-full"
+                        onClick={() => navigate('/dashboard')}
+                    >
+                        Go to Dashboard
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+export default Checkin;

@@ -9,11 +9,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type Project = Database['public']['Tables']['projects']['Row'];
@@ -34,7 +43,7 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
   const [description, setDescription] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
   const [clientName, setClientName] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState<Date>();
 
   // Load existing project data when modal opens for editing
   useEffect(() => {
@@ -44,13 +53,11 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
       setGithubUrl(existingProject.github_url);
       setClientName(existingProject.client_name || '');
 
-      // Convert timestamp to YYYY-MM-DD format for date input
+      // Convert timestamp to Date object for calendar
       if (existingProject.due_date) {
-        const date = new Date(existingProject.due_date);
-        const formattedDate = date.toISOString().split('T')[0];
-        setDueDate(formattedDate);
+        setDueDate(new Date(existingProject.due_date));
       } else {
-        setDueDate('');
+        setDueDate(undefined);
       }
     } else if (open && !existingProject) {
       // Reset form for new project
@@ -58,7 +65,7 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
       setDescription('');
       setGithubUrl('');
       setClientName('');
-      setDueDate('');
+      setDueDate(undefined);
     }
   }, [open, existingProject]);
 
@@ -72,7 +79,8 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
       // Convert date to ISO string at noon UTC to avoid timezone issues
       let dueDateTimestamp = null;
       if (dueDate) {
-        const date = new Date(dueDate + 'T12:00:00.000Z'); // Add noon UTC time
+        const date = new Date(dueDate);
+        date.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
         dueDateTimestamp = date.toISOString();
       }
 
@@ -200,13 +208,29 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="dueDate">Due Date (Optional)</Label>
-            <Input
-              id="dueDate"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
+            <Label>Due Date (Optional)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-full justify-start text-left font-normal',
+                    !dueDate && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dueDate ? format(dueDate, 'PPP') : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dueDate}
+                  onSelect={setDueDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="flex gap-2 pt-4">
