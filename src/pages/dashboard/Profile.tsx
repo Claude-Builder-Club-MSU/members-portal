@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Trophy, Mail, Award, Linkedin, FileText, Camera, RotateCw, Crown, Users } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -22,8 +23,9 @@ import Cropper from 'react-easy-crop';
 import type { Database } from '@/integrations/supabase/database.types';
 
 const Profile = () => {
-  const { user, profile, role, refreshProfile } = useAuth();
+  const { user, profile, role, refreshProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState('');
   const [classYear, setClassYear] = useState('');
@@ -371,9 +373,9 @@ const Profile = () => {
       .slice(0, 2);
   };
 
-  if (!user || !profile) {
+  if (authLoading || !user) {
     return (
-      <div className="p-6 h-full flex items-center justify-center">
+      <div className={`min-h-full flex items-center justify-center ${isMobile ? 'p-4' : 'p-6'}`}>
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">Loading profile...</p>
@@ -384,16 +386,16 @@ const Profile = () => {
   }
 
   return (
-    <div className="p-6 h-[calc(100vh-3.5rem)] flex items-center justify-center overflow-auto">
-      <div className="w-full max-w-6xl">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className={`${isMobile ? 'p-4' : 'p-6'} min-h-full`}>
+      <div className="w-full max-w-6xl mx-auto">
+        <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
           {/* Left Column - Profile Overview */}
           <div className="lg:col-span-1">
             <Card className="h-full flex flex-col">
               <CardHeader className="text-center pb-6">
                 <div className="flex justify-center mb-4">
                   <div className="relative">
-                    <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
+                    <Avatar className={`${isMobile ? 'h-24 w-24' : 'h-32 w-32'} border-4 border-background shadow-lg`}>
                       <AvatarImage src={profile.profile_picture_url || undefined} />
                       <AvatarFallback className="text-3xl">
                         {fullName ? getInitials(fullName) : user.email?.charAt(0).toUpperCase()}
@@ -401,9 +403,9 @@ const Profile = () => {
                     </Avatar>
                     <label
                       htmlFor="avatar-upload"
-                      className="absolute bottom-0 right-0 p-2.5 bg-primary rounded-full cursor-pointer hover:bg-primary/90 transition-colors shadow-lg"
+                      className={`absolute bottom-0 right-0 bg-primary rounded-full cursor-pointer hover:bg-primary/90 transition-colors shadow-lg ${isMobile ? 'p-2' : 'p-2.5'}`}
                     >
-                      <Camera className="h-4 w-4 text-primary-foreground" />
+                      <Camera className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-primary-foreground`} />
                       <input
                         ref={fileInputRef}
                         id="avatar-upload"
@@ -465,9 +467,9 @@ const Profile = () => {
                 <CardTitle>Edit Profile</CardTitle>
                 <CardDescription>Update your personal information</CardDescription>
               </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CardContent className={isMobile ? 'p-4' : ''}>
+                <form onSubmit={handleSubmit} className={`space-y-6 ${isMobile ? 'space-y-4' : 'space-y-6'}`}>
+                  <div className={`grid gap-6 ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2'}`}>
                     <div className="space-y-2">
                       <Label htmlFor="fullName">Full Name *</Label>
                       <Input
@@ -536,12 +538,12 @@ const Profile = () => {
 
       {/* Image Crop Modal */}
       <Dialog open={showCropModal} onOpenChange={setShowCropModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)]' : 'max-w-2xl'} rounded-xl`}>
           <DialogHeader>
-            <DialogTitle>Crop Profile Picture</DialogTitle>
+            <DialogTitle className={isMobile ? 'text-lg' : ''}>Crop Profile Picture</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="relative h-96 bg-muted rounded-lg overflow-hidden">
+          <div className={`space-y-4 ${isMobile ? 'space-y-3' : 'space-y-4'}`}>
+            <div className={`relative bg-muted rounded-lg overflow-hidden ${isMobile ? 'h-64' : 'h-96'}`}>
               {imageSrc && (
                 <Cropper
                   image={imageSrc}

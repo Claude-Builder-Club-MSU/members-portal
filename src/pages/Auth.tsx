@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -17,6 +18,7 @@ const Auth = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   // CRITICAL: useEffect must ALWAYS be called, never conditionally
   useEffect(() => {
@@ -125,16 +127,16 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{isLogin ? 'Login' : 'Sign Up'}</CardTitle>
-          <CardDescription>
+    <div className={`min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary ${isMobile ? 'px-4 py-8' : 'px-4'}`}>
+      <Card className={`w-full ${isMobile ? 'max-w-sm' : 'max-w-md'}`}>
+        <CardHeader className={isMobile ? 'pb-4' : ''}>
+          <CardTitle className={isMobile ? 'text-xl' : ''}>{isLogin ? 'Login' : 'Sign Up'}</CardTitle>
+          <CardDescription className={isMobile ? 'text-sm' : ''}>
             {isLogin ? 'Welcome back to Claude Builder Club' : 'Join Claude Builder Club @ MSU'}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardContent className={isMobile ? 'pt-0' : ''}>
+          <form onSubmit={handleSubmit} className={`space-y-4 ${isMobile ? 'space-y-3' : 'space-y-4'}`}>
             {!isLogin && (
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
@@ -172,14 +174,14 @@ const Auth = () => {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className={`w-full ${isMobile ? 'h-11' : ''}`} disabled={loading}>
               {loading ? 'Loading...' : isLogin ? 'Login' : 'Sign Up'}
             </Button>
 
             <Button
               type="button"
               variant="ghost"
-              className="w-full"
+              className={`w-full ${isMobile ? 'h-11 text-sm' : ''}`}
               onClick={() => setIsLogin(!isLogin)}
             >
               {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Login'}

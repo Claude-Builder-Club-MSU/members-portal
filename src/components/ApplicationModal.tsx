@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,7 @@ const BOARD_POSITIONS = [
 export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalProps) => {
   const { user, profile, role } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [applicationType, setApplicationType] = useState<ApplicationType | ''>('');
   const [loading, setLoading] = useState(false);
 
@@ -538,7 +540,7 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)]' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto rounded-xl`}>
         <DialogHeader>
           <DialogTitle>New Application</DialogTitle>
           <DialogDescription>

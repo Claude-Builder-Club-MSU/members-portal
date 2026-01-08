@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ interface ProjectModalProps {
 export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: ProjectModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -144,7 +146,7 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)]' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto rounded-xl`}>
         <DialogHeader>
           <DialogTitle>{existingProject ? 'Edit Project' : 'Create New Project'}</DialogTitle>
           <DialogDescription>

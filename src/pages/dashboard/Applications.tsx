@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Eye } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ApplicationModal } from '@/components/ApplicationModal';
 import { ApplicationViewer } from '@/components/ApplicationViewer';
 import type { Database } from '@/integrations/supabase/database.types';
@@ -13,6 +14,7 @@ type Application = Database['public']['Tables']['applications']['Row'];
 
 const Applications = () => {
   const { user, role } = useAuth();
+  const isMobile = useIsMobile();
   const [applications, setApplications] = useState<Application[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -81,15 +83,15 @@ const Applications = () => {
   const canReviewApplications = role === 'board' || role === 'e-board';
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-6'}`}>
+      <div className={`flex justify-between items-center ${isMobile ? 'flex-col gap-4' : ''}`}>
         <div>
-          <h1 className="text-3xl font-bold">Applications</h1>
+          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Applications</h1>
           <p className="text-muted-foreground">
             {canReviewApplications ? 'Review and manage applications' : 'Submit and track your applications'}
           </p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={() => setIsModalOpen(true)} className={isMobile ? 'w-full' : ''}>
           <Plus className="h-4 w-4 mr-2" />
           New Application
         </Button>
@@ -114,16 +116,16 @@ const Applications = () => {
           {applications.map((app) => (
             <Card key={app.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
-                <div className="flex justify-between items-start">
+                <div className={`flex justify-between items-start ${isMobile ? 'flex-col gap-3' : ''}`}>
                   <div className="flex-1">
-                    <CardTitle>{app.full_name}</CardTitle>
-                    <CardDescription className="flex items-center gap-2 mt-1">
+                    <CardTitle className={isMobile ? 'text-lg' : ''}>{app.full_name}</CardTitle>
+                    <CardDescription className={`flex items-center gap-2 mt-1 ${isMobile ? 'flex-col gap-1 items-start' : ''}`}>
                       <span>{formatApplicationType(app.application_type)}</span>
-                      <span>•</span>
+                      <span className={isMobile ? 'hidden' : ''}>•</span>
                       <span>Submitted {new Date(app.created_at).toLocaleDateString()}</span>
                     </CardDescription>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className={`flex items-center gap-2 ${isMobile ? 'w-full justify-between' : ''}`}>
                     <Badge variant={getStatusColor(app.status)} className="capitalize">
                       {app.status}
                     </Badge>
@@ -132,6 +134,7 @@ const Applications = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleViewApplication(app)}
+                        className={isMobile ? 'flex-1' : ''}
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         Review

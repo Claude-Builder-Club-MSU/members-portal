@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, BookOpen, MapPin, Clock, Users, Edit } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ClassModal } from '@/components/ClassModal';
 import type { Database } from '@/integrations/supabase/database.types';
 
@@ -17,6 +18,7 @@ interface ClassWithEnrollment extends Class {
 
 const Classes = () => {
   const { user, role } = useAuth();
+  const isMobile = useIsMobile();
   const [classes, setClasses] = useState<ClassWithEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);

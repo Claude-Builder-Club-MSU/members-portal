@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ interface ClassModalProps {
 export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -111,7 +113,7 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)]' : 'max-w-2xl'} rounded-xl`}>
         <DialogHeader>
           <DialogTitle>{existingClass ? 'Edit Class' : 'Create New Class'}</DialogTitle>
           <DialogDescription>

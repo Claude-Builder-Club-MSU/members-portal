@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
     Users,
     UserPlus,
@@ -29,6 +30,7 @@ type Class = Database['public']['Tables']['classes']['Row'];
 const AdminDashboard = () => {
     const { profile } = useAuth();
     const navigate = useNavigate();
+    const isMobile = useIsMobile();
     const [memberCount, setMemberCount] = useState(0);
     const [prospectCount, setProspectCount] = useState(0);
     const [boardCount, setBoardCount] = useState(0);
@@ -98,9 +100,9 @@ const AdminDashboard = () => {
     };
 
     return (
-        <div className="p-6 space-y-8 min-h-[calc(100vh-56px)] flex flex-col justify-center">
+        <div className={`min-h-[calc(100vh-56px)] flex flex-col justify-center ${isMobile ? 'p-4 space-y-6' : 'p-6 space-y-8'}`}>
             {/* Welcome Header with Claude Keyboard Glyph */}
-            <div className="relative rounded-xl p-8 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/20 dark:to-orange-900/20 border border-orange-200 dark:border-orange-800 overflow-hidden">
+            <div className={`relative rounded-xl bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/20 dark:to-orange-900/20 border border-orange-200 dark:border-orange-800 overflow-hidden ${isMobile ? 'p-6' : 'p-8'}`}>
                 {/* Keyboard Glyph Background */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-10 dark:opacity-5 pointer-events-none">
                     <svg
@@ -146,7 +148,7 @@ const AdminDashboard = () => {
                 {/* Content */}
                 <div className="relative z-10 text-center">
                     <h1
-                        className="text-5xl mb-2 font-black text-orange-600 dark:text-orange-400 drop-shadow-lg tracking-tight"
+                        className={`${isMobile ? 'text-4xl' : 'text-5xl'} mb-2 font-black text-orange-600 dark:text-orange-400 drop-shadow-lg tracking-tight`}
                         style={{
                             fontFamily: `'Roboto Mono', monospace`,
                             letterSpacing: '0.05em',
@@ -164,7 +166,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
                 <Card className="relative overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/dashboard/members')}>
                     <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full -mr-16 -mt-16" />
                     <CardHeader className="pb-3">
@@ -231,9 +233,9 @@ const AdminDashboard = () => {
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
                 {/* Upcoming Events - Takes full height */}
-                <div className="lg:col-span-1">
+                <div className={isMobile ? 'order-2' : 'lg:col-span-1'}>
                     <Card className="hover:shadow-lg transition-shadow h-full flex flex-col">
                         <CardHeader>
                             <div className="flex items-center justify-between">
@@ -300,7 +302,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Projects and Classes - Stack vertically on the right */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className={`${isMobile ? 'order-1' : 'lg:col-span-2'} space-y-6`}>
                     {/* Projects Widget */}
                     <Card className="hover:shadow-lg transition-shadow">
                         <CardHeader>
@@ -330,7 +332,7 @@ const AdminDashboard = () => {
                             ) : projects.length === 0 ? (
                                 <p className="text-sm text-muted-foreground py-8 text-center">No active projects</p>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
                                     {projects.map((project) => (
                                         <div key={project.id} className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                                             <p className="font-medium text-sm mb-1">{project.name}</p>
@@ -381,7 +383,7 @@ const AdminDashboard = () => {
                             ) : classes.length === 0 ? (
                                 <p className="text-sm text-muted-foreground py-8 text-center">No classes available</p>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
                                     {classes.map((cls) => (
                                         <div key={cls.id} className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                                             <p className="font-medium text-sm mb-1">{cls.name}</p>

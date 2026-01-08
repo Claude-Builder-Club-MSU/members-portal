@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
     Dialog,
     DialogContent,
@@ -39,6 +40,7 @@ interface ApplicationViewerProps {
 export const ApplicationViewer = ({ application, open, onClose, onUpdate }: ApplicationViewerProps) => {
     const { toast } = useToast();
     const { user, role } = useAuth();
+    const isMobile = useIsMobile();
     const [actionLoading, setActionLoading] = useState(false);
     const [showAcceptDialog, setShowAcceptDialog] = useState(false);
     const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -373,7 +375,7 @@ export const ApplicationViewer = ({ application, open, onClose, onUpdate }: Appl
     return (
         <>
             <Dialog open={open} onOpenChange={onClose}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)]' : 'max-w-3xl'} max-h-[90vh] overflow-y-auto rounded-xl`}>
                     <DialogHeader>
                         <DialogTitle className="text-2xl">{application.full_name}</DialogTitle>
                         <DialogDescription className="flex items-center gap-2 mt-2">
