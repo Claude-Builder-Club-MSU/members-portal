@@ -6,9 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Trophy, Mail, GraduationCap, UserPlus, UserCheck } from 'lucide-react';
+import { Trophy, Mail, GraduationCap, UserCheck, Eye } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/database.types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import ProfileViewer from '@/components/ProfileViewer';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type AppRole = Database['public']['Enums']['app_role'];
@@ -22,6 +23,8 @@ const Prospects = () => {
   const { role: userRole } = useAuth();
   const [prospects, setProspects] = useState<ProspectWithRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProspect, setSelectedProspect] = useState<ProspectWithRole | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -87,6 +90,11 @@ const Prospects = () => {
       });
       fetchProspects();
     }
+  };
+
+  const handleViewProfile = (prospect: ProspectWithRole) => {
+    setSelectedProspect(prospect);
+    setIsProfileModalOpen(true);
   };
 
   const getInitials = (name: string) => {
@@ -191,8 +199,18 @@ const Prospects = () => {
                   )}
                 </div>
 
-                {canManageProspects && (
-                  <div className="space-y-2">
+                <div className="space-y-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => handleViewProfile(prospect)}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Profile
+                  </Button>
+
+                  {canManageProspects && (
                     <Button
                       className="w-full"
                       onClick={() => handlePromoteToMember(prospect.id)}
@@ -200,13 +218,23 @@ const Prospects = () => {
                       <UserCheck className="h-4 w-4 mr-2" />
                       Promote to Member
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Profile Viewer */}
+      <ProfileViewer
+        open={isProfileModalOpen}
+        onClose={() => {
+          setIsProfileModalOpen(false);
+          setSelectedProspect(null);
+        }}
+        member={selectedProspect}
+      />
     </div>
   );
 };

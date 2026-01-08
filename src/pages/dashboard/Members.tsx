@@ -5,19 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Trophy, Mail, GraduationCap, Crown, Users, Award, Eye, Linkedin } from 'lucide-react';
+import { Trophy, Mail, GraduationCap, Crown, Users, Award, Eye } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/database.types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import ProfileViewer from '@/components/ProfileViewer';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type AppRole = Database['public']['Enums']['app_role'];
@@ -316,106 +309,15 @@ const Members = () => {
         </Card>
       )}
 
-      {/* Profile View Modal */}
-      <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Member Profile</DialogTitle>
-            <DialogDescription>View member details</DialogDescription>
-          </DialogHeader>
-          {selectedMember && (
-            <div className="space-y-6">
-              {/* Profile Header */}
-              <div className="flex flex-col items-center text-center space-y-4">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={selectedMember.profile_picture_url || undefined} />
-                  <AvatarFallback className="text-2xl">
-                    {selectedMember.full_name
-                      ? getInitials(selectedMember.full_name)
-                      : selectedMember.email.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-bold">
-                    {selectedMember.full_name || 'No name'}
-                  </h3>
-                  <div className="flex items-center justify-center gap-2">
-                    {getRoleIcon(selectedMember.role)}
-                    {selectedMember.role === 'e-board' ? (
-                      <Badge
-                        className="capitalize sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative"
-                      >
-                        <span className="sparkle-particle"></span>
-                        <span className="sparkle-particle"></span>
-                        <span className="sparkle-particle"></span>
-                        <span className="relative z-10">{selectedMember.role.replace('-', ' ')}</span>
-                      </Badge>
-                    ) : selectedMember.role === 'board' ? (
-                      <Badge
-                        className="capitalize bg-claude-peach text-cream font-semibold border-2 border-claude-peach/50"
-                      >
-                        {selectedMember.role.replace('-', ' ')}
-                      </Badge>
-                    ) : (
-                      <Badge variant={getRoleBadgeVariant(selectedMember.role)} className="capitalize">
-                        {selectedMember.role.replace('-', ' ')}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Profile Details */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Email</p>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm">{selectedMember.email}</p>
-                  </div>
-                </div>
-
-                {selectedMember.class_year && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Class Year</p>
-                    <div className="flex items-center gap-2">
-                      <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm capitalize">{selectedMember.class_year}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Club Points</p>
-                  <div className="flex items-center gap-2">
-                    <Trophy className="h-4 w-4 text-yellow-500" />
-                    <p className="text-sm font-semibold">{selectedMember.points} points</p>
-                  </div>
-                </div>
-
-                {selectedMember.linkedin_url && (
-                  <>
-                    <Separator />
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-muted-foreground">LinkedIn</p>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start"
-                        onClick={() => window.open(selectedMember.linkedin_url!, '_blank')}
-                      >
-                        <Linkedin className="h-4 w-4 mr-2 text-blue-600" />
-                        View LinkedIn Profile
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Profile Viewer */}
+      <ProfileViewer
+        open={isProfileModalOpen}
+        onClose={() => {
+          setIsProfileModalOpen(false);
+          setSelectedMember(null);
+        }}
+        member={selectedMember}
+      />
     </div>
   );
 };

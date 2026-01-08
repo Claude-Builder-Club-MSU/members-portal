@@ -9,10 +9,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -21,9 +34,21 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import {
+  CheckCircle,
+  XCircle,
+  ExternalLink,
+  Calendar,
+  GraduationCap,
+  FileText,
+  Trash2,
+  Info
+} from 'lucide-react';
+import { format, addDays, differenceInDays } from 'date-fns';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type ApplicationType = Database['public']['Enums']['application_type'];
+type Application = Database['public']['Tables']['applications']['Row'];
 type Class = Database['public']['Tables']['classes']['Row'];
 type Project = Database['public']['Tables']['projects']['Row'];
 
@@ -31,6 +56,7 @@ interface ApplicationModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  existingApplication?: Application | null;
 }
 
 const BOARD_POSITIONS = [
@@ -43,14 +69,29 @@ const BOARD_POSITIONS = [
   'Events Coordinator',
 ];
 
-export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalProps) => {
+export const ApplicationModal = ({
+  open,
+  onClose,
+  onSuccess,
+  existingApplication
+}: ApplicationModalProps) => {
   const { user, profile, role } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  // Determine if we're in view mode or create mode
+  const isViewMode = !!existingApplication;
+
+  // View mode state
+  const [actionLoading, setActionLoading] = useState(false);
+  const [showAcceptDialog, setShowAcceptDialog] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [className, setClassName] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState<string | null>(null);
+
+  // Create mode state
   const [applicationType, setApplicationType] = useState<ApplicationType | ''>('');
   const [loading, setLoading] = useState(false);
-
-  // Available options
   const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
 
@@ -66,28 +107,64 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
   const [projectDetail, setProjectDetail] = useState('');
   const [problemSolved, setProblemSolved] = useState('');
   const [previousExperience, setPreviousExperience] = useState('');
-
-  // Selection fields
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedBoardPosition, setSelectedBoardPosition] = useState('');
 
+  // Fetch class name for view mode
   useEffect(() => {
-    if (profile && open) {
+    const fetchClassName = async () => {
+      if (existingApplication?.class_id) {
+        const { data } = await supabase
+          .from('classes')
+          .select('name')
+          .eq('id', existingApplication.class_id)
+          .single();
+
+        if (data) setClassName(data.name);
+      }
+    };
+
+    if (open && existingApplication?.class_id) {
+      fetchClassName();
+    }
+  }, [open, existingApplication?.class_id]);
+
+  // Fetch project name for view mode
+  useEffect(() => {
+    const fetchProjectName = async () => {
+      if (existingApplication?.project_id) {
+        const { data } = await supabase
+          .from('projects')
+          .select('name')
+          .eq('id', existingApplication.project_id)
+          .single();
+
+        if (data) setProjectName(data.name);
+      }
+    };
+
+    if (open && existingApplication?.project_id) {
+      fetchProjectName();
+    }
+  }, [open, existingApplication?.project_id]);
+
+  // Initialize form for create mode
+  useEffect(() => {
+    if (profile && open && !isViewMode) {
       setFullName(profile.full_name);
       setClassYear(profile.class_year || '');
     }
-  }, [profile, open]);
+  }, [profile, open, isViewMode]);
 
-  // Fetch available classes and projects when modal opens
+  // Fetch available options for create mode
   useEffect(() => {
-    if (open) {
+    if (open && !isViewMode) {
       fetchAvailableOptions();
     }
-  }, [open]);
+  }, [open, isViewMode]);
 
   const fetchAvailableOptions = async () => {
-    // Fetch all classes
     const { data: classesData } = await supabase
       .from('classes')
       .select('*')
@@ -97,7 +174,6 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
       setAvailableClasses(classesData);
     }
 
-    // Fetch all projects
     const { data: projectsData } = await supabase
       .from('projects')
       .select('*')
@@ -111,7 +187,6 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
   const handleApplicationTypeChange = (type: ApplicationType) => {
     setApplicationType(type);
 
-    // Check if there are options available
     if (type === 'class' && availableClasses.length === 0) {
       toast({
         title: 'No Classes Available',
@@ -135,15 +210,11 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
 
   const uploadFile = async (file: File, folder: string) => {
     const fileExt = file.name.split('.').pop();
-
-    // Use format: fullname_userid for folder structure
     const sanitizedName = fullName
       .toLowerCase()
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '');
 
-    // For resume: Internship-focused naming like Ankur_Desai_Resume.pdf
-    // For transcript: Simple naming like Ankur_Desai_Transcript.pdf
     let fileName: string;
     if (folder === 'resumes') {
       const resumeName = fullName
@@ -168,7 +239,6 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
 
     if (uploadError) throw uploadError;
 
-    // Return the full path for storage reference
     return filePath;
   };
 
@@ -249,7 +319,292 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
     setSelectedBoardPosition('');
   };
 
-  const renderFields = () => {
+  const handleAccept = async () => {
+    if (!user || !existingApplication) return;
+
+    setActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .update({
+          status: 'accepted',
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', existingApplication.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Application Accepted',
+        description: `${existingApplication.full_name}'s application has been accepted and roles have been automatically assigned.`,
+      });
+
+      setShowAcceptDialog(false);
+      onSuccess();
+      onClose();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!user || !existingApplication) return;
+
+    setActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .update({
+          status: 'rejected',
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', existingApplication.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Application Rejected',
+        description: `${existingApplication.full_name}'s application has been rejected.`,
+      });
+
+      setShowRejectDialog(false);
+      onSuccess();
+      onClose();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const formatApplicationType = (type: string) => {
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'accepted':
+        return <Badge variant="default" className="bg-green-500">Accepted</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive">Rejected</Badge>;
+      default:
+        return <Badge variant="secondary">Pending</Badge>;
+    }
+  };
+
+  const handleOpenDocument = async (filePath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('applications')
+        .createSignedUrl(filePath, 3600);
+
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error('Failed to generate signed URL');
+
+      window.open(data.signedUrl, '_blank');
+    } catch (error: any) {
+      console.error('Error opening document:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to open document. You may not have permission.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getAcceptanceAction = () => {
+    if (!existingApplication) return '';
+
+    switch (existingApplication.application_type) {
+      case 'club_admission':
+        return 'This will automatically change their role from Prospect to Member.';
+      case 'board':
+        return `This will automatically assign them the ${existingApplication.board_position || 'board'} position and change their role to Board.`;
+      case 'class':
+        return className
+          ? `This will automatically enroll them in "${className}" as a student.`
+          : 'This will automatically enroll them in the selected class as a student.';
+      case 'project':
+        return projectName
+          ? `This will automatically add them to "${projectName}" as a member.`
+          : 'This will automatically add them to the selected project as a member.';
+      default:
+        return '';
+    }
+  };
+
+  const getDeletionInfo = () => {
+    if (!existingApplication?.reviewed_at) return null;
+
+    const reviewedDate = new Date(existingApplication.reviewed_at);
+    const deletionDate = addDays(reviewedDate, 30);
+    const daysRemaining = differenceInDays(deletionDate, new Date());
+
+    if (daysRemaining < 0) {
+      return 'This application will be deleted soon.';
+    }
+
+    return `This application will be automatically deleted in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} (${format(deletionDate, 'MMM d, yyyy')}).`;
+  };
+
+  const renderApplicationFields = () => {
+    if (!existingApplication) return null;
+
+    switch (existingApplication.application_type) {
+      case 'club_admission':
+        return (
+          <>
+            {existingApplication.why_join && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Why do you want to join?</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.why_join}
+                </p>
+              </div>
+            )}
+            {existingApplication.relevant_experience && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Relevant Experience</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.relevant_experience}
+                </p>
+              </div>
+            )}
+          </>
+        );
+
+      case 'board':
+        return (
+          <>
+            {existingApplication.why_position && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Why this position?</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.why_position}
+                </p>
+              </div>
+            )}
+            {existingApplication.relevant_experience && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Relevant Experience</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.relevant_experience}
+                </p>
+              </div>
+            )}
+            {existingApplication.previous_experience && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Previous Board Experience</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.previous_experience}
+                </p>
+              </div>
+            )}
+            {existingApplication.other_commitments && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Other Commitments</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.other_commitments}
+                </p>
+              </div>
+            )}
+          </>
+        );
+
+      case 'project':
+        return (
+          <>
+            {existingApplication.why_position && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Why this project?</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.why_position}
+                </p>
+              </div>
+            )}
+            {existingApplication.relevant_experience && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Relevant Technical Skills</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.relevant_experience}
+                </p>
+              </div>
+            )}
+            {existingApplication.project_detail && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Project Detail</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.project_detail}
+                </p>
+              </div>
+            )}
+            {existingApplication.problem_solved && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Technical Challenge Overcome</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.problem_solved}
+                </p>
+              </div>
+            )}
+            {existingApplication.other_commitments && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Other Commitments</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.other_commitments}
+                </p>
+              </div>
+            )}
+          </>
+        );
+
+      case 'class':
+        return (
+          <>
+            {existingApplication.why_position && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Why this class?</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.why_position}
+                </p>
+              </div>
+            )}
+            {existingApplication.previous_experience && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Previous Experience</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.previous_experience}
+                </p>
+              </div>
+            )}
+            {existingApplication.relevant_experience && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">What will you bring?</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingApplication.relevant_experience}
+                </p>
+              </div>
+            )}
+          </>
+        );
+    }
+  };
+
+  const renderFormFields = () => {
     if (!applicationType) return null;
 
     const commonFields = (
@@ -538,6 +893,225 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
     }
   };
 
+  // Check if current user can review this application
+  const canReview = user && (role === 'board' || role === 'e-board') &&
+    existingApplication && existingApplication.user_id !== user.id;
+  const deletionInfo = getDeletionInfo();
+
+  // Render view mode
+  if (isViewMode && existingApplication) {
+    return (
+      <>
+        <Dialog open={open} onOpenChange={onClose}>
+          <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)]' : 'max-w-3xl'} max-h-[90vh] overflow-y-auto rounded-xl`}>
+            <DialogHeader>
+              <DialogTitle className="text-2xl">{existingApplication.full_name}</DialogTitle>
+              <DialogDescription className="flex items-center gap-2 mt-2">
+                <Badge variant="outline">{formatApplicationType(existingApplication.application_type)}</Badge>
+                {getStatusBadge(existingApplication.status)}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Deletion Warning */}
+              {deletionInfo && existingApplication.status !== 'pending' && (
+                <Alert className="bg-muted/50 border-muted-foreground/20">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Trash2 className="h-3 w-3" />
+                      {deletionInfo}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Class Year</p>
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                    <p className="font-medium capitalize">{existingApplication.class_year}</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Submitted</p>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <p className="font-medium">
+                      {format(new Date(existingApplication.created_at), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Application Target */}
+              {existingApplication.application_type === 'board' && existingApplication.board_position && (
+                <>
+                  <Separator />
+                  <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
+                    <p className="text-sm font-medium mb-1">Position Applied For</p>
+                    <p className="text-base font-semibold">{existingApplication.board_position}</p>
+                  </div>
+                </>
+              )}
+
+              {existingApplication.application_type === 'class' && className && (
+                <>
+                  <Separator />
+                  <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
+                    <p className="text-sm font-medium mb-1">Class Applied For</p>
+                    <p className="text-base font-semibold">{className}</p>
+                  </div>
+                </>
+              )}
+
+              {existingApplication.application_type === 'project' && projectName && (
+                <>
+                  <Separator />
+                  <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
+                    <p className="text-sm font-medium mb-1">Project Applied For</p>
+                    <p className="text-base font-semibold">{projectName}</p>
+                  </div>
+                </>
+              )}
+
+              <Separator />
+
+              {/* Application Responses */}
+              <div className="space-y-4">
+                {renderApplicationFields()}
+              </div>
+
+              {/* Documents */}
+              {(existingApplication.resume_url || existingApplication.transcript_url) && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-sm flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Documents
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {existingApplication.resume_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenDocument(existingApplication.resume_url!)}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          View Resume
+                        </Button>
+                      )}
+                      {existingApplication.transcript_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenDocument(existingApplication.transcript_url!)}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          View Transcript
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Action Buttons */}
+              {existingApplication.status === 'pending' && canReview && (
+                <>
+                  <Separator />
+                  <div className="flex gap-3">
+                    <Button
+                      variant="default"
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                      onClick={() => setShowAcceptDialog(true)}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Accept
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => setShowRejectDialog(true)}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Reject
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Accept Dialog */}
+        <AlertDialog open={showAcceptDialog} onOpenChange={setShowAcceptDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Accept Application?</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3">
+                <p>
+                  Are you sure you want to accept {existingApplication.full_name}'s application for{' '}
+                  {formatApplicationType(existingApplication.application_type)}?
+                </p>
+                <div className="bg-blue-50 dark:bg-blue-950 rounded-md p-3">
+                  <p className="text-sm font-medium text-foreground">
+                    {getAcceptanceAction()}
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This action cannot be undone.
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleAccept}
+                disabled={actionLoading}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {actionLoading ? 'Accepting...' : 'Yes, Accept & Auto-Assign'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Reject Dialog */}
+        <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reject Application?</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <p>
+                  Are you sure you want to reject {existingApplication.full_name}'s application for{' '}
+                  {formatApplicationType(existingApplication.application_type)}?
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  This action cannot be undone.
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleReject}
+                disabled={actionLoading}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                {actionLoading ? 'Rejecting...' : 'Yes, Reject'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
+  // Render create mode
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)]' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto rounded-xl`}>
@@ -573,7 +1147,7 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
             </Select>
           </div>
 
-          {renderFields()}
+          {renderFormFields()}
 
           {applicationType && (
             <div className="flex gap-2 pt-4">

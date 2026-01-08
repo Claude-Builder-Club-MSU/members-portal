@@ -17,6 +17,7 @@ import Members from "./pages/dashboard/Members";
 import Profile from "./pages/dashboard/Profile";
 import Prospects from "./pages/dashboard/Prospects";
 import Checkin from "./pages/CheckIn";
+import ApplicationViewerPage from "@/pages/ApplicationViewer";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+
 
             {/* Protected Dashboard Routes */}
             <Route
@@ -144,6 +146,16 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Checkin />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Protected route application viewer */}
+            <Route
+              path="/applications/:id"
+              element={
+                <ProtectedRoute>
+                  <ApplicationViewerPage />
                 </ProtectedRoute>
               }
             />
