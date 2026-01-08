@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -138,34 +138,85 @@ const Members = () => {
     }
   };
 
+  const getRolePriority = (role: AppRole): number => {
+    switch (role) {
+      case 'e-board':
+        return 1;
+      case 'board':
+        return 2;
+      case 'member':
+        return 3;
+      default:
+        return 4;
+    }
+  };
+
   // Only E-board can manage roles on Members page
   const canManageRoles = userRole === 'e-board';
 
-  // Group members by role
-  const eBoardMembers = members.filter(m => m.role === 'e-board');
-  const boardMembers = members.filter(m => m.role === 'board');
-  const regularMembers = members.filter(m => m.role === 'member');
+  // Sort members by role priority, then by name
+  const sortedMembers = [...members].sort((a, b) => {
+    const priorityDiff = getRolePriority(a.role) - getRolePriority(b.role);
+    if (priorityDiff !== 0) return priorityDiff;
+    return (a.full_name || a.email).localeCompare(b.full_name || b.email);
+  });
+
+  // Group members by role for row breaks
+  const groupedMembers = sortedMembers.reduce((acc, member, index) => {
+    const prevMember = index > 0 ? sortedMembers[index - 1] : null;
+    const isNewRole = !prevMember || prevMember.role !== member.role;
+
+    if (isNewRole) {
+      acc.push({ role: member.role, members: [member] });
+    } else {
+      acc[acc.length - 1].members.push(member);
+    }
+
+    return acc;
+  }, [] as Array<{ role: AppRole; members: MemberWithRole[] }>);
 
   const renderMemberCard = (member: MemberWithRole) => {
     return (
       <Card key={member.id} className="flex flex-col h-full w-full">
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={member.profile_picture_url || undefined} />
-              <AvatarFallback className="text-lg">
-                {member.full_name ? getInitials(member.full_name) : member.email.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-base truncate">
-                {member.full_name || 'No name'}
-              </CardTitle>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                <Mail className="h-3 w-3" />
-                <p className="truncate">{member.email}</p>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <Avatar className="h-12 w-12 shrink-0">
+                <AvatarImage src={member.profile_picture_url || undefined} />
+                <AvatarFallback className="text-lg">
+                  {member.full_name ? getInitials(member.full_name) : member.email.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-base truncate">
+                  {member.full_name || 'No name'}
+                </CardTitle>
+                <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                  <Mail className="h-3 w-3 shrink-0" />
+                  <p className="truncate">{member.email}</p>
+                </div>
               </div>
             </div>
+            {member.role === 'e-board' ? (
+              <Badge
+                className="capitalize shrink-0 whitespace-nowrap sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative"
+              >
+                <span className="sparkle-particle"></span>
+                <span className="sparkle-particle"></span>
+                <span className="sparkle-particle"></span>
+                <span className="relative z-10">{member.role.replace('-', ' ')}</span>
+              </Badge>
+            ) : member.role === 'board' ? (
+              <Badge
+                className="capitalize shrink-0 whitespace-nowrap bg-claude-peach text-cream font-semibold border-2 border-claude-peach/50"
+              >
+                {member.role.replace('-', ' ')}
+              </Badge>
+            ) : (
+              <Badge variant={getRoleBadgeVariant(member.role)} className="capitalize shrink-0 whitespace-nowrap">
+                {member.role.replace('-', ' ')}
+              </Badge>
+            )}
           </div>
         </CardHeader>
         <CardContent className="flex flex-col flex-1 min-h-0">
@@ -246,47 +297,16 @@ const Members = () => {
         </p>
       </div>
 
-      {/* Executive Board Section */}
-      {eBoardMembers.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Crown className="h-5 w-5 text-yellow-500" />
-            <h2 className="text-2xl font-bold">Executive Board</h2>
-            <Badge variant="default">{eBoardMembers.length}</Badge>
-          </div>
-          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))]">
-            {eBoardMembers.map(renderMemberCard)}
-          </div>
-        </div>
-      )}
-
-      {/* Board Section */}
-      {boardMembers.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Award className="h-5 w-5 text-blue-500" />
-            <h2 className="text-2xl font-bold">Board</h2>
-            <Badge variant="secondary">{boardMembers.length}</Badge>
-          </div>
-          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))]">
-            {boardMembers.map(renderMemberCard)}
-          </div>
-        </div>
-      )}
-
-      {/* Members Section */}
-      {regularMembers.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-green-500" />
-            <h2 className="text-2xl font-bold">Members</h2>
-            <Badge variant="outline">{regularMembers.length}</Badge>
-          </div>
-          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))]">
-            {regularMembers.map(renderMemberCard)}
-          </div>
-        </div>
-      )}
+      {/* Members Grid - grouped by role, each role starts a new row */}
+      <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))]">
+        {groupedMembers.map((group, groupIndex) => (
+          <Fragment key={group.role}>
+            {/* Add a break element before each role group (except the first) to force new row */}
+            {groupIndex > 0 && <div className="col-span-full" />}
+            {group.members.map((member) => renderMemberCard(member))}
+          </Fragment>
+        ))}
+      </div>
 
       {members.length === 0 && (
         <Card>
@@ -321,9 +341,26 @@ const Members = () => {
                   </h3>
                   <div className="flex items-center justify-center gap-2">
                     {getRoleIcon(selectedMember.role)}
-                    <Badge variant={getRoleBadgeVariant(selectedMember.role)} className="capitalize">
-                      {selectedMember.role.replace('-', ' ')}
-                    </Badge>
+                    {selectedMember.role === 'e-board' ? (
+                      <Badge
+                        className="capitalize sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative"
+                      >
+                        <span className="sparkle-particle"></span>
+                        <span className="sparkle-particle"></span>
+                        <span className="sparkle-particle"></span>
+                        <span className="relative z-10">{selectedMember.role.replace('-', ' ')}</span>
+                      </Badge>
+                    ) : selectedMember.role === 'board' ? (
+                      <Badge
+                        className="capitalize bg-claude-peach text-cream font-semibold border-2 border-claude-peach/50"
+                      >
+                        {selectedMember.role.replace('-', ' ')}
+                      </Badge>
+                    ) : (
+                      <Badge variant={getRoleBadgeVariant(selectedMember.role)} className="capitalize">
+                        {selectedMember.role.replace('-', ' ')}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>

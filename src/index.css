@@ -99,3 +99,115 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  @keyframes sparkle {
+    0%, 100% {
+      opacity: 0;
+      transform: scale(0) rotate(0deg);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1) rotate(180deg);
+    }
+  }
+
+  @keyframes rotate-shimmer {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  .sparkle {
+    position: relative;
+    overflow: visible;
+  }
+
+  .sparkle::before,
+  .sparkle::after {
+    content: '✨';
+    position: absolute;
+    font-size: 8px;
+    pointer-events: none;
+    animation: sparkle 3s ease-in-out infinite;
+    z-index: 20;
+  }
+
+  .sparkle::before {
+    top: -4px;
+    left: 10%;
+    animation-delay: 0s;
+  }
+
+  .sparkle::after {
+    bottom: -4px;
+    right: 10%;
+    animation-delay: 1s;
+  }
+
+  .sparkle .sparkle-particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: radial-gradient(circle, #ffd700 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: sparkle 3s ease-in-out infinite;
+  }
+
+  .sparkle .sparkle-particle:nth-child(1) {
+    top: 10%;
+    left: 5%;
+    animation-delay: 0.3s;
+  }
+
+  .sparkle .sparkle-particle:nth-child(2) {
+    top: 50%;
+    right: 5%;
+    animation-delay: 0.6s;
+  }
+
+  .sparkle .sparkle-particle:nth-child(3) {
+    bottom: 10%;
+    left: 50%;
+    animation-delay: 0.9s;
+  }
+
+  .gold-shimmer {
+    position: relative;
+    background: #ffd700;
+    overflow: hidden;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3);
+  }
+
+  .gold-shimmer::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(
+      from 0deg,
+      #ffd700 0deg,
+      #ffed4e 45deg,
+      #ffd700 90deg,
+      #ffed4e 135deg,
+      #ffd700 180deg,
+      #ffed4e 225deg,
+      #ffd700 270deg,
+      #ffed4e 315deg,
+      #ffd700 360deg
+    );
+    animation: rotate-shimmer 6s linear infinite;
+    z-index: 0;
+  }
+
+  .gold-shimmer > * {
+    position: relative;
+    z-index: 1;
+  }
+}

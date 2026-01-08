@@ -186,7 +186,7 @@ const MemberDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold mb-1">{profile?.points || 0}</div>
-            <p className="text-sm text-muted-foreground">Club Points</p>
+            <p className="text-sm text-muted-foreground">Points</p>
           </CardContent>
         </Card>
 
@@ -236,7 +236,7 @@ const MemberDashboard = () => {
             <div className="text-3xl font-bold mb-1 capitalize">
               {role?.replace('-', ' ') || 'Prospect'}
             </div>
-            <p className="text-sm text-muted-foreground">Club Status</p>
+            <p className="text-sm text-muted-foreground">Status</p>
           </CardContent>
         </Card>
       </div>
@@ -253,7 +253,7 @@ const MemberDashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-xl">Upcoming Events</CardTitle>
-                  <CardDescription>Next club events</CardDescription>
+                  <CardDescription>What's next</CardDescription>
                 </div>
               </div>
               <Button

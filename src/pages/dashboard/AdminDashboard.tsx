@@ -368,7 +368,7 @@ const AdminDashboard = () => {
                                         <BookOpen className="h-5 w-5 text-purple-600 dark:text-purple-500" />
                                     </div>
                                     <div>
-                                        <CardTitle className="text-xl">Club Classes</CardTitle>
+                                        <CardTitle className="text-xl">Current Classes</CardTitle>
                                         <CardDescription>{classes.length} total classes</CardDescription>
                                     </div>
                                 </div>

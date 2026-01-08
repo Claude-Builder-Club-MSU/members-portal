@@ -166,7 +166,7 @@ const Classes = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Classes</h1>
-          <p className="text-muted-foreground">Available club classes</p>
+          <p className="text-muted-foreground">Available classes</p>
         </div>
         {canManageClasses && (
           <Button onClick={() => {

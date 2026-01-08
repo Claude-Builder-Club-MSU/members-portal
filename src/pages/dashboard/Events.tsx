@@ -293,7 +293,7 @@ const Events = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Events</h1>
-          <p className="text-muted-foreground">Upcoming club events</p>
+          <p className="text-muted-foreground">Upcoming events</p>
         </div>
         {canManageEvents && (
           <Button onClick={() => {

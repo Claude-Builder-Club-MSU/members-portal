@@ -230,12 +230,29 @@ const SidebarContentComponent = ({
                   </p>
                   <div className="flex items-center gap-4 mt-0.5">
                     {role && (
-                      <Badge
-                        variant={getRoleBadgeVariant(role || '') as "default" | "secondary" | "outline" | "destructive"}
-                        className="text-xs capitalize px-2 py-0"
-                      >
-                        {role.replace('-', ' ')}
-                      </Badge>
+                      role === 'e-board' ? (
+                        <Badge
+                          className="text-xs capitalize px-2 py-0 shrink-0 whitespace-nowrap sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative"
+                        >
+                          <span className="sparkle-particle"></span>
+                          <span className="sparkle-particle"></span>
+                          <span className="sparkle-particle"></span>
+                          <span className="relative z-10">{role.replace('-', ' ')}</span>
+                        </Badge>
+                      ) : role === 'board' ? (
+                        <Badge
+                          className="text-xs capitalize px-2 py-0 shrink-0 whitespace-nowrap bg-claude-peach text-cream font-semibold border-2 border-claude-peach/50"
+                        >
+                          {role.replace('-', ' ')}
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant={getRoleBadgeVariant(role || '') as "default" | "secondary" | "outline" | "destructive"}
+                          className="text-xs capitalize px-2 py-0"
+                        >
+                          {role.replace('-', ' ')}
+                        </Badge>
+                      )
                     )}
                     {profile && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">

@@ -139,7 +139,7 @@ const Projects = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Projects</h1>
-          <p className="text-muted-foreground">Active club projects</p>
+          <p className="text-muted-foreground">Active projects</p>
         </div>
         {canManageProjects && (
           <Button onClick={() => {
