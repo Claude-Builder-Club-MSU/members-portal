@@ -103,7 +103,7 @@ const AdminDashboard = () => {
         <div className={`min-h-[calc(100vh-56px)] flex flex-col justify-center ${isMobile ? 'p-4 space-y-6' : 'p-6 space-y-8'}`}>
             {/* Welcome Header with Claude Keyboard Glyph */}
             <div
-                className={`relative rounded-xl bg-gradient-to-br border border-accent/20 dark:border-accent/30 overflow-hidden ${isMobile ? 'p-6' : 'p-8'}`}
+                className={`relative rounded-xl bg-gradient-to-br border border-accent/20 dark:border-accent/30 overflow-hidden ${isMobile ? 'p-6' : 'p-8'} opacity-80`}
                 style={{
                     backgroundImage: 'linear-gradient(to bottom right, #f4ccc2, #f4c7a8)',
                 }}

@@ -59,7 +59,7 @@ A comprehensive web application for managing the Claude Builder Club at Michigan
    ```
 
 6. **Open your browser**
-   Navigate to `http://localhost:5173`
+   Navigate to `http://localhost:8080`
 
 ## 📁 Project Structure
 

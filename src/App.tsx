@@ -36,6 +36,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user) {
+    // Store the current location for redirect after login
+    sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search);
     return <Navigate to="/auth" replace />;
   }
 
@@ -132,6 +134,16 @@ const App = () => (
                   <DashboardLayout>
                     <Prospects />
                   </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Check-in Route */}
+            <Route
+              path="/checkin/:token"
+              element={
+                <ProtectedRoute>
+                  <Checkin />
                 </ProtectedRoute>
               }
             />

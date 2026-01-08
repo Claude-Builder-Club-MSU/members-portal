@@ -23,7 +23,14 @@ const Auth = () => {
   // CRITICAL: useEffect must ALWAYS be called, never conditionally
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      // Check if there's a stored redirect URL (e.g., from check-in)
+      const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+      if (redirectUrl) {
+        sessionStorage.removeItem('redirectAfterLogin');
+        navigate(redirectUrl);
+      } else {
+        navigate('/dashboard');
+      }
     }
   }, [user, navigate]);
 
