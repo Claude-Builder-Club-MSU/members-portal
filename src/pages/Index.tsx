@@ -4,6 +4,7 @@ import { Instagram, Linkedin, Code, GraduationCap, Sparkles, Trophy, Rocket, Use
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -354,6 +355,7 @@ const Index = () => {
           </p>
         </div>
       </footer>
+      <Analytics />
     </div>
   );
 };
