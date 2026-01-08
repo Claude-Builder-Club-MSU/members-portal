@@ -5,7 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, Github, Calendar, User, Users, Briefcase } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Plus, Github, Calendar, User, Users, Briefcase, Crown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ProjectModal } from '@/components/ProjectModal';
 import type { Database } from '@/integrations/supabase/database.types';
@@ -26,8 +33,10 @@ interface ProjectWithMembers extends Project {
 const Projects = () => {
   const { user, role } = useAuth();
   const [projects, setProjects] = useState<ProjectWithMembers[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<ProjectWithMembers | null>(null);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
   useEffect(() => {
     if (user && role) {
@@ -37,6 +46,8 @@ const Projects = () => {
 
   const fetchProjects = async () => {
     if (!user) return;
+
+    setLoading(true);
 
     // Fetch all projects
     const { data: projectsData, error: projectsError } = await supabase
@@ -129,6 +140,11 @@ const Projects = () => {
     fetchProjects();
   };
 
+  const handleViewTeam = (project: ProjectWithMembers) => {
+    setSelectedProject(project);
+    setIsTeamModalOpen(true);
+  };
+
   const canManageProjects = role === 'board' || role === 'e-board';
 
   const getInitials = (name: string) => {
@@ -174,6 +190,7 @@ const Projects = () => {
           {projects.map((project) => {
             const isMember = !!project.userMembership;
             const isLead = project.userMembership?.role === 'lead';
+            const lead = project.members.find(m => m.membership.role === 'lead');
 
             return (
               <Card key={project.id}>
@@ -207,11 +224,32 @@ const Projects = () => {
                     </div>
                   )}
 
-                  {/* Team Members */}
+                  {/* Team Lead Info */}
+                  {lead && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Crown className="h-4 w-4 text-yellow-500" />
+                      <span className="text-muted-foreground">Lead:</span>
+                      <span className="font-medium">{lead.profile.full_name || lead.profile.email}</span>
+                    </div>
+                  )}
+
+                  {/* Team Members Preview */}
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="h-4 w-4" />
-                      <span>{project.memberCount} {project.memberCount === 1 ? 'member' : 'members'}</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Users className="h-4 w-4" />
+                        <span>{project.memberCount} {project.memberCount === 1 ? 'member' : 'members'}</span>
+                      </div>
+                      {isMember && project.memberCount > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewTeam(project)}
+                          className="h-7 text-xs"
+                        >
+                          View Team
+                        </Button>
+                      )}
                     </div>
                     {project.members.length > 0 && (
                       <div className="flex -space-x-2">
@@ -271,6 +309,44 @@ const Projects = () => {
         onClose={() => setIsModalOpen(false)}
         onSuccess={fetchProjects}
       />
+
+      {/* Team Members Modal */}
+      <Dialog open={isTeamModalOpen} onOpenChange={setIsTeamModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedProject?.name} - Team Members</DialogTitle>
+            <DialogDescription>
+              {selectedProject?.memberCount} {selectedProject?.memberCount === 1 ? 'member' : 'members'} on this project
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {selectedProject?.members.map(({ membership, profile }) => (
+              <div
+                key={membership.id}
+                className="flex items-center gap-3 p-3 rounded-lg border bg-card"
+              >
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={profile.profile_picture_url || undefined} />
+                  <AvatarFallback>
+                    {profile.full_name ? getInitials(profile.full_name) : profile.email.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">
+                    {profile.full_name || 'No name'}
+                  </p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {profile.email}
+                  </p>
+                </div>
+                <Badge variant={membership.role === 'lead' ? 'default' : 'secondary'} className="capitalize">
+                  {membership.role}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

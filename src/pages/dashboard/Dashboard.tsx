@@ -3,7 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Calendar, FolderKanban, GraduationCap, Award } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Trophy, Calendar, FolderKanban, GraduationCap, Award, TrendingUp, Users, BookOpen, ArrowRight } from 'lucide-react';
+import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type Event = Database['public']['Tables']['events']['Row'];
@@ -12,6 +15,7 @@ type Class = Database['public']['Tables']['classes']['Row'];
 
 const Dashboard = () => {
   const { user, profile, role } = useAuth();
+  const navigate = useNavigate();
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [userProjects, setUserProjects] = useState<Project[]>([]);
   const [userClasses, setUserClasses] = useState<Class[]>([]);
@@ -87,99 +91,201 @@ const Dashboard = () => {
     }
   };
 
+  const getRoleGradient = (roleValue: string) => {
+    switch (roleValue) {
+      case 'e-board':
+        return 'from-yellow-500/10 to-orange-500/10';
+      case 'board':
+        return 'from-blue-500/10 to-purple-500/10';
+      case 'member':
+        return 'from-green-500/10 to-emerald-500/10';
+      default:
+        return 'from-gray-500/10 to-slate-500/10';
+    }
+  };
+
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">
-          Welcome back, {profile?.full_name || 'User'}!
-        </h1>
-        <div className="flex items-center gap-2 mt-2">
-          <p className="text-muted-foreground">Claude Builder Club @ MSU</p>
-          {role && (
-            <Badge variant={getRoleBadgeColor(role)} className="capitalize">
-              {role.replace('-', ' ')}
-            </Badge>
-          )}
+    <div className="p-6 space-y-8">
+      {/* Welcome Header with Claude Keyboard Glyph */}
+      <div className="relative rounded-xl p-8 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/20 dark:to-orange-900/20 border border-orange-200 dark:border-orange-800 overflow-hidden">
+        {/* Keyboard Glyph Background */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-10 dark:opacity-5 pointer-events-none">
+          <svg
+            viewBox="0 0 200 200"
+            className="w-96 h-96 text-orange-400"
+            fill="currentColor"
+          >
+            {/* Keyboard glyph - simplified Claude icon style */}
+            <rect x="20" y="60" width="160" height="80" rx="8" fill="none" stroke="currentColor" strokeWidth="4"/>
+
+            {/* Top row of keys */}
+            <rect x="30" y="70" width="12" height="12" rx="2"/>
+            <rect x="46" y="70" width="12" height="12" rx="2"/>
+            <rect x="62" y="70" width="12" height="12" rx="2"/>
+            <rect x="78" y="70" width="12" height="12" rx="2"/>
+            <rect x="94" y="70" width="12" height="12" rx="2"/>
+            <rect x="110" y="70" width="12" height="12" rx="2"/>
+            <rect x="126" y="70" width="12" height="12" rx="2"/>
+            <rect x="142" y="70" width="12" height="12" rx="2"/>
+            <rect x="158" y="70" width="12" height="12" rx="2"/>
+
+            {/* Middle row of keys */}
+            <rect x="30" y="88" width="12" height="12" rx="2"/>
+            <rect x="46" y="88" width="12" height="12" rx="2"/>
+            <rect x="62" y="88" width="12" height="12" rx="2"/>
+            <rect x="78" y="88" width="12" height="12" rx="2"/>
+            <rect x="94" y="88" width="12" height="12" rx="2"/>
+            <rect x="110" y="88" width="12" height="12" rx="2"/>
+            <rect x="126" y="88" width="12" height="12" rx="2"/>
+            <rect x="142" y="88" width="12" height="12" rx="2"/>
+            <rect x="158" y="88" width="12" height="12" rx="2"/>
+
+            {/* Bottom row of keys */}
+            <rect x="30" y="106" width="12" height="12" rx="2"/>
+            <rect x="46" y="106" width="12" height="12" rx="2"/>
+            <rect x="62" y="106" width="12" height="12" rx="2"/>
+            <rect x="78" y="106" width="60" height="12" rx="2"/>
+            <rect x="142" y="106" width="12" height="12" rx="2"/>
+            <rect x="158" y="106" width="12" height="12" rx="2"/>
+          </svg>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 text-center">
+          <h1
+            className="text-5xl mb-2 font-black text-orange-600 dark:text-orange-400 drop-shadow-lg tracking-tight"
+            style={{
+              fontFamily: `'Roboto Mono', monospace`,
+              letterSpacing: '0.05em',
+              fontWeight: 800,
+            }}
+          >
+            <span className="inline-block">
+              Welcome back,&nbsp;
+              <span className="font-extrabold">
+                {profile?.full_name?.split(' ')[0] || 'User'}
+              </span>
+            </span>
+          </h1>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Points</CardTitle>
-            <Trophy className="h-4 w-4 text-muted-foreground" />
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="relative overflow-hidden hover:shadow-lg transition-shadow">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 rounded-full -mr-16 -mt-16" />
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-yellow-500/10 rounded-lg">
+                <Trophy className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
+              </div>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{profile?.points || 0}</div>
-            <p className="text-xs text-muted-foreground">Total club points</p>
+            <div className="text-3xl font-bold mb-1">{profile?.points || 0}</div>
+            <p className="text-sm text-muted-foreground">Club Points</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Projects</CardTitle>
-            <FolderKanban className="h-4 w-4 text-muted-foreground" />
+        <Card className="relative overflow-hidden hover:shadow-lg transition-shadow">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-16 -mt-16" />
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <FolderKanban className="h-5 w-5 text-blue-600 dark:text-blue-500" />
+              </div>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{userProjects.length}</div>
-            <p className="text-xs text-muted-foreground">Active projects</p>
+            <div className="text-3xl font-bold mb-1">{userProjects.length}</div>
+            <p className="text-sm text-muted-foreground">Active Projects</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Classes</CardTitle>
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+        <Card className="relative overflow-hidden hover:shadow-lg transition-shadow">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full -mr-16 -mt-16" />
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-purple-500/10 rounded-lg">
+                <BookOpen className="h-5 w-5 text-purple-600 dark:text-purple-500" />
+              </div>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{userClasses.length}</div>
-            <p className="text-xs text-muted-foreground">Enrolled classes</p>
+            <div className="text-3xl font-bold mb-1">{userClasses.length}</div>
+            <p className="text-sm text-muted-foreground">Enrolled Classes</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Role</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
+        <Card className="relative overflow-hidden hover:shadow-lg transition-shadow">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full -mr-16 -mt-16" />
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-green-500/10 rounded-lg">
+                <Award className="h-5 w-5 text-green-600 dark:text-green-500" />
+              </div>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold capitalize">
+            <div className="text-3xl font-bold mb-1 capitalize">
               {role?.replace('-', ' ') || 'Prospect'}
             </div>
-            <p className="text-xs text-muted-foreground">Club status</p>
+            <p className="text-sm text-muted-foreground">Club Status</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Upcoming Events */}
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              <div>
-                <CardTitle>Upcoming Events</CardTitle>
-                <CardDescription>Next club events</CardDescription>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Calendar className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Upcoming Events</CardTitle>
+                  <CardDescription>Next club events</CardDescription>
+                </div>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/dashboard/events')}
+              >
+                View All
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
+              <p className="text-sm text-muted-foreground py-8 text-center">Loading...</p>
             ) : upcomingEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No upcoming events</p>
+              <p className="text-sm text-muted-foreground py-8 text-center">No upcoming events</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {upcomingEvents.map((event) => (
-                  <div key={event.id} className="flex justify-between items-start border-b pb-2 last:border-0">
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{event.name}</p>
+                  <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                    <div className="p-2 bg-primary/10 rounded-md shrink-0">
+                      <Calendar className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm mb-1">{event.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(event.event_date).toLocaleDateString()} at {event.location}
+                        {format(new Date(event.event_date), 'MMM d, yyyy • h:mm a')}
                       </p>
+                      <p className="text-xs text-muted-foreground mt-1">{event.location}</p>
                     </div>
                     {event.points > 0 && (
-                      <Badge variant="secondary" className="ml-2">
-                        +{event.points} pts
+                      <Badge variant="secondary" className="shrink-0">
+                        +{event.points}
                       </Badge>
                     )}
                   </div>
@@ -189,36 +295,54 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Active Projects */}
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <FolderKanban className="h-5 w-5 text-primary" />
-              <div>
-                <CardTitle>Your Projects</CardTitle>
-                <CardDescription>Active projects</CardDescription>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <FolderKanban className="h-5 w-5 text-blue-600 dark:text-blue-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Your Projects</CardTitle>
+                  <CardDescription>Active projects</CardDescription>
+                </div>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/dashboard/projects')}
+              >
+                View All
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
+              <p className="text-sm text-muted-foreground py-8 text-center">Loading...</p>
             ) : userProjects.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No active projects</p>
+              <p className="text-sm text-muted-foreground py-8 text-center">No active projects</p>
             ) : (
-              <div className="space-y-3">
-                {userProjects.map((project) => (
-                  <div key={project.id} className="border-b pb-2 last:border-0">
-                    <p className="font-medium text-sm">{project.name}</p>
-                    {project.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {project.description}
-                      </p>
-                    )}
-                    {project.due_date && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Due: {new Date(project.due_date).toLocaleDateString()}
-                      </p>
-                    )}
+              <div className="space-y-4">
+                {userProjects.slice(0, 5).map((project) => (
+                  <div key={project.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                    <div className="p-2 bg-blue-500/10 rounded-md shrink-0">
+                      <FolderKanban className="h-4 w-4 text-blue-600 dark:text-blue-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm mb-1">{project.name}</p>
+                      {project.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {project.description}
+                        </p>
+                      )}
+                      {project.due_date && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Due: {format(new Date(project.due_date), 'MMM d, yyyy')}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -227,29 +351,47 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <Card>
+      {/* Classes Section */}
+      <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>Your Classes</CardTitle>
-              <CardDescription>Currently enrolled</CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-500/10 rounded-lg">
+                <GraduationCap className="h-5 w-5 text-purple-600 dark:text-purple-500" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">Your Classes</CardTitle>
+                <CardDescription>Currently enrolled</CardDescription>
+              </div>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/dashboard/classes')}
+            >
+              View All
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">Loading...</p>
           ) : userClasses.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Not enrolled in any classes</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">Not enrolled in any classes</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {userClasses.map((cls) => (
-                <div key={cls.id} className="border rounded-lg p-3">
-                  <p className="font-medium text-sm">{cls.name}</p>
-                  {cls.schedule && (
-                    <p className="text-xs text-muted-foreground mt-1">{cls.schedule}</p>
-                  )}
+                <div key={cls.id} className="flex items-start gap-3 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                  <div className="p-2 bg-purple-500/10 rounded-md shrink-0">
+                    <BookOpen className="h-4 w-4 text-purple-600 dark:text-purple-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm mb-1">{cls.name}</p>
+                    {cls.schedule && (
+                      <p className="text-xs text-muted-foreground">{cls.schedule}</p>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

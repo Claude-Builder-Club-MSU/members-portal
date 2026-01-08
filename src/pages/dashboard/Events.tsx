@@ -2,8 +2,15 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Plus, Calendar, MapPin, Users, Trophy, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { EventModal } from '@/components/EventModal';
@@ -22,6 +29,8 @@ const Events = () => {
   const [events, setEvents] = useState<EventWithAttendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<EventWithAttendance | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   useEffect(() => {
     if (user && role) {
@@ -117,6 +126,11 @@ const Events = () => {
     fetchEvents();
   };
 
+  const handleViewDetails = (event: EventWithAttendance) => {
+    setSelectedEvent(event);
+    setIsDetailsModalOpen(true);
+  };
+
   const canManageEvents = role === 'board' || role === 'e-board';
 
   const isEventFull = (event: EventWithAttendance) => {
@@ -168,29 +182,29 @@ const Events = () => {
 
             return (
               <Card key={event.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle>{event.name}</CardTitle>
-                    <Badge variant={event.rsvp_required ? 'default' : 'secondary'}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="text-lg flex-1">{event.name}</CardTitle>
+                    <Badge variant={event.rsvp_required ? 'default' : 'secondary'} className="shrink-0 whitespace-nowrap">
                       {getEventTypeLabel(event)}
                     </Badge>
                   </div>
-                  <CardDescription className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
+                  <div className="space-y-2 text-sm text-muted-foreground mt-3">
+                    <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
-                      {format(new Date(event.event_date), 'PPP p')}
+                      <span>{format(new Date(event.event_date), 'PPP p')}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
-                      {event.location}
+                      <span>{event.location}</span>
                     </div>
                     {event.points > 0 && (
-                      <div className="flex items-center gap-2 text-sm text-primary">
+                      <div className="flex items-center gap-2 text-primary">
                         <Trophy className="h-4 w-4" />
-                        +{event.points} points
+                        <span>+{event.points} points</span>
                       </div>
                     )}
-                  </CardDescription>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {event.description && (
@@ -236,7 +250,11 @@ const Events = () => {
                       </Button>
                     )
                   ) : (
-                    <Button className="w-full" variant="outline">
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => handleViewDetails(event)}
+                    >
                       View Details
                     </Button>
                   )}
@@ -252,6 +270,78 @@ const Events = () => {
         onClose={() => setIsModalOpen(false)}
         onSuccess={fetchEvents}
       />
+
+      {/* Event Details Modal */}
+      <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">{selectedEvent?.name}</DialogTitle>
+            <DialogDescription>
+              <Badge variant={selectedEvent?.rsvp_required ? 'default' : 'secondary'} className="mt-2">
+                {selectedEvent && getEventTypeLabel(selectedEvent)}
+              </Badge>
+            </DialogDescription>
+          </DialogHeader>
+          {selectedEvent && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Date & Time</p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    {format(new Date(selectedEvent.event_date), 'PPP p')}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Location</p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    {selectedEvent.location}
+                  </div>
+                </div>
+              </div>
+
+              {selectedEvent.points > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Points Reward</p>
+                  <div className="flex items-center gap-2 text-primary">
+                    <Trophy className="h-4 w-4" />
+                    <span className="font-semibold">+{selectedEvent.points} points</span>
+                  </div>
+                </div>
+              )}
+
+              {selectedEvent.description && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Description</p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {selectedEvent.description}
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Event Type</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedEvent.rsvp_required
+                    ? `This is a closed meeting with limited capacity (${selectedEvent.max_attendance} attendees). RSVP is required.`
+                    : 'This is an open meeting. All members are welcome to attend without RSVP.'}
+                </p>
+              </div>
+
+              {selectedEvent.rsvp_required && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Attendance</p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    {selectedEvent.attendanceCount} / {selectedEvent.max_attendance} RSVPs
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

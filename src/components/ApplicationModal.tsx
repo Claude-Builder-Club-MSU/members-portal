@@ -23,6 +23,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type ApplicationType = Database['public']['Enums']['application_type'];
+type Class = Database['public']['Tables']['classes']['Row'];
+type Project = Database['public']['Tables']['projects']['Row'];
 
 interface ApplicationModalProps {
   open: boolean;
@@ -30,11 +32,25 @@ interface ApplicationModalProps {
   onSuccess: () => void;
 }
 
+const BOARD_POSITIONS = [
+  'President',
+  'Vice President',
+  'Treasurer',
+  'Secretary',
+  'Technical Lead',
+  'Marketing Lead',
+  'Events Coordinator',
+];
+
 export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalProps) => {
   const { user, profile, role } = useAuth();
   const { toast } = useToast();
   const [applicationType, setApplicationType] = useState<ApplicationType | ''>('');
   const [loading, setLoading] = useState(false);
+
+  // Available options
+  const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
+  const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
 
   // Form fields
   const [fullName, setFullName] = useState('');
@@ -49,12 +65,71 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
   const [problemSolved, setProblemSolved] = useState('');
   const [previousExperience, setPreviousExperience] = useState('');
 
+  // Selection fields
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedBoardPosition, setSelectedBoardPosition] = useState('');
+
   useEffect(() => {
     if (profile && open) {
       setFullName(profile.full_name);
       setClassYear(profile.class_year || '');
     }
   }, [profile, open]);
+
+  // Fetch available classes and projects when modal opens
+  useEffect(() => {
+    if (open) {
+      fetchAvailableOptions();
+    }
+  }, [open]);
+
+  const fetchAvailableOptions = async () => {
+    // Fetch all classes
+    const { data: classesData } = await supabase
+      .from('classes')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (classesData) {
+      setAvailableClasses(classesData);
+    }
+
+    // Fetch all projects
+    const { data: projectsData } = await supabase
+      .from('projects')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (projectsData) {
+      setAvailableProjects(projectsData);
+    }
+  };
+
+  const handleApplicationTypeChange = (type: ApplicationType) => {
+    setApplicationType(type);
+
+    // Check if there are options available
+    if (type === 'class' && availableClasses.length === 0) {
+      toast({
+        title: 'No Classes Available',
+        description: 'There are currently no classes available to apply for.',
+        variant: 'destructive',
+      });
+      setApplicationType('');
+      return;
+    }
+
+    if (type === 'project' && availableProjects.length === 0) {
+      toast({
+        title: 'No Projects Available',
+        description: 'There are currently no projects available to apply for.',
+        variant: 'destructive',
+      });
+      setApplicationType('');
+      return;
+    }
+  };
 
   const uploadFile = async (file: File, folder: string) => {
     const fileExt = file.name.split('.').pop();
@@ -103,6 +178,9 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
         project_detail: projectDetail || null,
         problem_solved: problemSolved || null,
         previous_experience: previousExperience || null,
+        class_id: selectedClassId || null,
+        project_id: selectedProjectId || null,
+        board_position: selectedBoardPosition || null,
       };
 
       const { error } = await supabase.from('applications').insert(insertData);
@@ -139,6 +217,9 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
     setPreviousExperience('');
     setResumeFile(null);
     setTranscriptFile(null);
+    setSelectedClassId('');
+    setSelectedProjectId('');
+    setSelectedBoardPosition('');
   };
 
   const renderFields = () => {
@@ -166,7 +247,6 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
               <SelectItem value="sophomore">Sophomore</SelectItem>
               <SelectItem value="junior">Junior</SelectItem>
               <SelectItem value="senior">Senior</SelectItem>
-              <SelectItem value="graduate">Graduate</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -235,6 +315,21 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
           <>
             {commonFields}
             <div className="space-y-2">
+              <Label htmlFor="boardPosition">Board Position *</Label>
+              <Select value={selectedBoardPosition} onValueChange={setSelectedBoardPosition} required>
+                <SelectTrigger id="boardPosition">
+                  <SelectValue placeholder="Select position" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BOARD_POSITIONS.map((position) => (
+                    <SelectItem key={position} value={position}>
+                      {position}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="whyPosition">Why this position? *</Label>
               <Textarea
                 id="whyPosition"
@@ -284,6 +379,21 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
         return (
           <>
             {commonFields}
+            <div className="space-y-2">
+              <Label htmlFor="project">Select Project *</Label>
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId} required>
+                <SelectTrigger id="project">
+                  <SelectValue placeholder="Choose a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProjects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="whyPosition">Why this project? *</Label>
               <Textarea
@@ -347,6 +457,21 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
           <>
             {commonFields}
             <div className="space-y-2">
+              <Label htmlFor="class">Select Class *</Label>
+              <Select value={selectedClassId} onValueChange={setSelectedClassId} required>
+                <SelectTrigger id="class">
+                  <SelectValue placeholder="Choose a class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableClasses.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="whyPosition">Why this class? *</Label>
               <Textarea
                 id="whyPosition"
@@ -401,7 +526,7 @@ export const ApplicationModal = ({ open, onClose, onSuccess }: ApplicationModalP
             <Label htmlFor="applicationType">Application Type *</Label>
             <Select
               value={applicationType}
-              onValueChange={(value) => setApplicationType(value as ApplicationType)}
+              onValueChange={(value) => handleApplicationTypeChange(value as ApplicationType)}
             >
               <SelectTrigger id="applicationType">
                 <SelectValue placeholder="Select type" />

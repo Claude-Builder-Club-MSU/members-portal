@@ -23,7 +23,8 @@ import {
   Users,
   LogOut,
   Settings,
-  Trophy
+  Trophy,
+  UserPlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +63,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
     if (role === 'e-board' || role === 'board') {
       memberItems.push({ title: 'Members', url: '/dashboard/members', icon: Users });
+      memberItems.push({ title: 'Prospects', url: '/dashboard/prospects', icon: UserPlus }); // Add this
     }
 
     return memberItems;
