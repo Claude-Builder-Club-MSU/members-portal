@@ -44,12 +44,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { user, profile, role, signOut, loading } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
-
   const getMenuItems = () => {
     const baseItems = [
       { title: 'Applications', url: '/dashboard/applications', icon: FileText },
