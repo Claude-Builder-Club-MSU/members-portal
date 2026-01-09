@@ -482,7 +482,7 @@ const ApplicationViewerPage = () => {
             <div className="min-h-screen bg-background flex items-center justify-center">
                 <div className="text-center">
                     <h1 className="text-2xl font-bold mb-2">Application Not Found</h1>
-                    <Button onClick={() => navigate('/applications')}>
+                    <Button onClick={() => navigate('/dashboard/applications')}>
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back to Applications
                     </Button>
@@ -498,7 +498,7 @@ const ApplicationViewerPage = () => {
                 <div className="mb-8">
                     <Button
                         variant="ghost"
-                        onClick={() => navigate('/applications')}
+                        onClick={() => navigate('/dashboard/applications')}
                         className="mb-6 hover:bg-accent"
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" />

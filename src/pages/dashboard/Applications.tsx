@@ -8,6 +8,7 @@ import { Plus, Eye } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ApplicationModal } from '@/components/ApplicationModal';
 import type { Database } from '@/integrations/supabase/database.types';
+import { useNavigate } from 'react-router-dom';
 
 type Application = Database['public']['Tables']['applications']['Row'];
 
@@ -17,6 +18,7 @@ const Applications = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user && role) {
@@ -48,10 +50,6 @@ const Applications = () => {
       setApplications(data);
     }
     setLoading(false);
-  };
-
-  const handleViewApplication = (application: Application) => {
-    window.open(`/applications/${application.id}`, '_blank');
   };
 
   const handleCloseModal = () => {
@@ -132,7 +130,13 @@ const Applications = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleViewApplication(app)}
+                      onClick={e => {
+                        if (e.ctrlKey || e.metaKey) {
+                          window.open(`/applications/${app.id}`, '_blank', 'noopener');
+                        } else {
+                          navigate(`/applications/${app.id}`);
+                        }
+                      }}
                       className="rounded-md px-3 h-9"
                     >
                       <Eye className="h-4 w-4 mr-2" />

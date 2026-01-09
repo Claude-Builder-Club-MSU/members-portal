@@ -149,8 +149,8 @@ const Index = () => {
 
               <div className="grid md:grid-cols-2 gap-8">
                 <motion.div variants={fadeInUp}>
-                  <Card className="h-full border-2 hover:border-claude-peach transition-all duration-300 hover:shadow-2xl group overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-claude-peach/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <Card className="relative h-full border-2 border-border hover:border-claude-peach transition-all duration-300 hover:shadow-2xl group overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-claude-peach/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     <CardContent className={`relative space-y-6 ${isMobile ? 'p-6' : 'p-8'}`}>
                       <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-claude-peach to-claude-peach/80 rounded-2xl flex items-center justify-center shadow-lg`}>
                         <Code className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
@@ -167,8 +167,8 @@ const Index = () => {
                 </motion.div>
 
                 <motion.div variants={fadeInUp}>
-                  <Card className="h-full border-2 hover:border-blue-500 transition-all duration-300 hover:shadow-2xl group overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <Card className="relative h-full border-2 border-border hover:border-blue-500 transition-all duration-300 hover:shadow-2xl group overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     <CardContent className={`relative space-y-6 ${isMobile ? 'p-6' : 'p-8'}`}>
                       <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg`}>
                         <GraduationCap className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
@@ -185,8 +185,8 @@ const Index = () => {
                 </motion.div>
 
                 <motion.div variants={fadeInUp}>
-                  <Card className="h-full border-2 hover:border-purple-500 transition-all duration-300 hover:shadow-2xl group overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <Card className="relative h-full border-2 border-border hover:border-purple-500 transition-all duration-300 hover:shadow-2xl group overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     <CardContent className={`relative space-y-6 ${isMobile ? 'p-6' : 'p-8'}`}>
                       <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg`}>
                         <Sparkles className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
@@ -203,8 +203,8 @@ const Index = () => {
                 </motion.div>
 
                 <motion.div variants={fadeInUp}>
-                  <Card className="h-full border-2 hover:border-green-500 transition-all duration-300 hover:shadow-2xl group overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <Card className="relative h-full border-2 border-border hover:border-green-500 transition-all duration-300 hover:shadow-2xl group overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     <CardContent className={`relative space-y-6 ${isMobile ? 'p-6' : 'p-8'}`}>
                       <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg`}>
                         <Trophy className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
