@@ -182,10 +182,10 @@ const Members = () => {
 
   const renderMemberCard = (member: MemberWithRole) => {
     return (
-      <Card key={member.id} className="flex flex-col h-full w-full">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+      <Card key={member.id} className="flex flex-col h-full w-full relative">
+        <CardHeader className="pb-0">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-3 flex-1 min-w-0">
               <Avatar className="h-12 w-12 shrink-0">
                 <AvatarImage src={member.profile_picture_url || undefined} />
                 <AvatarFallback className="text-lg">
@@ -204,7 +204,7 @@ const Members = () => {
                   <p className="truncate">{member.email}</p>
                 </div>
               </div>
-            </div>
+            </CardTitle>
             {member.role === 'e-board' ? (
               <Badge
                 className="capitalize shrink-0 whitespace-nowrap sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative"
@@ -228,7 +228,7 @@ const Members = () => {
           </div>
         </CardHeader>
         <CardContent className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-3 mt-3">
             <div className="flex items-center justify-between text-sm">
               {member.class_year ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -306,16 +306,18 @@ const Members = () => {
       </div>
 
       {/* Members Grid - grouped by team */}
-      <div className="space-y-8 mt-6">
-        {groupedMembers.map((group) => (
-          <div key={group.team}>
-            <h2 className="text-xl font-bold mb-4">{group.team}</h2>
-            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))]">
-              {group.members.map((member) => renderMemberCard(member))}
-            </div>
+      {groupedMembers.map((group) => (
+        <div key={group.team} className="mb-6">
+          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))] mt-6">
+            {group.members.map(renderMemberCard)}
           </div>
-        ))}
-      </div>
+          {group !== groupedMembers[groupedMembers.length - 1] && (
+            <div className="w-full flex items-center my-8">
+              <div className="flex-1 border-t-2 rounded-md border-primary" style={{ borderRadius: '9999px', borderTopLeftRadius: '9999px', borderTopRightRadius: '9999px' }} />
+            </div>
+          )}
+        </div>
+      ))}
 
       {members.length === 0 && (
         <Card className="mt-6">
