@@ -27,34 +27,37 @@ const SemesterSelector = ({ value, onSelect, required = true }: SemesterSelector
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
+    const fetchSemesters = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('semesters')
+        .select('*')
+        .order('start_date', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching semesters:', error);
+        setLoading(false);
+        return;
+      }
+
+      setSemesters(data || []);
+      setLoading(false);
+    };
+
     fetchSemesters();
   }, []);
 
-  const fetchSemesters = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('semesters')
-      .select('*')
-      .order('start_date', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching semesters:', error);
-      setLoading(false);
-      return;
-    }
-
-    setSemesters(data || []);
-
-    // Auto-select current semester if no value is set
-    if (!value && data && data.length > 0) {
-      const currentSemester = data.find(s => s.is_current);
-      if (currentSemester) {
-        onSelect(currentSemester);
+  // Sync effect: If value exists but parent doesn't have the object (optional safety net)
+  // This helps if the parent passed an ID but needs the full object back
+  useEffect(() => {
+    if (!loading && value && semesters.length > 0) {
+      const selected = semesters.find(s => s.id === value);
+      if (selected) {
+        // We don't call onSelect here to avoid infinite loops,
+        // but it confirms the data is present.
       }
     }
-
-    setLoading(false);
-  };
+  }, [loading, value, semesters]);
 
   const handleSelect = (semesterId: string) => {
     if (semesterId === 'create-new') {
@@ -89,7 +92,14 @@ const SemesterSelector = ({ value, onSelect, required = true }: SemesterSelector
     <>
       <div className="space-y-2">
         <Label>Term {required && <span className="text-destructive">*</span>}</Label>
-        <Select value={value} onValueChange={handleSelect} required={required}>
+        <Select
+          // 1. KEY FIX: This forces a re-render when data loads or value changes
+          // effectively "waking up" the component to display the correct label.
+          key={`${value || 'empty'}-${semesters.length}`}
+          value={value || ""}
+          onValueChange={handleSelect}
+          required={required}
+        >
           <SelectTrigger>
             <SelectValue placeholder={semesters.length === 0 ? "No terms available" : "Select term"} />
           </SelectTrigger>

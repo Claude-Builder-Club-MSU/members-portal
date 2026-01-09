@@ -204,7 +204,6 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
             event_id: eventId,
             token: qrCodeToken,
             points,
-            active: true,
           });
 
         if (qrError) throw qrError;
@@ -294,7 +293,7 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant='secondary'
                     className={cn(
                       'w-full justify-start text-left font-normal',
                       !date && 'text-muted-foreground'
@@ -320,7 +319,7 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     className={cn(
                       'w-full justify-start text-left font-normal',
                       !eventTime && 'text-muted-foreground'
@@ -331,12 +330,12 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-0" align="start">
-                  <div className="max-h-64 overflow-y-auto p-1">
+                  <div className="max-h-64 overflow-y-scroll p-1">
                     {TIME_OPTIONS.map((option) => (
                       <Button
                         key={option.value}
                         variant={eventTime === option.value ? 'default' : 'ghost'}
-                        className="w-full justify-start font-normal"
+                        className="w-full justify-start font-normal hover:bg-background hover:text-primary border-0"
                         onClick={() => setEventTime(option.value)}
                       >
                         {option.label}

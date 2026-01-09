@@ -121,7 +121,7 @@ const Projects = () => {
     const startDate = new Date(project.start_date);
     const endDate = new Date(project.end_date);
 
-    if (startDate > now) return { label: 'Open for Enrollment', color: 'bg-green-500', state: 'available' };
+    if (startDate > now) return { label: 'Available', color: 'bg-green-500', state: 'available' };
     if (endDate < now) return { label: 'Completed', color: 'bg-gray-500', state: 'completed' };
     return { label: 'In Progress', color: 'bg-blue-500', state: 'in_progress' };
   };
@@ -179,25 +179,22 @@ const Projects = () => {
 
     return (
       <Card key={project.id} className="flex flex-col h-full w-full relative">
-        <Badge className={`absolute top-2 right-2 ${status.color} text-white text-xs z-10`}>
-          {status.label}
-        </Badge>
         <CardHeader className="pb-0">
-          <div className="flex items-center justify-between gap-3 pr-32">
+          <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex-1">{project.name}</CardTitle>
-            {isMember && (
-              <Badge variant={isLead ? 'default' : 'secondary'} className="shrink-0 whitespace-nowrap">
-                {isLead ? 'Lead' : 'Member'}
+            <div className="flex flex-row gap-3 items-center">
+              {isMember && (
+                <Badge variant={isLead ? 'default' : 'secondary'} className="shrink-0 whitespace-nowrap">
+                  {isLead ? 'Lead' : 'Member'}
+                </Badge>
+              )}
+              <Badge className={`${status.color} text-white text-xs z-10`}>
+                {status.label}
               </Badge>
-            )}
-          </div>
-          {project.client_name && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-5 pt-1">
-              <Briefcase className="h-4 w-4" />
-              Client: {project.client_name}
             </div>
-          )}
-
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col flex-1 min-h-0">
           <div className="space-y-3 text-sm text-muted-foreground pt-1">
             {/* Semester Info */}
             {project.semesters && (
@@ -207,10 +204,13 @@ const Projects = () => {
               </div>
             )}
 
-            {/* Date Range */}
-            <div className="flex items-center gap-2 text-xs">
-              {format(new Date(project.start_date), 'MMM d')} - {format(new Date(project.end_date), 'MMM d, yyyy')}
-            </div>
+            {/* Client Info */}
+            {project.client_name && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-5 pt-1">
+                <Briefcase className="h-4 w-4" />
+                Client: {project.client_name}
+              </div>
+            )}
 
             {/* Team Lead Info */}
             {lead && (
@@ -251,8 +251,6 @@ const Projects = () => {
               )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="flex flex-col flex-1 min-h-0">
           {project.description && (
             <div className="text-sm text-muted-foreground flex-1 space-y-3 break-words pt-3 whitespace-pre-line">
               {project.description}
@@ -262,8 +260,8 @@ const Projects = () => {
           <div className="space-y-2 mt-4">
             {canManageProjects ? (
               <Button
+              className="w-full"
                 variant="outline"
-                className="w-full"
                 onClick={() => handleEditProject(project)}
               >
                 <Edit className="h-4 w-4 mr-2" />
@@ -281,7 +279,7 @@ const Projects = () => {
             )}
 
             <Button
-              variant="outline"
+              variant="default"
               className="w-full"
               onClick={() => window.open(project.github_url, '_blank')}
             >
@@ -319,40 +317,22 @@ const Projects = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-8 mt-6">
-          {/* Available Projects */}
-          {availableProjects.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold mb-4">Available to Join</h2>
-              <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))]">
-                {availableProjects.map(renderProjectCard)}
-              </div>
-            </div>
-          )}
-
+        <div className="mt-6">
           {/* In Progress Projects */}
-          {inProgressProjects.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold mb-4">
-                {canSeeAll ? 'In Progress' : 'My Current Projects'}
-              </h2>
-              <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))]">
-                {inProgressProjects.map(renderProjectCard)}
-              </div>
-            </div>
-          )}
+          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+            {inProgressProjects.map(renderProjectCard)}
+          </div>
+
+          {/* Available Projects */}
+          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+            {availableProjects.map(renderProjectCard)}
+          </div>
+
 
           {/* Completed Projects */}
-          {completedProjects.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold mb-4">
-                {canSeeAll ? 'Completed' : 'My Past Projects'}
-              </h2>
-              <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))]">
-                {completedProjects.map(renderProjectCard)}
-              </div>
-            </div>
-          )}
+          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+            {completedProjects.map(renderProjectCard)}
+          </div>
 
           {/* Empty State */}
           {availableProjects.length === 0 && inProgressProjects.length === 0 && completedProjects.length === 0 && (

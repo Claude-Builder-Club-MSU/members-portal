@@ -655,9 +655,10 @@ export const ApplicationModal = ({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="resume">Resume</Label>
+          <Label htmlFor="resume">Resume *</Label>
           <Input
             id="resume"
+            required
             type="file"
             accept=".pdf,.doc,.docx"
             onChange={(e) => setResumeFile(e.target.files?.[0] || null)}

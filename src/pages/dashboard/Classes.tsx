@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, MapPin, Users, Edit, GraduationCap, Calendar } from 'lucide-react';
+import { Plus, MapPin, Users, Edit, GraduationCap, Calendar, Eye, Crown } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { format } from 'date-fns';
 import { ClassModal } from '@/components/modals/ClassModal';
@@ -41,6 +41,7 @@ const Classes = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassWithMembers | null>(null);
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<Class | null>(null);
 
   useEffect(() => {
@@ -118,54 +119,23 @@ const Classes = () => {
     const startDate = new Date(cls.start_date);
     const endDate = new Date(cls.end_date);
 
-    if (startDate > now) return { label: 'Open for Enrollment', color: 'bg-green-500', state: 'available' };
+    if (startDate > now) return { label: 'Available', color: 'bg-green-500', state: 'available' };
     if (endDate < now) return { label: 'Completed', color: 'bg-gray-500', state: 'completed' };
     return { label: 'In Progress', color: 'bg-blue-500', state: 'in_progress' };
   };
 
-  const handleEnroll = async (classId: string) => {
-    if (!user) return;
-
-    const { error } = await supabase
-      .from('class_enrollments')
-      .insert({
-        user_id: user.id,
-        class_id: classId,
-        role: 'student',
-      });
-
-    if (error) {
-      console.error('Error enrolling in class:', error);
-      return;
-    }
-
-    fetchClasses();
+  const handleViewDetails = (classItem: ClassWithMembers) => {
+    setSelectedClass(classItem);
+    setIsDetailsModalOpen(true);
   };
 
-  const handleUnenroll = async (classId: string) => {
-    if (!user) return;
-
-    const { error } = await supabase
-      .from('class_enrollments')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('class_id', classId);
-
-    if (error) {
-      console.error('Error unenrolling from class:', error);
-      return;
-    }
-
-    fetchClasses();
-  };
-
-  const handleEditClass = (cls: Class) => {
-    setEditingClass(cls);
+  const handleEditClass = (classItem: Class) => {
+    setEditingClass(classItem);
     setIsModalOpen(true);
   };
 
-  const handleViewMembers = (cls: ClassWithMembers) => {
-    setSelectedClass(cls);
+  const handleViewMembers = (classItem: ClassWithMembers) => {
+    setSelectedClass(classItem);
     setIsMembersModalOpen(true);
   };
 
@@ -199,109 +169,111 @@ const Classes = () => {
     return canSeeAll || c.userEnrollment;
   });
 
-  const renderClassCard = (cls: ClassWithMembers) => {
-    const isEnrolled = !!cls.userEnrollment;
-    const isTeacher = cls.userEnrollment?.role === 'teacher';
-    const status = getClassStatus(cls);
+
+  const renderClassCard = (classItem: ClassWithMembers) => {
+    const isEnrolled = !!classItem.userEnrollment;
+    const isTeacher = classItem.userEnrollment?.role === 'teacher';
+    const teacher = classItem.members.find(m => m.enrollment.role === 'teacher');
+    const status = getClassStatus(classItem);
 
     return (
-      <Card key={cls.id} className="flex flex-col h-full w-full relative">
-        <Badge className={`absolute top-2 right-2 ${status.color} text-white text-xs z-10`}>
-          {status.label}
-        </Badge>
+      <Card key={classItem.id} className="flex flex-col h-full w-full relative">
         <CardHeader className="pb-0">
-          <div className="flex items-center justify-between gap-3 pr-32">
-            <CardTitle className="text-lg flex-1">{cls.name}</CardTitle>
-            {isEnrolled && (
-              <Badge variant={isTeacher ? 'default' : 'secondary'} className="shrink-0 whitespace-nowrap">
-                {isTeacher ? 'Teacher' : 'Student'}
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex-1">{classItem.name}</CardTitle>
+            <div className="flex flex-row gap-3 items-center">
+              {isEnrolled && (
+                <Badge variant={isTeacher ? 'default' : 'secondary'} className="shrink-0 whitespace-nowrap">
+                  {isTeacher ? 'Teacher' : 'Student'}
+                </Badge>
+              )}
+              <Badge className={`${status.color} text-white text-xs z-10`}>
+                {status.label}
               </Badge>
-            )}
+            </div>
           </div>
-          {cls.description && (
-            <CardDescription className="mt-2">{cls.description}</CardDescription>
-          )}
         </CardHeader>
         <CardContent className="flex flex-col flex-1 min-h-0">
           <div className="space-y-3 text-sm text-muted-foreground">
             {/* Semester Info */}
-            {cls.semesters && (
-              <div className="flex items-center gap-2">
+            {classItem.semesters && (
+              <div className="flex items-center gap-2 pt-2">
                 <Calendar className="h-4 w-4" />
-                {cls.semesters.code} - {cls.semesters.name}
+                {classItem.semesters.code} - {classItem.semesters.name}
               </div>
             )}
 
-            {/* Date Range */}
-            <div className="flex items-center gap-2 text-xs">
-              {format(new Date(cls.start_date), 'MMM d')} - {format(new Date(cls.end_date), 'MMM d, yyyy')}
-            </div>
-
-            {cls.location && (
+            {classItem.location && (
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                {cls.location}
+                {classItem.location}
+              </div>
+            )}
+
+            {/* Teacher Info */}
+            {teacher && (
+              <div className="flex items-center gap-2">
+                <Crown className="h-4 w-4 text-yellow-500" />
+                <span className="text-muted-foreground">Teacher:</span>
+                {/* 3. Fixed the syntax error here (added 'teacher' before .profile) */}
+                <span className="font-medium">{teacher.profile.full_name || teacher.profile.email}</span>
               </div>
             )}
 
             {/* Class Members Preview */}
-            <div className="flex items-center gap-2 cursor-pointer group w-fit">
-              <Users className="h-4 w-4 group-hover:text-orange-600 transition-colors duration-400" />
-              <span
-                className="underline decoration-transparent group-hover:decoration-orange-600 group-hover:text-orange-600 transition-all duration-400"
-                onClick={() => handleViewMembers(cls)}
-              >
-                {cls.memberCount} {cls.memberCount === 1 ? 'class member' : 'class members'}
-              </span>
-            </div>
-            {cls.members.length > 0 && (
-              <div className="flex -space-x-2 mb-6">
-                {cls.members.slice(0, 5).map(({ enrollment, profile }) => (
-                  <Avatar key={enrollment.id} className="h-8 w-8 border-2 border-background">
-                    <AvatarImage src={profile.profile_picture_url || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {profile.full_name ? getInitials(profile.full_name) : profile.email.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
-                {cls.members.length > 5 && (
-                  <div className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-xs">
-                    +{cls.members.length - 5}
-                  </div>
-                )}
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 cursor-pointer group w-fit">
+                <Users className="h-4 w-4 group-hover:text-orange-600 transition-colors duration-400" />
+                <span
+                  className="underline decoration-transparent group-hover:decoration-orange-600 group-hover:text-orange-600 transition-all duration-400"
+                  onClick={() => handleViewMembers(classItem)}
+                >
+                  {classItem.memberCount} {classItem.memberCount === 1 ? 'team member' : 'team members'}
+                </span>
               </div>
-            )}
+              {classItem.members.length > 0 && (
+                <div className="flex -space-x-2 mb-6">
+                  {classItem.members.slice(0, 5).map(({ enrollment, profile }) => (
+                    <Avatar key={enrollment.id} className="h-8 w-8 border-2 border-background">
+                      <AvatarImage src={profile.profile_picture_url || undefined} />
+                      <AvatarFallback className="text-xs">
+                        {profile.full_name ? getInitials(profile.full_name) : profile.email.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {classItem.members.length > 5 && (
+                    <div className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-xs">
+                      +{classItem.members.length - 5}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
+          {classItem.description && (
+            <div className="text-sm text-muted-foreground flex-1 space-y-3 break-words pt-3 whitespace-pre-line">
+              {classItem.description}
+            </div>
+          )}
 
           <div className="space-y-2 mt-4">
-            {!canManageClasses && status.state === 'available' && (
-              cls.userEnrollment ? (
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => handleUnenroll(cls.id)}
-                >
-                  Unenroll
-                </Button>
-              ) : (
-                <Button
-                  className="w-full"
-                  variant="default"
-                  onClick={() => handleEnroll(cls.id)}
-                >
-                  Enroll
-                </Button>
-              )
-            )}
-
-            {canManageClasses && (
+            {canManageClasses ? (
               <Button
                 className="w-full"
                 variant="outline"
-                onClick={() => handleEditClass(cls)}
+                onClick={() => handleEditClass(classItem)}
               >
                 <Edit className="h-4 w-4 mr-2" />
-                Edit Class
+                Edit Details
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => handleViewDetails(classItem)}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View Details
               </Button>
             )}
           </div>
@@ -335,40 +307,21 @@ const Classes = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-8 mt-6">
-          {/* Available Classes */}
-          {availableClasses.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold mb-4">Available to Join</h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {availableClasses.map(renderClassCard)}
-              </div>
-            </div>
-          )}
-
+        <div className="mt-6">
           {/* In Progress Classes */}
-          {inProgressClasses.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold mb-4">
-                {canSeeAll ? 'In Progress' : 'My Current Classes'}
-              </h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {inProgressClasses.map(renderClassCard)}
-              </div>
-            </div>
-          )}
+          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+            {inProgressClasses.map(renderClassCard)}
+          </div>
+
+          {/* Available Classes */}
+          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+            {availableClasses.map(renderClassCard)}
+          </div>
 
           {/* Completed Classes */}
-          {completedClasses.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold mb-4">
-                {canSeeAll ? 'Completed' : 'My Past Classes'}
-              </h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {completedClasses.map(renderClassCard)}
-              </div>
-            </div>
-          )}
+          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+            {completedClasses.map(renderClassCard)}
+          </div>
 
           {/* Empty State */}
           {availableClasses.length === 0 && inProgressClasses.length === 0 && completedClasses.length === 0 && (
@@ -392,6 +345,90 @@ const Classes = () => {
         onSuccess={fetchClasses}
         existingClass={editingClass}
       />
+
+      {/* Class Details Modal */}
+      <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedClass?.name}</DialogTitle>
+            {selectedClass?.location && (
+              <DialogDescription>
+                Location: {selectedClass.location}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {selectedClass && (
+            <div className="space-y-6">
+              {/* Description */}
+              {selectedClass.description && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm">Description</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedClass.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Class Info Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Term */}
+                {selectedClass.semesters && (
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-sm">Term</h3>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      {selectedClass.semesters.code} - {selectedClass.semesters.name}
+                    </div>
+                  </div>
+                )}
+
+                {/* Member Count */}
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm">Class Size</h3>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    {selectedClass.memberCount} {selectedClass.memberCount === 1 ? 'member' : 'members'}
+                  </div>
+                </div>
+
+                {/* Dates */}
+                <div className="space-y-2 col-span-2">
+                  <h3 className="font-semibold text-sm">Dates</h3>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    {selectedClass.start_date
+                      ? `Start: ${new Date(selectedClass.start_date).toLocaleDateString()}`
+                      : null}
+                    {selectedClass.end_date
+                      ? ` | End: ${new Date(selectedClass.end_date).toLocaleDateString()}`
+                      : null}
+                  </div>
+                </div>
+              </div>
+              {/* Teacher */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Teacher</h3>
+                {selectedClass.members
+                  ?.filter(({ enrollment }) => enrollment.role === "teacher")
+                  .map(({ enrollment, profile }) => (
+                    <div key={enrollment.id} className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={profile.profile_picture_url || undefined} />
+                        <AvatarFallback>
+                          {profile.full_name
+                            ? getInitials(profile.full_name)
+                            : profile.email.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-semibold">{profile.full_name || "No name"}</span>
+                      <span className="text-xs text-muted-foreground">{profile.email}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Class Members Modal */}
       <Dialog open={isMembersModalOpen} onOpenChange={setIsMembersModalOpen}>

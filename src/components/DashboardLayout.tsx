@@ -56,17 +56,17 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const members = { title: 'Members', url: '/dashboard/members', icon: Users };
     const prospects = { title: 'Prospects', url: '/dashboard/prospects', icon: UserPlus };
 
-    if (role === 'prospect') {
-      // Prospects get only Events and Applications
-      return [events, applications];
-    }
+    // if (role === 'prospect') {
+    //   // Prospects get only Events and Applications
+    //   return [events, applications];
+    // }
 
     // Members get: Dashboard, Events, Classes, Projects, Applications
-    const memberItems = [dashboard, events, classes, projects, applications];
+    const memberItems = [dashboard, events, classes, projects, applications, members];
 
     // E-board and Board additionally see Members and Prospects (after Applications)
     if (role === 'e-board' || role === 'board') {
-      memberItems.push(members, prospects);
+      memberItems.push(prospects);
     }
 
     return memberItems;
