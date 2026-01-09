@@ -600,8 +600,8 @@ const ApplicationViewerPage = () => {
                                 <h2 className="text-xl font-semibold mb-4">Review Actions</h2>
                                 <div className="flex gap-4">
                                     <Button
-                                        variant="default"
-                                        className="flex-1 bg-green-600 hover:bg-green-700 h-12 text-base"
+                                        variant='enable'
+                                        className="flex-1 h-12 text-base"
                                         onClick={() => setShowAcceptDialog(true)}
                                     >
                                         <CheckCircle className="h-5 w-5 mr-2" />
@@ -750,7 +750,7 @@ const ApplicationViewerPage = () => {
                         <AlertDialogAction
                             onClick={handleAccept}
                             disabled={actionLoading}
-                            className="bg-green-600 hover:bg-green-700"
+                            variant='enable'
                         >
                             {actionLoading ? 'Accepting...' : 'Yes, Accept & Auto-Assign'}
                         </AlertDialogAction>

@@ -26,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
   SelectContent,
@@ -114,6 +115,7 @@ export const ApplicationModal = ({
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedBoardPosition, setSelectedBoardPosition] = useState('');
+  const [selectedRole, setSelectedRole] = useState('');
 
   // Fetch class name for view mode
   useEffect(() => {
@@ -167,6 +169,15 @@ export const ApplicationModal = ({
       fetchAvailableOptions();
     }
   }, [open, isViewMode]);
+
+  // Set default role based on application type and user role
+  useEffect(() => {
+    if (applicationType === 'project') {
+      setSelectedRole(role === 'prospect' ? 'member' : '');
+    } else if (applicationType === 'class') {
+      setSelectedRole(role === 'prospect' ? 'student' : '');
+    }
+  }, [applicationType, role]);
 
   const fetchAvailableOptions = async () => {
     const now = new Date().toISOString();
@@ -268,6 +279,16 @@ export const ApplicationModal = ({
     e.preventDefault();
     if (!user || !applicationType) return;
 
+    // Validate role selection
+    if ((applicationType === 'project' || applicationType === 'class') && !selectedRole) {
+      toast({
+        title: 'Role Required',
+        description: 'Please select a role for your application.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -300,6 +321,8 @@ export const ApplicationModal = ({
         class_id: selectedClassId || null,
         project_id: selectedProjectId || null,
         board_position: selectedBoardPosition || null,
+        class_role: applicationType === 'class' ? selectedRole as 'teacher' | 'student' : null,
+        project_role: applicationType === 'project' ? selectedRole as 'lead' | 'member' : null,
       };
 
       const { error } = await supabase.from('applications').insert(insertData);
@@ -339,6 +362,7 @@ export const ApplicationModal = ({
     setSelectedClassId('');
     setSelectedProjectId('');
     setSelectedBoardPosition('');
+    setSelectedRole('');
   };
 
   const handleAccept = async () => {
@@ -456,13 +480,15 @@ export const ApplicationModal = ({
       case 'board':
         return `This will automatically assign them the ${existingApplication.board_position || 'board'} position and change their role to Board.`;
       case 'class':
+        const classRole = existingApplication.class_role === 'teacher' ? 'teacher' : 'student';
         return className
-          ? `This will automatically enroll them in "${className}" as a student.`
-          : 'This will automatically enroll them in the selected class as a student.';
+          ? `This will automatically enroll them in "${className}" as ${classRole === 'teacher' ? 'an' : 'a'} ${classRole}.`
+          : `This will automatically enroll them in the selected class as ${classRole === 'teacher' ? 'an' : 'a'} ${classRole}.`;
       case 'project':
+        const projectRole = existingApplication.project_role === 'lead' ? 'lead' : 'member';
         return projectName
-          ? `This will automatically add them to "${projectName}" as a member.`
-          : 'This will automatically add them to the selected project as a member.';
+          ? `This will automatically add them to "${projectName}" as a ${projectRole}.`
+          : `This will automatically add them to the selected project as a ${projectRole}.`;
       default:
         return '';
     }
@@ -748,6 +774,33 @@ export const ApplicationModal = ({
               </Select>
             </div>
             <div className="space-y-2">
+              <Label>Role *</Label>
+              <RadioGroup
+                value={selectedRole}
+                onValueChange={setSelectedRole}
+                disabled={role === 'prospect'}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="member" id="member" />
+                  <Label htmlFor="member" className="font-normal cursor-pointer">
+                    Member
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="lead" id="lead" disabled={role === 'prospect'} />
+                  <Label htmlFor="lead" className={`font-normal ${role === 'prospect' ? 'text-muted-foreground' : 'cursor-pointer'}`}>
+                    Lead
+                  </Label>
+                </div>
+              </RadioGroup>
+              {role === 'prospect' && (
+                <p className="text-xs text-muted-foreground">
+                  Prospects can only apply as members
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="whyPosition">Why this project? *</Label>
               <Textarea
                 id="whyPosition"
@@ -825,6 +878,33 @@ export const ApplicationModal = ({
               </Select>
             </div>
             <div className="space-y-2">
+              <Label>Role *</Label>
+              <RadioGroup
+                value={selectedRole}
+                onValueChange={setSelectedRole}
+                disabled={role === 'prospect'}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="student" id="student" />
+                  <Label htmlFor="student" className="font-normal cursor-pointer">
+                    Student
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="teacher" id="teacher" disabled={role === 'prospect'} />
+                  <Label htmlFor="teacher" className={`font-normal ${role === 'prospect' ? 'text-muted-foreground' : 'cursor-pointer'}`}>
+                    teacher
+                  </Label>
+                </div>
+              </RadioGroup>
+              {role === 'prospect' && (
+                <p className="text-xs text-muted-foreground">
+                  Prospects can only apply as students
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="whyPosition">Why this class? *</Label>
               <Textarea
                 id="whyPosition"
@@ -880,6 +960,11 @@ export const ApplicationModal = ({
               <DialogDescription className="flex items-center gap-2 mt-2">
                 <Badge variant="outline">{formatApplicationType(existingApplication.application_type)}</Badge>
                 {getStatusBadge(existingApplication.status)}
+                {(existingApplication.project_role || existingApplication.class_role) && (
+                  <Badge variant="secondary" className="capitalize">
+                    {existingApplication.project_role || existingApplication.class_role}
+                  </Badge>
+                )}
               </DialogDescription>
             </DialogHeader>
 
@@ -934,6 +1019,11 @@ export const ApplicationModal = ({
                   <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
                     <p className="text-sm font-medium mb-1">Class Applied For</p>
                     <p className="text-base font-semibold">{className}</p>
+                    {existingApplication.class_role && (
+                      <p className="text-sm text-muted-foreground mt-1 capitalize">
+                        As {existingApplication.class_role}
+                      </p>
+                    )}
                   </div>
                 </>
               )}
@@ -944,6 +1034,11 @@ export const ApplicationModal = ({
                   <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
                     <p className="text-sm font-medium mb-1">Project Applied For</p>
                     <p className="text-base font-semibold">{projectName}</p>
+                    {existingApplication.project_role && (
+                      <p className="text-sm text-muted-foreground mt-1 capitalize">
+                        As {existingApplication.project_role}
+                      </p>
+                    )}
                   </div>
                 </>
               )}

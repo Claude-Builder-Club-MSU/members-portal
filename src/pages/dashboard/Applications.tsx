@@ -31,6 +31,7 @@ const Applications = () => {
 
     let query = supabase.from('applications').select('*');
 
+
     // E-board can see all applications
     if (role === 'e-board') {
       // No filter needed
@@ -63,7 +64,7 @@ const Applications = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'accepted':
-        return 'default';
+        return 'enable';
       case 'rejected':
         return 'destructive';
       default:
