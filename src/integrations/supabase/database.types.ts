@@ -301,9 +301,7 @@ export type Database = {
           event_id: string
           token: string
           points: number
-          active: boolean
           created_at: string
-          expires_at: string | null
           qr_code_url: string | null
         }
         Insert: {
@@ -311,9 +309,7 @@ export type Database = {
           event_id: string
           token: string
           points: number
-          active?: boolean
           created_at?: string
-          expires_at?: string | null
           qr_code_url?: string | null
         }
         Update: {
@@ -321,9 +317,7 @@ export type Database = {
           event_id?: string
           token?: string
           points?: number
-          active?: boolean
           created_at?: string
-          expires_at?: string | null
           qr_code_url?: string | null
         }
         Relationships: [

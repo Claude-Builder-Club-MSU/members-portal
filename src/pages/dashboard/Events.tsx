@@ -147,7 +147,6 @@ const Events = () => {
         .from('event_qr_codes')
         .select('qr_code_url, token')
         .eq('event_id', event.id)
-        .eq('active', true)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

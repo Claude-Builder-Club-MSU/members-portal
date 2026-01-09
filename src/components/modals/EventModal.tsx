@@ -186,7 +186,6 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
         .from('event_qr_codes')
         .select('id')
         .eq('event_id', eventId)
-        .eq('active', true)
         .single();
 
       if (existingQrCode) {
