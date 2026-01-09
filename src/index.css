@@ -28,8 +28,8 @@ All colors MUST be HSL.
     --muted-foreground: 24 8% 45%;
 
     --claude-peach: 14 69% 60%;
-    --accent: var(--claude-peach);
-    --accent-foreground: var(--cream);
+    --primary: var(--claude-peach);
+    --primary-foreground: var(--cream);
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
@@ -44,8 +44,8 @@ All colors MUST be HSL.
     --sidebar-foreground: 24 10% 15%;
     --sidebar-primary: 25 95% 53%;
     --sidebar-primary-foreground: 33 100% 97%;
-    --sidebar-accent: 30 100% 95%;
-    --sidebar-accent-foreground: 24 10% 15%;
+    --sidebar-primary: 30 100% 95%;
+    --sidebar-primary-foreground: 24 10% 15%;
     --sidebar-border: 30 30% 88%;
     --sidebar-ring: 25 95% 53%;
   }
@@ -69,8 +69,8 @@ All colors MUST be HSL.
     --muted: 24 10% 15%;
     --muted-foreground: 30 15% 65%;
 
-    --accent: var(--claude-peach);
-    --accent-foreground: 24 15% 8%;
+    --primary: var(--claude-peach);
+    --primary-foreground: 24 15% 8%;
 
     --destructive: 0 62.8% 40%;
     --destructive-foreground: 33 100% 97%;
@@ -83,8 +83,8 @@ All colors MUST be HSL.
     --sidebar-foreground: 33 100% 97%;
     --sidebar-primary: 25 95% 53%;
     --sidebar-primary-foreground: 24 15% 8%;
-    --sidebar-accent: 24 10% 15%;
-    --sidebar-accent-foreground: 33 100% 97%;
+    --sidebar-primary: 24 10% 15%;
+    --sidebar-primary-foreground: 33 100% 97%;
     --sidebar-border: 24 15% 20%;
     --sidebar-ring: 25 95% 53%;
   }

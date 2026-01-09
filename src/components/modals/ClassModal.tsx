@@ -25,10 +25,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle, Save, X } from 'lucide-react';
+import SemesterSelector from '@/components/SemesterSelector';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type Class = Database['public']['Tables']['classes']['Row'];
+type Semester = Database['public']['Tables']['semesters']['Row'];
 
 interface ClassModalProps {
   open: boolean;
@@ -45,7 +47,7 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [schedule, setSchedule] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
   const [teacherId, setTeacherId] = useState<string>('');
   const [teachers, setTeachers] = useState<Array<{id: string, full_name: string, email: string}>>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -63,7 +65,11 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
       setName(existingClass.name);
       setDescription(existingClass.description || '');
       setLocation(existingClass.location || '');
-      setSchedule(existingClass.schedule || '');
+
+      // Load semester if exists
+      if (existingClass.semester_id) {
+        loadSemester(existingClass.semester_id);
+      }
 
       // Load current class teacher if it exists
       loadClassTeacher();
@@ -72,10 +78,25 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
       setName('');
       setDescription('');
       setLocation('');
-      setSchedule('');
+      setSelectedSemester(null);
       setTeacherId('none');
     }
   }, [open, existingClass]);
+
+  const loadSemester = async (semesterId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('semesters')
+        .select('*')
+        .eq('id', semesterId)
+        .single();
+
+      if (error) throw error;
+      setSelectedSemester(data);
+    } catch (error) {
+      console.error('Error loading semester:', error);
+    }
+  };
 
   const fetchTeachers = async () => {
     try {
@@ -133,6 +154,15 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
     e.preventDefault();
     if (!user) return;
 
+    if (!selectedSemester) {
+      toast({
+        title: 'Error',
+        description: 'Please select a term for the class',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -144,7 +174,9 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
             name,
             description: description || null,
             location: location || null,
-            schedule: schedule || null,
+            semester_id: selectedSemester.id,
+            start_date: selectedSemester.start_date,
+            end_date: selectedSemester.end_date,
           })
           .eq('id', existingClass.id);
 
@@ -188,7 +220,9 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
           name,
           description: description || null,
           location: location || null,
-          schedule: schedule || null,
+          semester_id: selectedSemester.id,
+          start_date: selectedSemester.start_date,
+          end_date: selectedSemester.end_date,
           created_by: user.id,
         };
 
@@ -307,15 +341,11 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="schedule">Schedule</Label>
-            <Input
-              id="schedule"
-              value={schedule}
-              onChange={(e) => setSchedule(e.target.value)}
-              placeholder="Tuesdays & Thursdays 6:00 PM - 7:30 PM"
-            />
-          </div>
+          <SemesterSelector
+            value={selectedSemester?.id || ''}
+            onSelect={setSelectedSemester}
+            required
+          />
 
           <div className="space-y-2">
             <Label>Teacher (Optional)</Label>
@@ -343,14 +373,16 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
                 disabled={loading}
                 className="flex-1"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Class
+                <Trash2 className="h-4 w-4 mr-0" />
+                Delete
               </Button>
             )}
             <Button type="button" variant="outline" onClick={onClose} className={existingClass ? "flex-1" : "flex-1"}>
+              <X className="h-4 w-4 mr-0" />
               Cancel
             </Button>
             <Button type="submit" disabled={loading} className={existingClass ? "flex-1" : "flex-1"}>
+              <Save className="h-4 w-4 mr-0" />
               {loading ? 'Saving...' : existingClass ? 'Update Class' : 'Create Class'}
             </Button>
           </div>

@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Trophy, Mail, GraduationCap, Crown, Users, Award, Eye } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/database.types';
 import { useIsMobile } from '@/hooks/use-mobile';
-import ProfileViewer from '@/components/ProfileViewer';
+import ProfileViewer from '@/components/modals/ProfileModal';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type AppRole = Database['public']['Enums']['app_role'];
@@ -131,42 +131,54 @@ const Members = () => {
     }
   };
 
-  const getRolePriority = (role: AppRole): number => {
-    switch (role) {
-      case 'e-board':
-        return 1;
-      case 'board':
-        return 2;
-      case 'member':
-        return 3;
-      default:
-        return 4;
-    }
-  };
-
   // Only E-board can manage roles on Members page
   const canManageRoles = userRole === 'e-board';
 
-  // Sort members by role priority, then by name
-  const sortedMembers = [...members].sort((a, b) => {
-    const priorityDiff = getRolePriority(a.role) - getRolePriority(b.role);
-    if (priorityDiff !== 0) return priorityDiff;
-    return (a.full_name || a.email).localeCompare(b.full_name || b.email);
-  });
+  // Group members by team
+  const groupedMembers = members.reduce((acc, member) => {
+    // E-board members get "E-board" as their team
+    let teamName = member.role === 'e-board' ? 'E-board' : (member.team || 'General Members');
 
-  // Group members by role for row breaks
-  const groupedMembers = sortedMembers.reduce((acc, member, index) => {
-    const prevMember = index > 0 ? sortedMembers[index - 1] : null;
-    const isNewRole = !prevMember || prevMember.role !== member.role;
+    // Find existing team group
+    let teamGroup = acc.find(g => g.team === teamName);
 
-    if (isNewRole) {
-      acc.push({ role: member.role, members: [member] });
-    } else {
-      acc[acc.length - 1].members.push(member);
+    if (!teamGroup) {
+      teamGroup = { team: teamName, members: [], priority: 0 };
+      // Set priority for sorting
+      if (teamName === 'E-board') teamGroup.priority = 1;
+      else if (member.team) teamGroup.priority = 2; // Teams with positions
+      else teamGroup.priority = 3; // General members
+
+      acc.push(teamGroup);
     }
 
+    teamGroup.members.push(member);
     return acc;
-  }, [] as Array<{ role: AppRole; members: MemberWithRole[] }>);
+  }, [] as Array<{ team: string; members: MemberWithRole[]; priority: number }>);
+
+  // Sort teams by priority, then alphabetically
+  groupedMembers.sort((a, b) => {
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    return a.team.localeCompare(b.team);
+  });
+
+  // Within each team, sort by position (directors first) then alphabetically
+  groupedMembers.forEach(group => {
+    group.members.sort((a, b) => {
+      // E-board: all flat, sort alphabetically
+      if (group.team === 'E-board') {
+        return (a.full_name || a.email).localeCompare(b.full_name || b.email);
+      }
+
+      // Other teams: Director/Lead first, then alphabetically
+      const aIsLead = a.position?.toLowerCase().includes('director') || a.position?.toLowerCase().includes('lead');
+      const bIsLead = b.position?.toLowerCase().includes('director') || b.position?.toLowerCase().includes('lead');
+
+      if (aIsLead && !bIsLead) return -1;
+      if (!aIsLead && bIsLead) return 1;
+      return (a.full_name || a.email).localeCompare(b.full_name || b.email);
+    });
+  });
 
   const renderMemberCard = (member: MemberWithRole) => {
     return (
@@ -184,6 +196,9 @@ const Members = () => {
                 <CardTitle className="text-base truncate">
                   {member.full_name || 'No name'}
                 </CardTitle>
+                {member.position && (
+                  <p className="text-sm text-muted-foreground truncate mt-1">{member.position}</p>
+                )}
                 <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                   <Mail className="h-3 w-3 shrink-0" />
                   <p className="truncate">{member.email}</p>
@@ -201,7 +216,7 @@ const Members = () => {
               </Badge>
             ) : member.role === 'board' ? (
               <Badge
-                className="capitalize shrink-0 whitespace-nowrap bg-claude-peach text-cream font-semibold border-2 border-claude-peach/50"
+                className="capitalize shrink-0 whitespace-nowrap bg-primary text-cream font-semibold border-2 border-primary/50"
               >
                 {member.role.replace('-', ' ')}
               </Badge>
@@ -251,7 +266,7 @@ const Members = () => {
             )}
 
             <Button
-              variant="outline"
+              variant='default'
               size="sm"
               className="w-full"
               onClick={() => handleViewProfile(member)}
@@ -290,14 +305,15 @@ const Members = () => {
         </p>
       </div>
 
-      {/* Members Grid - grouped by role, each role starts a new row */}
-      <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))] mt-6">
-        {groupedMembers.map((group, groupIndex) => (
-          <Fragment key={group.role}>
-            {/* Add a break element before each role group (except the first) to force new row */}
-            {groupIndex > 0 && <div className="col-span-full" />}
-            {group.members.map((member) => renderMemberCard(member))}
-          </Fragment>
+      {/* Members Grid - grouped by team */}
+      <div className="space-y-8 mt-6">
+        {groupedMembers.map((group) => (
+          <div key={group.team}>
+            <h2 className="text-xl font-bold mb-4">{group.team}</h2>
+            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))]">
+              {group.members.map((member) => renderMemberCard(member))}
+            </div>
+          </div>
         ))}
       </div>
 

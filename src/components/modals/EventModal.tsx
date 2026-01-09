@@ -30,7 +30,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarIcon, Clock, Trash2, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, Clock, Trash2, AlertTriangle, Save, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/database.types';
@@ -186,7 +186,6 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
         .from('event_qr_codes')
         .select('id')
         .eq('event_id', eventId)
-        .eq('active', true)
         .single();
 
       if (existingQrCode) {
@@ -205,7 +204,6 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
             event_id: eventId,
             token: qrCodeToken,
             points,
-            active: true,
           });
 
         if (qrError) throw qrError;
@@ -295,7 +293,7 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant='secondary'
                     className={cn(
                       'w-full justify-start text-left font-normal',
                       !date && 'text-muted-foreground'
@@ -321,7 +319,7 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     className={cn(
                       'w-full justify-start text-left font-normal',
                       !eventTime && 'text-muted-foreground'
@@ -332,12 +330,12 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-0" align="start">
-                  <div className="max-h-64 overflow-y-auto p-1">
+                  <div className="max-h-64 overflow-y-scroll p-1">
                     {TIME_OPTIONS.map((option) => (
                       <Button
                         key={option.value}
                         variant={eventTime === option.value ? 'default' : 'ghost'}
-                        className="w-full justify-start font-normal"
+                        className="w-full justify-start font-normal hover:bg-background hover:text-primary border-0"
                         onClick={() => setEventTime(option.value)}
                       >
                         {option.label}
@@ -357,7 +355,7 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 required
-                placeholder="EB 1234"
+                placeholder="STEM 3202"
               />
             </div>
 
@@ -439,14 +437,16 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
                 disabled={loading}
                 className="flex-1"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-4 w-4 mr-0" />
                 Delete Event
               </Button>
             )}
             <Button type="button" variant="outline" onClick={onClose} className={existingEvent ? "flex-1" : "flex-1"}>
+              <X className="h-4 w-4 mr-0" />
               Cancel
             </Button>
             <Button type="submit" disabled={loading} className={existingEvent ? "flex-1" : "flex-1"}>
+              <Save className="h-4 w-4 mr-0" />
               {loading ? 'Saving...' : existingEvent ? 'Update Event' : 'Create Event'}
             </Button>
           </div>

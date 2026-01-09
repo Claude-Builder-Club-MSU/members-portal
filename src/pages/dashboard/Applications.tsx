@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/c
 import { Badge } from '@/components/ui/badge';
 import { Plus, Eye } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ApplicationModal } from '@/components/ApplicationModal';
+import { ApplicationModal } from '@/components/modals/ApplicationModal';
 import type { Database } from '@/integrations/supabase/database.types';
 import { useNavigate } from 'react-router-dom';
 

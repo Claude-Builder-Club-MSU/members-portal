@@ -1,7 +1,7 @@
 // Enums
 export type AppRole = 'prospect' | 'member' | 'board' | 'e-board';
 export type ApplicationStatus = 'pending' | 'accepted' | 'rejected';
-export type ApplicationType = 'club_admission' | 'board' | 'project' | 'class';
+export type ApplicationType = 'board' | 'project' | 'class';
 export type ClassMemberType = 'teacher' | 'student';
 export type ProjectMemberType = 'lead' | 'member';
 

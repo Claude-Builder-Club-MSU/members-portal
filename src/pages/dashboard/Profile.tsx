@@ -31,6 +31,8 @@ const Profile = () => {
   const [classYear, setClassYear] = useState('');
   const [linkedinUsername, setLinkedinUsername] = useState('');
   const [githubUsername, setGithubUsername] = useState('');
+  const [position, setPosition] = useState('');
+  const [team, setTeam] = useState('');
   const [resumeFile, setResumeFile] = useState<File | null>(null);
 
   // Image cropping states
@@ -48,6 +50,8 @@ const Profile = () => {
       setClassYear(profile.class_year || '');
       setLinkedinUsername(profile.linkedin_username || '');
       setGithubUsername(profile.github_username || '');
+      setPosition(profile.position || '');
+      setTeam(profile.team || '');
     }
   }, [profile]);
 
@@ -280,6 +284,8 @@ const Profile = () => {
         class_year: classYear || null,
         linkedin_username: linkedinUsername || null,
         github_username: githubUsername || null,
+        position: position || null,
+        team: role === 'e-board' ? 'E-board' : (team || null),
         resume_url: newResumeUrl,
       };
 
@@ -359,7 +365,7 @@ const Profile = () => {
         <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
           {/* Left Column - Profile Overview */}
           <div className="lg:col-span-1">
-            <Card className={`h-full flex flex-col ${isMobile ? '' : 'pt-8'}`}>
+            <Card className="h-full flex flex-col">
               <CardHeader className="text-center pb-6">
                 <div className="flex justify-center mb-4">
                   <div className="relative">
@@ -408,21 +414,20 @@ const Profile = () => {
                 </div>
               </div>
 
-              <CardContent className="space-y-6 flex-1 flex flex-col justify-between ">
-                <div className="flex justify-center items-center h-full">
-                  <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
-                    <div className="p-4 bg-gradient-to-br from-yellow-500/10 to-claude-peach/10 rounded-lg border text-center flex flex-col items-center">
-                      <Trophy className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mx-auto mb-2" />
-                      <div className="text-xl font-bold">{profile.points}</div>
-                      <div className="text-xs text-muted-foreground mt-1">Points</div>
+              <CardContent className="space-y-6 flex-1 flex flex-col justify-between">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-4 bg-gradient-to-br from-yellow-500/10 to-primary/10 rounded-lg border text-center">
+                    <Trophy className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mx-auto mb-2" />
+                    <div className="text-2xl font-bold">{profile.points}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Points</div>
+                  </div>
+
+                  <div className="p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-lg border text-center">
+                    <Award className="h-5 w-5 text-blue-600 dark:text-blue-500 mx-auto mb-2" />
+                    <div className="text-sm font-bold capitalize truncate">
+                      {classYear || 'Not set'}
                     </div>
-                    <div className="p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-lg border text-center flex flex-col items-center">
-                      <Award className="h-5 w-5 text-blue-600 dark:text-blue-500 mx-auto mb-2" />
-                      <div className="text-xl font-bold capitalize truncate">
-                        {classYear || 'Not set'}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">Class Year</div>
-                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">Class Year</div>
                   </div>
                 </div>
               </CardContent>
@@ -463,6 +468,56 @@ const Profile = () => {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  <div className={`grid gap-6 ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2'}`}>
+                    <div className="space-y-2">
+                      <Label htmlFor="position">Position</Label>
+                      <Input
+                        id="position"
+                        placeholder="e.g., Marketing Director"
+                        value={position}
+                        onChange={(e) => setPosition(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Your role or title in the club
+                      </p>
+                    </div>
+
+                    {role !== 'e-board' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="team">Team</Label>
+                        <Select value={team} onValueChange={setTeam} disabled={!position}>
+                          <SelectTrigger>
+                            <SelectValue placeholder={position ? "Select team" : "Add position first"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Marketing">Marketing</SelectItem>
+                            <SelectItem value="Events">Events</SelectItem>
+                            <SelectItem value="Projects">Projects</SelectItem>
+                            <SelectItem value="Social">Social</SelectItem>
+                            <SelectItem value="Career">Career</SelectItem>
+                            <SelectItem value="Courses">Courses</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Only available if you have a position
+                        </p>
+                      </div>
+                    )}
+                    {role === 'e-board' && (
+                      <div className="space-y-2">
+                        <Label>Team</Label>
+                        <Input
+                          value="E-board"
+                          disabled
+                          className="bg-muted"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          E-board members are automatically assigned to the E-board team
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">

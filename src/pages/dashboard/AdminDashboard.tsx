@@ -17,15 +17,18 @@ import {
     ArrowRight,
     MapPin,
     Trophy,
-    Github
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type Event = Database['public']['Tables']['events']['Row'];
-type Project = Database['public']['Tables']['projects']['Row'];
-type Class = Database['public']['Tables']['classes']['Row'];
+type Project = Database['public']['Tables']['projects']['Row'] & {
+    semesters: { code: string; name: string } | null;
+};
+type Class = Database['public']['Tables']['classes']['Row'] & {
+    semesters: { code: string; name: string } | null;
+};
 
 const AdminDashboard = () => {
     const { profile } = useAuth();
@@ -72,23 +75,35 @@ const AdminDashboard = () => {
 
         if (eventsData) setUpcomingEvents(eventsData);
 
-        // Fetch all projects
+        // Fetch all projects with semester info
         const { data: projectsData } = await supabase
             .from('projects')
-            .select('*')
-            .order('created_at', { ascending: false })
+            .select(`
+                *,
+                semesters (
+                    code,
+                    name
+                )
+            `)
+            .order('start_date', { ascending: false })
             .limit(6);
 
-        if (projectsData) setProjects(projectsData);
+        if (projectsData) setProjects(projectsData as Project[]);
 
-        // Fetch all classes
+        // Fetch all classes with semester info
         const { data: classesData } = await supabase
             .from('classes')
-            .select('*')
-            .order('name', { ascending: true })
+            .select(`
+                *,
+                semesters (
+                    code,
+                    name
+                )
+            `)
+            .order('start_date', { ascending: false })
             .limit(6);
 
-        if (classesData) setClasses(classesData);
+        if (classesData) setClasses(classesData as Class[]);
 
         setLoading(false);
     };
@@ -99,11 +114,31 @@ const AdminDashboard = () => {
         return isOpen ? 'Open' : 'Closed';
     };
 
+    const getProjectStatus = (project: Project) => {
+        const now = new Date();
+        const startDate = new Date(project.start_date);
+        const endDate = new Date(project.end_date);
+
+        if (startDate > now) return { label: 'Open for Enrollment', color: 'bg-green-500' };
+        if (endDate < now) return { label: 'Completed', color: 'bg-gray-500' };
+        return { label: 'In Progress', color: 'bg-blue-500' };
+    };
+
+    const getClassStatus = (cls: Class) => {
+        const now = new Date();
+        const startDate = new Date(cls.start_date);
+        const endDate = new Date(cls.end_date);
+
+        if (startDate > now) return { label: 'Open for Enrollment', color: 'bg-green-500' };
+        if (endDate < now) return { label: 'Completed', color: 'bg-gray-500' };
+        return { label: 'In Progress', color: 'bg-blue-500' };
+    };
+
     return (
         <div className={`min-h-[calc(100vh-56px)] flex flex-col justify-center ${isMobile ? 'p-4 space-y-6' : 'p-6 space-y-8'}`}>
             {/* Welcome Header with Claude Keyboard Glyph */}
             <div
-                className={`relative rounded-xl bg-gradient-to-br border border-accent/20 dark:border-accent/30 overflow-hidden ${isMobile ? 'p-6' : 'p-8'} opacity-80`}
+                className={`relative rounded-xl bg-gradient-to-br border border-primary/20 dark:border-primary/30 overflow-hidden ${isMobile ? 'p-6' : 'p-8'} opacity-80`}
                 style={{
                     backgroundImage: 'linear-gradient(to bottom right, #f4ccc2, #f4c7a8)',
                 }}
@@ -112,7 +147,7 @@ const AdminDashboard = () => {
                 <div className="absolute inset-0 flex items-center justify-center opacity-10 dark:opacity-5 pointer-events-none">
                     <svg
                         viewBox="0 0 200 200"
-                        className="w-96 h-96 text-claude-peach/60"
+                        className="w-96 h-96 text-primary/60"
                         fill="currentColor"
                     >
                         {/* Keyboard glyph - simplified Claude icon style */}
@@ -153,7 +188,7 @@ const AdminDashboard = () => {
                 {/* Content */}
                 <div className="relative z-10 text-center">
                     <h1
-                        className={`${isMobile ? 'text-4xl' : 'text-5xl'} mb-2 font-black text-claude-peach dark:text-claude-peach/80 drop-shadow-lg tracking-tight`}
+                        className={`${isMobile ? 'text-4xl' : 'text-5xl'} mb-2 font-black text-primary dark:text-primary/80 drop-shadow-lg tracking-tight`}
                         style={{
                             fontFamily: `'Roboto Mono', monospace`,
                             letterSpacing: '0.05em',
@@ -189,11 +224,11 @@ const AdminDashboard = () => {
                 </Card>
 
                 <Card className="relative overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/dashboard/prospects')}>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-claude-peach/10 rounded-full -mr-16 -mt-16" />
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -mr-16 -mt-16" />
                     <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
-                            <div className="p-2 bg-claude-peach/10 rounded-lg">
-                                <UserPlus className="h-5 w-5 text-claude-peach dark:text-claude-peach/80" />
+                            <div className="p-2 bg-primary/10 rounded-lg">
+                                <UserPlus className="h-5 w-5 text-primary dark:text-primary/80" />
                             </div>
                             <TrendingUp className="h-4 w-4 text-muted-foreground" />
                         </div>
@@ -275,7 +310,7 @@ const AdminDashboard = () => {
                             ) : (
                                 <div className="space-y-3">
                                     {upcomingEvents.map((event) => (
-                                        <div key={event.id} className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                                        <div key={event.id} className="p-3 rounded-lg border bg-card hover:bg-primary/50 transition-colors">
                                             <div className="flex items-start justify-between mb-2">
                                                 <p className="font-medium text-sm">{event.name}</p>
                                                 <Badge variant={event.rsvp_required ? 'default' : 'secondary'} className="shrink-0 ml-2">
@@ -317,7 +352,7 @@ const AdminDashboard = () => {
                                         <FolderKanban className="h-5 w-5 text-blue-600 dark:text-blue-500" />
                                     </div>
                                     <div>
-                                        <CardTitle className="text-xl">Active Projects</CardTitle>
+                                        <CardTitle className="text-xl">Recent Projects</CardTitle>
                                         <CardDescription>{projects.length} total projects</CardDescription>
                                     </div>
                                 </div>
@@ -335,25 +370,35 @@ const AdminDashboard = () => {
                             {loading ? (
                                 <p className="text-sm text-muted-foreground py-8 text-center">Loading...</p>
                             ) : projects.length === 0 ? (
-                                <p className="text-sm text-muted-foreground py-8 text-center">No active projects</p>
+                                <p className="text-sm text-muted-foreground py-8 text-center">No projects</p>
                             ) : (
                                 <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
-                                    {projects.map((project) => (
-                                        <div key={project.id} className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                                            <p className="font-medium text-sm mb-1">{project.name}</p>
-                                            {project.description && (
-                                                <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
-                                                    {project.description}
-                                                </p>
-                                            )}
-                                            {project.due_date && (
-                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                    <Calendar className="h-3 w-3" />
-                                                    Due: {format(new Date(project.due_date), 'MMM d, yyyy')}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ))}
+                                    {projects.map((project) => {
+                                        const status = getProjectStatus(project);
+                                        return (
+                                            <div key={project.id} className="relative p-3 rounded-lg border bg-card hover:bg-primary/50 transition-colors">
+                                                <Badge className={`absolute top-2 right-2 ${status.color} text-white text-xs`}>
+                                                    {status.label}
+                                                </Badge>
+                                                <p className="font-medium text-sm mb-1 pr-24">{project.name}</p>
+                                                {project.description && (
+                                                    <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
+                                                        {project.description}
+                                                    </p>
+                                                )}
+                                                <div className="space-y-1">
+                                                    {project.semesters && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {project.semesters.code} - {project.semesters.name}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {format(new Date(project.start_date), 'MMM d')} - {format(new Date(project.end_date), 'MMM d, yyyy')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </CardContent>
@@ -368,7 +413,7 @@ const AdminDashboard = () => {
                                         <BookOpen className="h-5 w-5 text-purple-600 dark:text-purple-500" />
                                     </div>
                                     <div>
-                                        <CardTitle className="text-xl">Current Classes</CardTitle>
+                                        <CardTitle className="text-xl">Recent Classes</CardTitle>
                                         <CardDescription>{classes.length} total classes</CardDescription>
                                     </div>
                                 </div>
@@ -389,19 +434,32 @@ const AdminDashboard = () => {
                                 <p className="text-sm text-muted-foreground py-8 text-center">No classes available</p>
                             ) : (
                                 <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
-                                    {classes.map((cls) => (
-                                        <div key={cls.id} className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                                            <p className="font-medium text-sm mb-1">{cls.name}</p>
-                                            {cls.description && (
-                                                <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
-                                                    {cls.description}
-                                                </p>
-                                            )}
-                                            {cls.schedule && (
-                                                <p className="text-xs text-muted-foreground">{cls.schedule}</p>
-                                            )}
-                                        </div>
-                                    ))}
+                                    {classes.map((cls) => {
+                                        const status = getClassStatus(cls);
+                                        return (
+                                            <div key={cls.id} className="relative p-3 rounded-lg border bg-card hover:bg-primary/50 transition-colors">
+                                                <Badge className={`absolute top-2 right-2 ${status.color} text-white text-xs`}>
+                                                    {status.label}
+                                                </Badge>
+                                                <p className="font-medium text-sm mb-1 pr-24">{cls.name}</p>
+                                                {cls.description && (
+                                                    <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
+                                                        {cls.description}
+                                                    </p>
+                                                )}
+                                                <div className="space-y-1">
+                                                    {cls.semesters && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {cls.semesters.code} - {cls.semesters.name}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {format(new Date(cls.start_date), 'MMM d')} - {format(new Date(cls.end_date), 'MMM d, yyyy')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </CardContent>

@@ -95,7 +95,7 @@ const ProfileViewer = ({ open, onClose, member }: ProfileViewerProps) => {
                     </Badge>
                   ) : member.role === 'board' ? (
                     <Badge
-                      className="capitalize bg-claude-peach text-cream font-semibold border-2 border-claude-peach/50"
+                      className="capitalize bg-primary text-cream font-semibold border-2 border-primary/50"
                     >
                       {member.role.replace('-', ' ')}
                     </Badge>

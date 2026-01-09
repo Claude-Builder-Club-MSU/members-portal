@@ -4,10 +4,9 @@ import MemberDashboard from './MemberDashboard';
 import { Navigate } from 'react-router-dom';
 
 const Dashboard = () => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
 
-  // Redirect prospects to profile page
-  if (role === 'prospect') {
+  if (user?.created_at && user.created_at === user.updated_at) {
     return <Navigate to="/dashboard/profile" replace />;
   }
 

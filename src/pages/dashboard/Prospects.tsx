@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Trophy, Mail, GraduationCap, UserCheck, Eye } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/database.types';
 import { useIsMobile } from '@/hooks/use-mobile';
-import ProfileViewer from '@/components/ProfileViewer';
+import ProfileViewer from '@/components/modals/ProfileModal';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type AppRole = Database['public']['Enums']['app_role'];
@@ -190,7 +190,7 @@ const Prospects = () => {
 
                 <div className="space-y-2 mt-4">
                   <Button
-                    variant="outline"
+                    variant='default'
                     size="sm"
                     className="w-full"
                     onClick={() => handleViewProfile(prospect)}

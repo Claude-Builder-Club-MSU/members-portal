@@ -11,8 +11,12 @@ import { useNavigate } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type Event = Database['public']['Tables']['events']['Row'];
-type Project = Database['public']['Tables']['projects']['Row'];
-type Class = Database['public']['Tables']['classes']['Row'];
+type Project = Database['public']['Tables']['projects']['Row'] & {
+    semesters: { code: string; name: string } | null;
+};
+type Class = Database['public']['Tables']['classes']['Row'] & {
+    semesters: { code: string; name: string } | null;
+};
 
 const MemberDashboard = () => {
   const { user, profile, role } = useAuth();
@@ -43,7 +47,7 @@ const MemberDashboard = () => {
 
     if (eventsData) setUpcomingEvents(eventsData);
 
-    // Fetch user's projects
+    // Fetch user's projects with semester info
     const { data: projectMemberships } = await supabase
       .from('project_members')
       .select('project_id')
@@ -53,14 +57,21 @@ const MemberDashboard = () => {
       const projectIds = projectMemberships.map(pm => pm.project_id);
       const { data: projectsData } = await supabase
         .from('projects')
-        .select('*')
+        .select(`
+          *,
+          semesters (
+            code,
+            name
+          )
+        `)
         .in('id', projectIds)
-        .order('created_at', { ascending: false });
+        .order('start_date', { ascending: false })
+        .limit(5);
 
-      if (projectsData) setUserProjects(projectsData);
+      if (projectsData) setUserProjects(projectsData as Project[]);
     }
 
-    // Fetch user's classes
+    // Fetch user's classes with semester info
     const { data: classEnrollments } = await supabase
       .from('class_enrollments')
       .select('class_id')
@@ -70,51 +81,51 @@ const MemberDashboard = () => {
       const classIds = classEnrollments.map(ce => ce.class_id);
       const { data: classesData } = await supabase
         .from('classes')
-        .select('*')
+        .select(`
+          *,
+          semesters (
+            code,
+            name
+          )
+        `)
         .in('id', classIds)
-        .order('name', { ascending: true });
+        .order('start_date', { ascending: false });
 
-      if (classesData) setUserClasses(classesData);
+      if (classesData) setUserClasses(classesData as Class[]);
     }
 
     setLoading(false);
   };
 
-  const getRoleBadgeColor = (roleValue: string) => {
-    switch (roleValue) {
-      case 'e-board':
-        return 'default';
-      case 'board':
-        return 'secondary';
-      case 'member':
-        return 'outline';
-      default:
-        return 'outline';
-    }
+  const getProjectStatus = (project: Project) => {
+    const now = new Date();
+    const startDate = new Date(project.start_date);
+    const endDate = new Date(project.end_date);
+
+    if (startDate > now) return { label: 'Open for Enrollment', color: 'bg-green-500' };
+    if (endDate < now) return { label: 'Completed', color: 'bg-gray-500' };
+    return { label: 'In Progress', color: 'bg-blue-500' };
   };
 
-  const getRoleGradient = (roleValue: string) => {
-    switch (roleValue) {
-      case 'e-board':
-        return 'from-yellow-500/10 to-claude-peach/10';
-      case 'board':
-        return 'from-blue-500/10 to-purple-500/10';
-      case 'member':
-        return 'from-green-500/10 to-emerald-500/10';
-      default:
-        return 'from-gray-500/10 to-slate-500/10';
-    }
+  const getClassStatus = (cls: Class) => {
+    const now = new Date();
+    const startDate = new Date(cls.start_date);
+    const endDate = new Date(cls.end_date);
+
+    if (startDate > now) return { label: 'Open for Enrollment', color: 'bg-green-500' };
+    if (endDate < now) return { label: 'Completed', color: 'bg-gray-500' };
+    return { label: 'In Progress', color: 'bg-blue-500' };
   };
 
   return (
     <div className={`min-h-[calc(100vh-56px)] flex flex-col justify-center ${isMobile ? 'p-4 space-y-6' : 'p-6 space-y-8'}`}>
       {/* Welcome Header with Claude Keyboard Glyph */}
-      <div className={`relative rounded-xl bg-gradient-to-br from-cream to-cream/90 dark:from-accent/20 dark:to-accent/10 border border-accent/20 dark:border-accent/30 overflow-hidden ${isMobile ? 'p-6' : 'p-8'}`}>
+      <div className={`relative rounded-xl bg-gradient-to-br from-cream to-cream/90 dark:from-primary/20 dark:to-primary/10 border border-primary/20 dark:border-primary/30 overflow-hidden ${isMobile ? 'p-6' : 'p-8'}`}>
         {/* Keyboard Glyph Background */}
         <div className="absolute inset-0 flex items-center justify-center opacity-10 dark:opacity-5 pointer-events-none">
           <svg
             viewBox="0 0 200 200"
-            className="w-96 h-96 text-claude-peach/60"
+            className="w-96 h-96 text-primary/60"
             fill="currentColor"
           >
             {/* Keyboard glyph - simplified Claude icon style */}
@@ -155,7 +166,7 @@ const MemberDashboard = () => {
         {/* Content */}
         <div className="relative z-10 text-center">
           <h1
-            className={`${isMobile ? 'text-4xl' : 'text-5xl'} mb-2 font-black text-claude-peach dark:text-claude-peach/80 drop-shadow-lg tracking-tight`}
+            className={`${isMobile ? 'text-4xl' : 'text-5xl'} mb-2 font-black text-primary dark:text-primary/80 drop-shadow-lg tracking-tight`}
             style={{
               fontFamily: `'Roboto Mono', monospace`,
               letterSpacing: '0.05em',
@@ -274,7 +285,7 @@ const MemberDashboard = () => {
             ) : (
               <div className="space-y-4">
                 {upcomingEvents.map((event) => (
-                  <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                  <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-primary/50 transition-colors">
                     <div className="p-2 bg-primary/10 rounded-md shrink-0">
                       <Calendar className="h-4 w-4 text-primary" />
                     </div>
@@ -327,26 +338,37 @@ const MemberDashboard = () => {
               <p className="text-sm text-muted-foreground py-8 text-center">No active projects</p>
             ) : (
               <div className="space-y-4">
-                {userProjects.slice(0, 5).map((project) => (
-                  <div key={project.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                    <div className="p-2 bg-blue-500/10 rounded-md shrink-0">
-                      <FolderKanban className="h-4 w-4 text-blue-600 dark:text-blue-500" />
+                {userProjects.slice(0, 5).map((project) => {
+                  const status = getProjectStatus(project);
+                  return (
+                    <div key={project.id} className="relative flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-primary/50 transition-colors">
+                      <Badge className={`absolute top-2 right-2 ${status.color} text-white text-xs`}>
+                        {status.label}
+                      </Badge>
+                      <div className="p-2 bg-blue-500/10 rounded-md shrink-0">
+                        <FolderKanban className="h-4 w-4 text-blue-600 dark:text-blue-500" />
+                      </div>
+                      <div className="flex-1 min-w-0 pr-24">
+                        <p className="font-medium text-sm mb-1">{project.name}</p>
+                        {project.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
+                            {project.description}
+                          </p>
+                        )}
+                        <div className="space-y-1">
+                          {project.semesters && (
+                            <p className="text-xs text-muted-foreground">
+                              {project.semesters.code} - {project.semesters.name}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(project.start_date), 'MMM d')} - {format(new Date(project.end_date), 'MMM d, yyyy')}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm mb-1">{project.name}</p>
-                      {project.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {project.description}
-                        </p>
-                      )}
-                      {project.due_date && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Due: {format(new Date(project.due_date), 'MMM d, yyyy')}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -383,19 +405,37 @@ const MemberDashboard = () => {
             <p className="text-sm text-muted-foreground py-8 text-center">Not enrolled in any classes</p>
           ) : (
             <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
-              {userClasses.map((cls) => (
-                <div key={cls.id} className="flex items-start gap-3 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                  <div className="p-2 bg-purple-500/10 rounded-md shrink-0">
-                    <BookOpen className="h-4 w-4 text-purple-600 dark:text-purple-500" />
+              {userClasses.map((cls) => {
+                const status = getClassStatus(cls);
+                return (
+                  <div key={cls.id} className="relative flex items-start gap-3 p-4 rounded-lg border bg-card hover:bg-primary/50 transition-colors">
+                    <Badge className={`absolute top-2 right-2 ${status.color} text-white text-xs`}>
+                      {status.label}
+                    </Badge>
+                    <div className="p-2 bg-purple-500/10 rounded-md shrink-0">
+                      <BookOpen className="h-4 w-4 text-purple-600 dark:text-purple-500" />
+                    </div>
+                    <div className="flex-1 min-w-0 pr-20">
+                      <p className="font-medium text-sm mb-1">{cls.name}</p>
+                      {cls.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
+                          {cls.description}
+                        </p>
+                      )}
+                      <div className="space-y-1">
+                        {cls.semesters && (
+                          <p className="text-xs text-muted-foreground">
+                            {cls.semesters.code} - {cls.semesters.name}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(cls.start_date), 'MMM d')} - {format(new Date(cls.end_date), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm mb-1">{cls.name}</p>
-                    {cls.schedule && (
-                      <p className="text-xs text-muted-foreground">{cls.schedule}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

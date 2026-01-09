@@ -49,8 +49,12 @@ import type { Database } from '@/integrations/supabase/database.types';
 
 type ApplicationType = Database['public']['Enums']['application_type'];
 type Application = Database['public']['Tables']['applications']['Row'];
-type Class = Database['public']['Tables']['classes']['Row'];
-type Project = Database['public']['Tables']['projects']['Row'];
+type Class = Database['public']['Tables']['classes']['Row'] & {
+  semesters: { code: string; name: string } | null;
+};
+type Project = Database['public']['Tables']['projects']['Row'] & {
+  semesters: { code: string; name: string } | null;
+};
 
 interface ApplicationModalProps {
   open: boolean;
@@ -165,18 +169,36 @@ export const ApplicationModal = ({
   }, [open, isViewMode]);
 
   const fetchAvailableOptions = async () => {
+    const now = new Date().toISOString();
+
+    // Fetch only classes that haven't started yet
     const { data: classesData } = await supabase
       .from('classes')
-      .select('*')
+      .select(`
+        *,
+        semesters (
+          code,
+          name
+        )
+      `)
+      .gt('start_date', now)
       .order('name', { ascending: true });
 
     if (classesData) {
       setAvailableClasses(classesData);
     }
 
+    // Fetch only projects that haven't started yet
     const { data: projectsData } = await supabase
       .from('projects')
-      .select('*')
+      .select(`
+        *,
+        semesters (
+          code,
+          name
+        )
+      `)
+      .gt('start_date', now)
       .order('name', { ascending: true });
 
     if (projectsData) {
@@ -431,8 +453,6 @@ export const ApplicationModal = ({
     if (!existingApplication) return '';
 
     switch (existingApplication.application_type) {
-      case 'club_admission':
-        return 'This will automatically change their role from Prospect to Member.';
       case 'board':
         return `This will automatically assign them the ${existingApplication.board_position || 'board'} position and change their role to Board.`;
       case 'class':
@@ -466,28 +486,6 @@ export const ApplicationModal = ({
     if (!existingApplication) return null;
 
     switch (existingApplication.application_type) {
-      case 'club_admission':
-        return (
-          <>
-            {existingApplication.why_join && (
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm">Why do you want to join?</h3>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {existingApplication.why_join}
-                </p>
-              </div>
-            )}
-            {existingApplication.relevant_experience && (
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm">Relevant Experience</h3>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {existingApplication.relevant_experience}
-                </p>
-              </div>
-            )}
-          </>
-        );
-
       case 'board':
         return (
           <>
@@ -633,9 +631,10 @@ export const ApplicationModal = ({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="resume">Resume (PDF)</Label>
+          <Label htmlFor="resume">Resume *</Label>
           <Input
             id="resume"
+            required
             type="file"
             accept=".pdf,.doc,.docx"
             onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
@@ -664,34 +663,6 @@ export const ApplicationModal = ({
     );
 
     switch (applicationType) {
-      case 'club_admission':
-        return (
-          <>
-            {commonFields}
-            <div className="space-y-2">
-              <Label htmlFor="whyJoin">Why do you want to join? *</Label>
-              <Textarea
-                id="whyJoin"
-                value={whyJoin}
-                onChange={(e) => setWhyJoin(e.target.value)}
-                required
-                rows={4}
-                placeholder="Tell us about your interest in Claude Builder Club..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="relevantExperience">Relevant Experience</Label>
-              <Textarea
-                id="relevantExperience"
-                value={relevantExperience}
-                onChange={(e) => setRelevantExperience(e.target.value)}
-                rows={3}
-                placeholder="Any technical or club experience..."
-              />
-            </div>
-          </>
-        );
-
       case 'board':
         return (
           <>
@@ -770,7 +741,7 @@ export const ApplicationModal = ({
                 <SelectContent>
                   {availableProjects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
-                      {project.name}
+                      {project.name} {project.semesters && `(${project.semesters.code})`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -847,7 +818,7 @@ export const ApplicationModal = ({
                 <SelectContent>
                   {availableClasses.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id}>
-                      {cls.name}
+                      {cls.name} {cls.semesters && `(${cls.semesters.code})`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1133,16 +1104,11 @@ export const ApplicationModal = ({
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                {role === 'prospect' && (
-                  <SelectItem value="club_admission">Club Admission</SelectItem>
-                )}
                 {role !== 'prospect' && (
-                  <>
-                    <SelectItem value="board">Board Position</SelectItem>
-                    <SelectItem value="project">Project</SelectItem>
-                    <SelectItem value="class">Class</SelectItem>
-                  </>
+                  <SelectItem value="board">Board Position</SelectItem>
                 )}
+                <SelectItem value="project">Project</SelectItem>
+                <SelectItem value="class">Class</SelectItem>
               </SelectContent>
             </Select>
           </div>

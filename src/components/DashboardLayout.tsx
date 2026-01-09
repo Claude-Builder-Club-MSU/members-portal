@@ -56,17 +56,17 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const members = { title: 'Members', url: '/dashboard/members', icon: Users };
     const prospects = { title: 'Prospects', url: '/dashboard/prospects', icon: UserPlus };
 
-    if (role === 'prospect') {
-      // Prospects get only Events and Applications
-      return [events, applications];
-    }
+    // if (role === 'prospect') {
+    //   // Prospects get only Events and Applications
+    //   return [events, applications];
+    // }
 
     // Members get: Dashboard, Events, Classes, Projects, Applications
-    const memberItems = [dashboard, events, classes, projects, applications];
+    const memberItems = [dashboard, events, classes, projects, applications, members];
 
     // E-board and Board additionally see Members and Prospects (after Applications)
     if (role === 'e-board' || role === 'board') {
-      memberItems.push(members, prospects);
+      memberItems.push(prospects);
     }
 
     return memberItems;
@@ -169,7 +169,7 @@ const SidebarContentComponent = ({
         <div className="p-3 border-b border-sidebar-border flex flex-col gap-3 justify-center min-h-[95px]">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-3 w-full text-left hover:bg-sidebar-accent/50 rounded-md p-0 pl-7 -m-5 transition-colors cursor-pointer"
+            className="flex items-center gap-3 w-full text-left hover:bg-sidebar-primary/50 rounded-md p-0 pl-7 -m-5 transition-colors cursor-pointer"
           >
             <div className="relative w-12 h-12 flex-shrink-0">
               <img
@@ -198,7 +198,7 @@ const SidebarContentComponent = ({
                       to={item.url}
                       end={item.url === '/dashboard'}
                       className="flex items-center gap-4 px-4 py-6 rounded-lg transition-colors text-base"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                       onClick={handleNavClick}
                     >
                       <item.icon className="h-4 w-6" />
@@ -215,7 +215,7 @@ const SidebarContentComponent = ({
         <div className="p-3 border-t border-sidebar-border min-h-[95px]">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-sidebar-accent transition-colors">
+              <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-sidebar-primary transition-colors">
                 <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
                   <AvatarImage src={profile?.profile_picture_url || undefined} />
                   <AvatarFallback className="text-sm">
@@ -241,7 +241,7 @@ const SidebarContentComponent = ({
                         </Badge>
                       ) : role === 'board' ? (
                         <Badge
-                          className="text-xs capitalize px-2 py-0 shrink-0 whitespace-nowrap bg-claude-peach text-cream font-semibold border-2 border-claude-peach/50"
+                          className="text-xs capitalize px-2 py-0 shrink-0 whitespace-nowrap bg-primary text-cream font-semibold border-2 border-primary/50"
                         >
                           {role.replace('-', ' ')}
                         </Badge>

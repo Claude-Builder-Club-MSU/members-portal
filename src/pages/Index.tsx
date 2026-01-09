@@ -47,9 +47,9 @@ const Index = () => {
       {/* BLOB CANVAS - Desktop only */}
       {!isMobile && (
         <div className="fixed top-0 left-0 right-0 h-screen pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-cream via-white to-blue-50 dark:from-accent/20 dark:via-background dark:to-blue-950/20"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-cream via-white to-blue-50 dark:from-primary/20 dark:via-background dark:to-blue-950/20"></div>
           <div className="absolute inset-0 opacity-30">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-claude-peach/30 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
+            <div className="absolute top-20 left-20 w-72 h-72 bg-primary/30 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
             <div className="absolute top-40 right-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
             <div className="absolute bottom-20 left-40 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
           </div>
@@ -59,7 +59,7 @@ const Index = () => {
       {/* Mobile background - simple gradient */}
       {isMobile && (
         <div className="fixed top-0 left-0 right-0 h-screen pointer-events-none" style={{ zIndex: 0 }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-cream via-white to-blue-50 dark:from-accent/20 dark:via-background dark:to-blue-950/20"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-cream via-white to-blue-50 dark:from-primary/20 dark:via-background dark:to-blue-950/20"></div>
         </div>
       )}
 
@@ -86,7 +86,7 @@ const Index = () => {
                 variants={fadeInUp}
                 className={isMobile ? "" : "space-y-4"}
               >
-                <h1 className={`${isMobile ? 'text-4xl' : 'text-6xl md:text-8xl'} font-black bg-gradient-to-r from-claude-peach via-claude-peach/90 to-claude-peach bg-clip-text text-transparent leading-tight`}>
+                <h1 className={`${isMobile ? 'text-4xl' : 'text-6xl md:text-8xl'} font-black bg-gradient-to-r from-primary via-primary/90 to-primary bg-clip-text text-transparent leading-tight`}>
                   Claude Builder Club
                 </h1>
                 <div className="flex items-center justify-center gap-3">
@@ -149,10 +149,10 @@ const Index = () => {
 
               <div className="grid md:grid-cols-2 gap-8">
                 <motion.div variants={fadeInUp}>
-                  <Card className="relative h-full border-2 border-border hover:border-claude-peach transition-all duration-300 hover:shadow-2xl group overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-claude-peach/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                  <Card className="relative h-full border-2 border-border hover:border-primary transition-all duration-300 hover:shadow-2xl group overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     <CardContent className={`relative space-y-6 ${isMobile ? 'p-6' : 'p-8'}`}>
-                      <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-claude-peach to-claude-peach/80 rounded-2xl flex items-center justify-center shadow-lg`}>
+                      <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg`}>
                         <Code className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
                       </div>
                       <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Innovative Projects</h3>
@@ -235,15 +235,15 @@ const Index = () => {
               className="max-w-5xl mx-auto"
             >
               <div className={`text-center ${isMobile ? 'mb-12' : 'mb-16'}`}>
-                <div className={`inline-flex items-center justify-center bg-gradient-to-br from-claude-peach to-claude-peach/80 rounded-full mb-8 shadow-2xl ${isMobile ? 'w-16 h-16' : 'w-20 h-20'}`}>
+                <div className={`inline-flex items-center justify-center bg-gradient-to-br from-primary to-primary/80 rounded-full mb-8 shadow-2xl ${isMobile ? 'w-16 h-16' : 'w-20 h-20'}`}>
                   <Rocket className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
                 </div>
                 <h2 className={`${isMobile ? 'text-4xl' : 'text-5xl md:text-6xl'} font-black mb-8`}>Our Vision</h2>
                 <div className="space-y-8 text-left">
                   <div className={`bg-card border-2 rounded-2xl shadow-lg ${isMobile ? 'p-6' : 'p-8'}`}>
                     <div className={`flex items-start gap-6 ${isMobile ? 'gap-4' : 'gap-6'}`}>
-                      <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-claude-peach/10 rounded-xl flex items-center justify-center flex-shrink-0`}>
-                        <Rocket className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-claude-peach`} />
+                      <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0`}>
+                        <Rocket className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-primary`} />
                       </div>
                       <div>
                         <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-3`}>Send Students to the World</h3>
@@ -272,7 +272,7 @@ const Index = () => {
                     </div>
                   </div>
 
-                  <div className={`bg-gradient-to-r from-claude-peach to-claude-peach/80 rounded-2xl shadow-2xl text-white ${isMobile ? 'p-6' : 'p-8'}`}>
+                  <div className={`bg-gradient-to-r from-primary to-primary/80 rounded-2xl shadow-2xl text-white ${isMobile ? 'p-6' : 'p-8'}`}>
                     <div className={`flex items-start gap-6 ${isMobile ? 'gap-4' : 'gap-6'}`}>
                       <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0`}>
                         <Sparkles className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
@@ -293,7 +293,7 @@ const Index = () => {
         </section>
 
         {/* Final CTA Section */}
-        <section className={`relative ${isMobile ? 'py-20' : 'py-32'} bg-gradient-to-br from-claude-peach via-claude-peach/80 to-claude-peach text-white overflow-hidden`}>
+        <section className={`relative ${isMobile ? 'py-20' : 'py-32'} bg-gradient-to-br from-primary via-primary/80 to-primary text-white overflow-hidden`}>
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-0 left-0 w-full h-full" style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
@@ -319,7 +319,7 @@ const Index = () => {
                 <Button
                   size="lg"
                   onClick={() => window.open('https://www.instagram.com/claudemsu', '_blank')}
-                  className={`bg-white text-claude-peach hover:bg-cream font-bold shadow-2xl hover:scale-105 transition-transform ${isMobile ? 'text-base px-8 py-6 w-full max-w-xs' : 'text-lg px-10 py-7'}`}
+                  className={`bg-white text-primary hover:bg-cream font-bold shadow-2xl hover:scale-105 transition-transform ${isMobile ? 'text-base px-8 py-6 w-full max-w-xs' : 'text-lg px-10 py-7'}`}
                 >
                   <Instagram className={`${isMobile ? 'h-5 w-5 mr-2' : 'h-6 w-6 mr-3'}`} />
                   Instagram
@@ -328,7 +328,7 @@ const Index = () => {
                 <Button
                   size="lg"
                   onClick={() => navigate('/auth')}
-                  className={`bg-white text-claude-peach hover:bg-cream font-bold shadow-2xl hover:scale-110 transition-transform border-4 border-white/50 ${isMobile ? 'text-lg px-12 py-7 w-full max-w-xs' : 'text-xl px-16 py-8'}`}
+                  className={`bg-white text-primary hover:bg-cream font-bold shadow-2xl hover:scale-110 transition-transform border-4 border-white/50 ${isMobile ? 'text-lg px-12 py-7 w-full max-w-xs' : 'text-xl px-16 py-8'}`}
                 >
                   Apply Now
                 </Button>
@@ -336,7 +336,7 @@ const Index = () => {
                 <Button
                   size="lg"
                   onClick={() => window.open('https://www.linkedin.com/company/claude-builder-club-michigan-state/', '_blank')}
-                  className={`bg-white text-claude-peach hover:bg-cream font-bold shadow-2xl hover:scale-105 transition-transform ${isMobile ? 'text-base px-8 py-6 w-full max-w-xs' : 'text-lg px-10 py-7'}`}
+                  className={`bg-white text-primary hover:bg-cream font-bold shadow-2xl hover:scale-105 transition-transform ${isMobile ? 'text-base px-8 py-6 w-full max-w-xs' : 'text-lg px-10 py-7'}`}
                 >
                   <Linkedin className={`${isMobile ? 'h-5 w-5 mr-2' : 'h-6 w-6 mr-3'}`} />
                   LinkedIn

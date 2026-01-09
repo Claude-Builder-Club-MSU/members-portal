@@ -9,16 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
@@ -31,12 +25,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarIcon, Trash2, AlertTriangle } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Trash2, AlertTriangle } from 'lucide-react';
+import SemesterSelector from '@/components/SemesterSelector';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type Project = Database['public']['Tables']['projects']['Row'];
+type Semester = Database['public']['Tables']['semesters']['Row'];
 
 interface ProjectModalProps {
   open: boolean;
@@ -54,7 +48,7 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
   const [description, setDescription] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
   const [clientName, setClientName] = useState('');
-  const [dueDate, setDueDate] = useState<Date>();
+  const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
   const [projectLeadId, setProjectLeadId] = useState<string>('');
   const [members, setMembers] = useState<Array<{id: string, full_name: string, email: string}>>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -74,11 +68,9 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
       setGithubUrl(existingProject.github_url);
       setClientName(existingProject.client_name || '');
 
-      // Convert timestamp to Date object for calendar
-      if (existingProject.due_date) {
-        setDueDate(new Date(existingProject.due_date));
-      } else {
-        setDueDate(undefined);
+      // Load semester if exists
+      if (existingProject.semester_id) {
+        loadSemester(existingProject.semester_id);
       }
 
       // Load current project lead
@@ -89,10 +81,25 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
       setDescription('');
       setGithubUrl('');
       setClientName('');
-      setDueDate(undefined);
+      setSelectedSemester(null);
       setProjectLeadId('none');
     }
   }, [open, existingProject]);
+
+  const loadSemester = async (semesterId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('semesters')
+        .select('*')
+        .eq('id', semesterId)
+        .single();
+
+      if (error) throw error;
+      setSelectedSemester(data);
+    } catch (error) {
+      console.error('Error loading semester:', error);
+    }
+  };
 
   const fetchMembers = async () => {
     try {
@@ -149,17 +156,18 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
     e.preventDefault();
     if (!user) return;
 
+    if (!selectedSemester) {
+      toast({
+        title: 'Error',
+        description: 'Please select a term for the project',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Convert date to ISO string at noon UTC to avoid timezone issues
-      let dueDateTimestamp = null;
-      if (dueDate) {
-        const date = new Date(dueDate);
-        date.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
-        dueDateTimestamp = date.toISOString();
-      }
-
       if (existingProject) {
         // Update existing project
         const { error } = await supabase
@@ -169,7 +177,9 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
             description: description || null,
             github_url: githubUrl,
             client_name: clientName || null,
-            due_date: dueDateTimestamp,
+            semester_id: selectedSemester.id,
+            start_date: selectedSemester.start_date,
+            end_date: selectedSemester.end_date,
           })
           .eq('id', existingProject.id);
 
@@ -214,7 +224,9 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
           description: description || null,
           github_url: githubUrl,
           client_name: clientName || null,
-          due_date: dueDateTimestamp,
+          semester_id: selectedSemester.id,
+          start_date: selectedSemester.start_date,
+          end_date: selectedSemester.end_date,
           created_by: user.id,
         };
 
@@ -345,31 +357,11 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Due Date (Optional)</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    'w-full justify-start text-left font-normal',
-                    !dueDate && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dueDate ? format(dueDate, 'PPP') : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dueDate}
-                  onSelect={setDueDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+          <SemesterSelector
+            value={selectedSemester?.id || ''}
+            onSelect={setSelectedSemester}
+            required
+          />
 
           <div className="space-y-2">
             <Label>Project Lead (Optional)</Label>

@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Plus, Calendar, MapPin, Users, Trophy, CheckCircle, Eye, Edit, QrCode } from 'lucide-react';
 import { format } from 'date-fns';
-import { EventModal } from '@/components/EventModal';
+import { EventModal } from '@/components/modals/EventModal';
 import QRCodeLib from 'qrcode';
 import type { Database } from '@/integrations/supabase/database.types';
 
@@ -147,7 +147,6 @@ const Events = () => {
         .from('event_qr_codes')
         .select('qr_code_url, token')
         .eq('event_id', event.id)
-        .eq('active', true)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -347,7 +346,7 @@ const Events = () => {
                           </span>
                         </div>
                       </PopoverTrigger>
-                      <PopoverContent className="w-48 p-2" align="start">
+                      <PopoverContent className="w-48 p-2" align="end">
                         <div className="space-y-1">
                           <Button
                             variant="ghost"
