@@ -17,7 +17,8 @@ import {
   Users,
   Award,
   MapPin,
-  TrendingUp
+  TrendingUp,
+  BookMarkedIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Database } from '@/integrations/supabase/database.types';
@@ -25,7 +26,6 @@ import type { Database } from '@/integrations/supabase/database.types';
 // --- Types ---
 type Event = Database['public']['Tables']['events']['Row'];
 
-// Extended types to include Counts and Semester info
 type Project = Database['public']['Tables']['projects']['Row'] & {
   semesters: { code: string; name: string } | null;
   project_members: { count: number }[];
@@ -84,7 +84,6 @@ export default function Dashboard() {
     stats: { type: 'personal' },
   });
 
-  // --- Logic Switches ---
   const showAdminStats = role === 'e-board';
   const showAdminContent = role === 'board' || role === 'e-board';
 
@@ -116,16 +115,8 @@ export default function Dashboard() {
     const [eventsRes, rolesRes, projectsRes, classesRes] = await Promise.all([
       supabase.from('events').select('*').gte('event_date', new Date().toISOString()).order('event_date', { ascending: true }).limit(10),
       supabase.from('user_roles').select('role'),
-      // Fetch projects with semester info AND member count
-      supabase.from('projects')
-        .select(`*, semesters (code, name), project_members(count)`)
-        .order('start_date', { ascending: false })
-        .limit(6),
-      // Fetch classes with semester info AND enrollment count
-      supabase.from('classes')
-        .select(`*, semesters (code, name), class_enrollments(count)`)
-        .order('start_date', { ascending: false })
-        .limit(6)
+      supabase.from('projects').select(`*, semesters (code, name), project_members(count)`).order('start_date', { ascending: false }).limit(6),
+      supabase.from('classes').select(`*, semesters (code, name), class_enrollments(count)`).order('start_date', { ascending: false }).limit(6)
     ]);
 
     setData({
@@ -212,36 +203,36 @@ export default function Dashboard() {
       style={{ backgroundImage: 'linear-gradient(to bottom right, #f4ccc2, #f4c7a8)' }}>
       <div className="absolute inset-0 flex items-center justify-center opacity-10 dark:opacity-5 pointer-events-none">
         <svg viewBox="0 0 200 200" className="w-96 h-96 text-primary/60" fill="currentColor">
-            <rect x="20" y="60" width="160" height="80" rx="8" fill="none" stroke="currentColor" strokeWidth="4" />
-            <rect x="30" y="70" width="12" height="12" rx="2" />
-            <rect x="46" y="70" width="12" height="12" rx="2" />
-            <rect x="62" y="70" width="12" height="12" rx="2" />
-            <rect x="78" y="70" width="12" height="12" rx="2" />
-            <rect x="94" y="70" width="12" height="12" rx="2" />
-            <rect x="110" y="70" width="12" height="12" rx="2" />
-            <rect x="126" y="70" width="12" height="12" rx="2" />
-            <rect x="142" y="70" width="12" height="12" rx="2" />
-            <rect x="158" y="70" width="12" height="12" rx="2" />
-            <rect x="30" y="88" width="12" height="12" rx="2" />
-            <rect x="46" y="88" width="12" height="12" rx="2" />
-            <rect x="62" y="88" width="12" height="12" rx="2" />
-            <rect x="78" y="88" width="12" height="12" rx="2" />
-            <rect x="94" y="88" width="12" height="12" rx="2" />
-            <rect x="110" y="88" width="12" height="12" rx="2" />
-            <rect x="126" y="88" width="12" height="12" rx="2" />
-            <rect x="142" y="88" width="12" height="12" rx="2" />
-            <rect x="158" y="88" width="12" height="12" rx="2" />
-            <rect x="30" y="106" width="12" height="12" rx="2" />
-            <rect x="46" y="106" width="12" height="12" rx="2" />
-            <rect x="62" y="106" width="12" height="12" rx="2" />
-            <rect x="78" y="106" width="60" height="12" rx="2" />
-            <rect x="142" y="106" width="12" height="12" rx="2" />
-            <rect x="158" y="106" width="12" height="12" rx="2" />
+          <rect x="20" y="60" width="160" height="80" rx="8" fill="none" stroke="currentColor" strokeWidth="4" />
+          <rect x="30" y="70" width="12" height="12" rx="2" />
+          <rect x="46" y="70" width="12" height="12" rx="2" />
+          <rect x="62" y="70" width="12" height="12" rx="2" />
+          <rect x="78" y="70" width="12" height="12" rx="2" />
+          <rect x="94" y="70" width="12" height="12" rx="2" />
+          <rect x="110" y="70" width="12" height="12" rx="2" />
+          <rect x="126" y="70" width="12" height="12" rx="2" />
+          <rect x="142" y="70" width="12" height="12" rx="2" />
+          <rect x="158" y="70" width="12" height="12" rx="2" />
+          <rect x="30" y="88" width="12" height="12" rx="2" />
+          <rect x="46" y="88" width="12" height="12" rx="2" />
+          <rect x="62" y="88" width="12" height="12" rx="2" />
+          <rect x="78" y="88" width="12" height="12" rx="2" />
+          <rect x="94" y="88" width="12" height="12" rx="2" />
+          <rect x="110" y="88" width="12" height="12" rx="2" />
+          <rect x="126" y="88" width="12" height="12" rx="2" />
+          <rect x="142" y="88" width="12" height="12" rx="2" />
+          <rect x="158" y="88" width="12" height="12" rx="2" />
+          <rect x="30" y="106" width="12" height="12" rx="2" />
+          <rect x="46" y="106" width="12" height="12" rx="2" />
+          <rect x="62" y="106" width="12" height="12" rx="2" />
+          <rect x="78" y="106" width="60" height="12" rx="2" />
+          <rect x="142" y="106" width="12" height="12" rx="2" />
+          <rect x="158" y="106" width="12" height="12" rx="2" />
         </svg>
       </div>
       <div className="relative z-10 text-center">
         <h1 className={`${isMobile ? 'text-3xl' : 'text-4xl'} font-black text-primary dark:text-primary/80 drop-shadow-lg tracking-tight`}
-            style={{ fontFamily: `'Roboto Mono', monospace`, letterSpacing: '0.05em', fontWeight: 800 }}>
+          style={{ fontFamily: `'Roboto Mono', monospace`, letterSpacing: '0.05em', fontWeight: 800 }}>
           <span className="inline-block">Welcome back,&nbsp;<span className="font-extrabold">{profile?.full_name?.split(' ')[0] || 'User'}</span></span>
         </h1>
       </div>
@@ -342,7 +333,7 @@ export default function Dashboard() {
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto max-h-[600px] p-2">
+      <CardContent className={`flex-1 flex flex-col overflow-y-auto max-h-[600px] ${isMobile ? 'p-4 justify-center' : 'p-2'}`}>
         {loading ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading...</div>
         ) : data.events.length === 0 ? (
@@ -351,18 +342,18 @@ export default function Dashboard() {
           <div className="space-y-3">
             {data.events.map((event) => (
               <Card key={event.id} className="w-full border bg-card hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => navigate('/dashboard/events')}>
-                <CardHeader className="p-3 pb-1">
+                <CardHeader className="p-3 pb-0">
                   <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-base font-semibold truncate">{event.name}</CardTitle>
+                    <CardTitle className="text-lg font-semibold truncate">{event.name}</CardTitle>
                     {event.points > 0 && <Badge variant="secondary" className="scale-90 origin-right">+{event.points}</Badge>}
                   </div>
                 </CardHeader>
-                <CardContent className="p-3 pt-0 space-y-1">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                <CardContent className="p-3 pt-0.5 space-y-1">
+                  <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
                     <Calendar className="h-3 w-3" />
                     <span>{format(new Date(event.event_date), 'MMM d, yyyy • h:mm a')}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
                     <MapPin className="h-3 w-3" />
                     <span className="truncate">{event.location}</span>
                   </div>
@@ -397,52 +388,71 @@ export default function Dashboard() {
               </div>
             </div>
             <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(link)}
-                className={hoverBtnClass}
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(link)}
+              className={hoverBtnClass}
             >
-                View All <ArrowRight className="h-4 w-4 ml-1" />
+              View All <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto p-4">
+        <CardContent className="flex-1 overflow-y-auto p-4 flex flex-col justify-center">
           {loading ? (
-             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading...</div>
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading...</div>
           ) : items.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-               <Icon className={`h-8 w-8 ${colorClass} opacity-30 mb-2`} />
-               <p className="text-sm">No active {type.toLowerCase()}</p>
+              <Icon className={`h-8 w-8 ${colorClass} opacity-30 mb-2`} />
+              <p className="text-sm">No active {type.toLowerCase()}</p>
             </div>
           ) : (
-            <div className={`grid gap-3 ${showAdminContent && !isMobile ? 'grid-cols-1 md:grid-cols-2' : type === 'Classes' && !isMobile && !showAdminContent ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+            <div className={`grid gap-3 ${showAdminContent && !isMobile ? 'grid-cols-1 md:grid-cols-1 lg:grid-cols-1 xl-grid-cols-2' : type === 'Classes' && !isMobile && !showAdminContent ? 'grid-cols-1 md:grid-cols-1 lg:grid-cols-1 xl: grid-cols-2' : 'grid-cols-1'}`}>
               {items.map((item: any) => {
                 const status = isProject ? getProjectStatus(item) : getClassStatus(item);
                 const count = isProject
-                    ? (item.project_members?.[0]?.count || 0)
-                    : (item.class_enrollments?.[0]?.count || 0);
+                  ? (item.project_members?.[0]?.count || 0)
+                  : (item.class_enrollments?.[0]?.count || 0);
 
                 return (
                   <Card key={item.id} className="w-full border bg-card hover:bg-primary/5 transition-colors cursor-pointer" onClick={(e) => {
                     if ((e.target as HTMLElement).closest('button')) return;
                     navigate(link);
                   }}>
-                    <CardHeader className="p-3 pb-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-base font-semibold truncate mt-1">{item.name}</CardTitle>
-                        <div className="flex flex-col items-end gap-1">
-                            <Badge variant="outline" className={`${status.color.replace('bg-', 'text-')} border-current scale-90 origin-right`}>{status.label}</Badge>
-                            {item.semesters && (
-                                <span className="text-[10px] text-muted-foreground">{item.semesters.code}</span>
-                            )}
+                    <CardHeader className="p-5 pb-1">
+                      <div className="flex items-center justify-start justify-between gap-2">
+                        <div className="flex flex-col items-left gap-2 w-[60%]">
+                          <CardTitle className="text-lg font-semibold">{item.name}</CardTitle>
+                          {item.description && <p className="text-xs text-muted-foreground line-clamp-1 max-w-[50%] overflow-hidden">{item.description}</p>}
+                        </div>
+                        <div className="flex flex-col items-center gap-2">
+                          <Badge variant="outline" className={`${status.color.replace('bg-', 'text-')} border-current scale-90 origin-right`}>{status.label}</Badge>
+                          {item.semesters && (
+                            <span className="text-[14px] text-muted-foreground flex items-center gap-1 justify-end">
+                              <BookMarkedIcon className="inline h-3 w-3 mr-0.5" />
+                              {item.semesters.code}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-3 pt-0 space-y-1">
-                      {item.description && <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{item.description}</p>}
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                        <Users className="h-3 w-3" />
-                        <span>{count} {isProject ? 'members' : 'students'}</span>
+                    <CardContent className="p-5 pt-0 space-y-1">
+                      <div className="flex items-center justify-between text-[14px] text-muted-foreground mt-1">
+                        {type === 'Projects' && item.client_name && (
+                          <span className="flex items-center gap-1">
+                            <FolderKanban className="h-3 w-3" />
+                            <span className="capitalize">{item.client_name}</span>
+                          </span>
+                        )}
+                        {type === 'Classes' && item.location && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            <span className="capitalize">{item.location}</span>
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          <span>{count} {isProject ? 'members' : 'students'}</span>
+                        </span>
                       </div>
                     </CardContent>
                   </Card>
@@ -456,37 +466,51 @@ export default function Dashboard() {
   };
 
   return (
-    // Top-level container forced to 95vh
-    <div className={`flex flex-col p-4 gap-4 ${isMobile ? 'min-h-[calc(100vh-5vh)]' : 'h-[95vh]'} overflow-hidden`}>
-      {/* 1. Nice Welcome Header */}
+    // Main Container
+    // xl:h-[95vh] enforces the fixed height ONLY on extra large screens (1280px+).
+    // On anything smaller, it reverts to h-auto (scrollable), avoiding the squashed look.
+    <div className={`flex flex-col p-4 gap-4 ${isMobile ? 'min-h-[calc(100vh-5vh)]' : 'xl:h-[95vh] h-auto'} overflow-hidden`}>
+      {/* 1. Header */}
       <div className="shrink-0">
         <WelcomeCard />
       </div>
 
-      {/* 2. Stats Grid */}
+      {/* 2. Stats */}
       <div className="shrink-0">
         <StatsGrid />
       </div>
 
-      {/* 3. Main Content (Unified 2-column Layout for all roles) */}
-      <div className="flex-1 min-h-0 w-full">
-        {/* Left Col: Events (Full Height) | Right Col: Projects (Top), Classes (Bottom) */}
-        <div className={`grid gap-4 h-full ${isMobile ? 'grid-cols-1 auto-rows-fr' : 'grid-cols-1 lg:grid-cols-3'}`}>
-            {/* Left Column (Events) - spans 1 col */}
-            <div className="lg:col-span-1 h-full min-h-0">
-              <EventsCard />
-            </div>
+      {/* 3. Main Content Grid */}
+      {/* Flattened Grid Logic: */}
+      {/* Mobile: 1 Column */}
+      {/* Tablet/Laptop (md): 2 Columns (Events Left, Projects Right, Classes Bottom) - "Dual Column System" */}
+      {/* Desktop (xl): 3 Columns (Events Left, Stack Right) - The "Ideal" Layout */}
+      <div className={`grid gap-4 flex-1 min-h-0 ${isMobile ? 'grid-cols-1 auto-rows-fr' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
 
-            {/* Right Column (Projects + Classes) - spans 2 cols */}
-            <div className="lg:col-span-2 h-full min-h-0 flex flex-col gap-4">
-              <div className="flex-1 min-h-0">
-                <ResourceCard type="Projects" items={data.projects} />
-              </div>
-              <div className="flex-1 min-h-0">
-                <ResourceCard type="Classes" items={data.classes} />
-              </div>
-            </div>
+        {/* Events:
+            md: 2 x 1
+            xl: 2 x 1
+        */}
+        <div className={`h-full ${isMobile ? 'min-h-[100px]' : 'min-h-0'} md:col-span-1 md:row-span-2 xl:col-span-1 xl:row-span-2`}>
+          <EventsCard />
         </div>
+
+        {/* Projects:
+            md: 1 x 1
+            xl: 1 x 2
+        */}
+        <div className={`h-full ${isMobile ? 'min-h-[100px]' : 'min-h-[250px]'} md:col-span-1 xl:col-span-2`}>
+          <ResourceCard type="Projects" items={data.projects} />
+        </div>
+
+        {/* Classes:
+            md: 1 x 1
+            xl: 1 x 2
+        */}
+        <div className={`h-full ${isMobile ? 'min-h-[100px]' : 'min-h-[250px]'} md:col-span-1 xl:col-span-2`}>
+          <ResourceCard type="Classes" items={data.classes} />
+        </div>
+
       </div>
     </div>
   );
