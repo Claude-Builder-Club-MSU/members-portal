@@ -119,9 +119,9 @@ const Classes = () => {
     const startDate = new Date(cls.start_date);
     const endDate = new Date(cls.end_date);
 
-    if (startDate > now) return { label: 'Available', color: 'bg-green-500', state: 'available' };
-    if (endDate < now) return { label: 'Completed', color: 'bg-gray-500', state: 'completed' };
-    return { label: 'In Progress', color: 'bg-blue-500', state: 'in_progress' };
+    if (startDate > now) return { label: 'Available', variant: 'enable', state: 'available' };
+    if (endDate < now) return { label: 'Completed', variant: 'destructive', state: 'completed' };
+    return { label: 'In Progress', variant: 'ghost', state: 'in_progress' };
   };
 
   const handleViewDetails = (cls: ClassWithMembers) => {
@@ -182,12 +182,12 @@ const Classes = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex-1">{cls.name}</CardTitle>
             <div className="flex flex-row gap-3 items-center">
-              {isEnrolled && (
-                <Badge variant={isTeacher ? 'default' : 'secondary'} className="shrink-0 whitespace-nowrap">
-                  {isTeacher ? 'Teacher' : 'Student'}
+              {isTeacher && (
+                <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
+                  Teacher
                 </Badge>
               )}
-              <Badge className={`${status.color} text-white text-xs z-10`}>
+              <Badge variant={status.variant as any}>
                 {status.label}
               </Badge>
             </div>
@@ -346,7 +346,7 @@ const Classes = () => {
       {/* Class Details Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
         <DialogContent
-        className={`max-w-lg ${isMobile ? 'mx-4 max-w-[90vw] overflow-y-auto rounded-xl m-0' : ''}`}>
+          className={`max-w-lg ${isMobile ? 'mx-4 max-w-[90vw] overflow-y-auto rounded-xl m-0' : ''}`}>
           <DialogHeader>
             <DialogTitle>{selectedClass?.name}</DialogTitle>
             {selectedClass?.location && (
@@ -434,7 +434,7 @@ const Classes = () => {
       {/* Class Members Modal */}
       <Dialog open={isMembersModalOpen} onOpenChange={setIsMembersModalOpen}>
         <DialogContent
-        className={`max-w-lg ${isMobile ? 'mx-4 max-w-[90vw] overflow-y-auto rounded-xl m-0' : ''}`}>
+          className={`max-w-lg ${isMobile ? 'mx-4 max-w-[90vw] overflow-y-auto rounded-xl m-0' : ''}`}>
           <DialogHeader>
             <DialogTitle>{selectedClass?.name} - Class Members</DialogTitle>
             <DialogDescription>

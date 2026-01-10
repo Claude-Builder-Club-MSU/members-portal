@@ -3,10 +3,27 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { buttonVariants } from "./button";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+// Apply buttonVariants to the Trigger by wrapping the primitive and forwarding props
+const DropdownMenuTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger> & {
+    variant?: string;
+    size?: string;
+  }
+>(({ className, variant = "ghost", size = "default", ...props }, ref) => (
+  <DropdownMenuPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      className
+    )}
+    {...props}
+  />
+));
+DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName;
 
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 
@@ -16,23 +33,27 @@ const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
+// SubTrigger should look like a menu button
 const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
     inset?: boolean;
+    variant?: string;
+    size?: string;
   }
->(({ className, inset, children, ...props }, ref) => (
+>(({ className, inset, children, variant = "ghost", size = "default", ...props }, ref) => (
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[state=open]:bg-primary focus:bg-primary",
+      buttonVariants({ variant: variant as any, size: size as any }),
+      "w-full justify-center px-2 py-1.5 text-sm rounded-sm flex select-none items-center data-[state=open]:bg-primary data-[state=open]:text-cream",
       inset && "pl-8",
-      className,
+      className
     )}
     {...props}
   >
     {children}
-    <ChevronRight className="ml-auto h-4 w-4" />
+    <ChevronRight className="ml-0 h-4 w-4" />
   </DropdownMenuPrimitive.SubTrigger>
 ));
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;
@@ -70,17 +91,23 @@ const DropdownMenuContent = React.forwardRef<
 ));
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
+// Each item should look like a button, so apply buttonVariants
 const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
+    variant?: string;
+    size?: string;
+    disabled?: boolean;
   }
->(({ className, inset, ...props }, ref) => (
+>(({ className, inset, variant = "ghost", size = "default", disabled = false, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-primary focus:text-cream",
+      buttonVariants({ variant: variant as any, size: size as any }),
+      "relative flex items-center w-full rounded-sm px-2 py-1.5 text-sm transition-colors",
       inset && "pl-8",
+      disabled && "opacity-50 pointer-events-none cursor-not-allowed bg-background text-gray-700",
       className,
     )}
     {...props}
@@ -90,12 +117,16 @@ DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 
 const DropdownMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
->(({ className, children, checked, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem> & {
+    variant?: string;
+    size?: string;
+  }
+>(({ className, children, checked, variant = "ghost", size = "default", ...props }, ref) => (
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-primary focus:text-cream",
+      buttonVariants({ variant: variant as any, size: size as any }),
+      "relative flex select-none items-center w-full rounded-sm py-1.5 pl-8 pr-2 text-sm transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     checked={checked}
@@ -113,12 +144,16 @@ DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displa
 
 const DropdownMenuRadioItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem> & {
+    variant?: string;
+    size?: string;
+  }
+>(({ className, children, variant = "ghost", size = "default", ...props }, ref) => (
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-primary focus:text-cream",
+      buttonVariants({ variant: variant as any, size: size as any }),
+      "relative flex select-none items-center w-full rounded-sm py-1.5 pl-8 pr-2 text-sm transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}
@@ -141,7 +176,11 @@ const DropdownMenuLabel = React.forwardRef<
 >(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitive.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-sm font-semibold", inset && "pl-8", className)}
+    className={cn(
+      "px-2 py-1.5 text-sm font-semibold",
+      inset && "pl-8",
+      className
+    )}
     {...props}
   />
 ));
