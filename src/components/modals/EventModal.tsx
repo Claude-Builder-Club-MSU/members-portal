@@ -34,6 +34,7 @@ import { CalendarIcon, Clock, Trash2, AlertTriangle, Save, X } from 'lucide-reac
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/database.types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type Event = Database['public']['Tables']['events']['Row'];
 type AppRole = Database['public']['Enums']['app_role'];
@@ -59,6 +60,7 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -256,7 +258,7 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)] max-h-[90vh]' : 'max-w-2xl'} overflow-y-auto rounded-xl`}>
         <DialogHeader>
           <DialogTitle>{existingEvent ? 'Edit Event' : 'Create New Event'}</DialogTitle>
           <DialogDescription>
@@ -264,7 +266,10 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className={`space-y-4 ${isMobile ? 'w-[80vw]' : ''}`}
+        >
           <div className="space-y-2">
             <Label htmlFor="name">Event Name *</Label>
             <Input
@@ -303,7 +308,7 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
                     {date ? format(date, 'PPP') : <span>Pick a date</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0" align="center">
                   <Calendar
                     mode="single"
                     selected={date}
@@ -329,13 +334,32 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
                     {eventTime ? getTimeLabel(eventTime) : <span>Select time</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-64 p-0" align="start">
-                  <div className="max-h-64 overflow-y-scroll p-1">
+                <PopoverContent
+                  className="w-64 p-0"
+                  align="center"
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                >
+                  <div
+                    className="p-1"
+                    style={{
+                      height: '300px',
+                      overflowY: 'scroll',
+                      overflowX: 'hidden',
+                      position: 'relative',
+                      WebkitOverflowScrolling: 'touch'
+                    }}
+                    onWheel={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onTouchMove={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
                     {TIME_OPTIONS.map((option) => (
                       <Button
                         key={option.value}
                         variant={eventTime === option.value ? 'default' : 'ghost'}
-                        className="w-full justify-start font-normal hover:bg-background hover:text-primary border-0"
+                        className="w-full justify-start font-normal hover:bg-background hover:text-primary border-0 mb-1"
                         onClick={() => setEventTime(option.value)}
                       >
                         {option.label}
@@ -423,12 +447,12 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
               {rsvpRequired
                 ? 'members, board, and e-board only.'
                 : inviteProspects
-                ? 'all members including prospects.'
-                : 'members, board, and e-board.'}
+                  ? 'all members including prospects.'
+                  : 'members, board, and e-board.'}
             </p>
           </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-2 pt-4 flex-col w-full sm:flex-row">
             {existingEvent && (
               <Button
                 type="button"
@@ -457,30 +481,35 @@ export const EventModal = ({ open, onClose, onSuccess, existingEvent }: EventMod
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+            <div className="flex w-full justify-between items-center">
+              <AlertDialogTitle className="text-left">Delete Event</AlertDialogTitle>
+              <div className="h-8 w-8 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
-              <div>
-                <AlertDialogTitle className="text-left">Delete Event</AlertDialogTitle>
-                <AlertDialogDescription className="text-left mt-2">
-                  Are you sure you want to delete "{existingEvent?.name}"? This action cannot be undone and will permanently remove the event and all associated data.
-                </AlertDialogDescription>
-              </div>
             </div>
+            <AlertDialogDescription className="text-left mt-2">
+              Are you sure you want to delete "{existingEvent?.name}"? This action cannot be undone and will permanently remove the event and all associated data.
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}>
+            <AlertDialogCancel
+              variant='outline'
+              disabled={loading}
+              className={!isMobile ? 'w-[47%]' : ''}
+            >
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={loading}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              variant='destructive'
+              className={!isMobile ? 'w-[47%]' : ''}
             >
               {loading ? 'Deleting...' : 'Delete Event'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Dialog>
+    </Dialog >
   );
 };

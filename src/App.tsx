@@ -42,6 +42,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" replace />;
   }
 
+
+  if (
+    user.created_at &&
+    user.created_at === user.updated_at &&
+    window.location.pathname !== "/dashboard/profile"
+  ) {
+    return <Navigate to="/dashboard/profile" replace />;
+  }
+
   return <>{children}</>;
 };
 

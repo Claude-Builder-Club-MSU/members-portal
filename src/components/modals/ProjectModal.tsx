@@ -50,7 +50,7 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
   const [clientName, setClientName] = useState('');
   const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
   const [projectLeadId, setProjectLeadId] = useState<string>('');
-  const [members, setMembers] = useState<Array<{id: string, full_name: string, email: string}>>([]);
+  const [members, setMembers] = useState<Array<{ id: string, full_name: string, email: string }>>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Load members list when modal opens
@@ -304,7 +304,7 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)]' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto rounded-xl`}>
+      <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)] max-h-[90vh]' : 'max-w-2xl'} overflow-y-auto rounded-xl`}>
         <DialogHeader>
           <DialogTitle>{existingProject ? 'Edit Project' : 'Create New Project'}</DialogTitle>
           <DialogDescription>
@@ -312,7 +312,7 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className={`space-y-4 ${isMobile ? 'w-[80vw]' : ''}`}>
           <div className="space-y-2">
             <Label htmlFor="name">Project Name *</Label>
             <Input
@@ -380,7 +380,7 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
             </Select>
           </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-2 pt-4 flex-col w-full sm:flex-row">
             {existingProject && (
               <Button
                 type="button"
@@ -407,24 +407,29 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+            <div className="flex w-full justify-between items-center">
+              <AlertDialogTitle className="text-left">Delete Project</AlertDialogTitle>
+              <div className="h-8 w-8 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
-              <div>
-                <AlertDialogTitle className="text-left">Delete Project</AlertDialogTitle>
-                <AlertDialogDescription className="text-left mt-2">
-                  Are you sure you want to delete "{existingProject?.name}"? This action cannot be undone and will permanently remove the project and all associated data.
-                </AlertDialogDescription>
-              </div>
             </div>
+            <AlertDialogDescription className="text-left mt-2">
+              Are you sure you want to delete "{existingProject?.name}"? This action cannot be undone and will permanently remove the project and all associated data.
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}>
+            <AlertDialogCancel
+              variant='outline'
+              disabled={loading}
+              className={!isMobile ? 'w-[47%]' : ''}
+            >
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={loading}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              variant='destructive'
+              className={!isMobile ? 'w-[47%]' : ''}
             >
               {loading ? 'Deleting...' : 'Delete Project'}
             </AlertDialogAction>

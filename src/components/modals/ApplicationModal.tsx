@@ -1133,12 +1133,18 @@ export const ApplicationModal = ({
                 </p>
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogFooter className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}>
+              <AlertDialogCancel
+                variant='outline'
+                disabled={actionLoading}
+                className={!isMobile ? 'w-[47%]' : ''}
+              >
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleAccept}
                 disabled={actionLoading}
-                className="bg-green-600 hover:bg-green-700"
+                className={`bg-green-600 hover:bg-green-700 ${!isMobile ? 'w-[47%]' : ''}`}
               >
                 {actionLoading ? 'Accepting...' : 'Yes, Accept & Auto-Assign'}
               </AlertDialogAction>
@@ -1161,12 +1167,19 @@ export const ApplicationModal = ({
                 </p>
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogFooter className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}>
+              <AlertDialogCancel
+                variant='outline'
+                disabled={actionLoading}
+                className={!isMobile ? 'w-[47%]' : ''}
+              >
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleReject}
                 disabled={actionLoading}
-                className="bg-destructive hover:bg-destructive/90"
+                variant='destructive'
+                className={!isMobile ? 'w-[47%]' : ''}
               >
                 {actionLoading ? 'Rejecting...' : 'Yes, Reject'}
               </AlertDialogAction>
@@ -1211,7 +1224,7 @@ export const ApplicationModal = ({
           {renderFormFields()}
 
           {applicationType && (
-            <div className="flex gap-2 pt-4">
+            <div className="flex gap-2 pt-4 flex-col w-full sm:flex-row">
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Cancel
               </Button>

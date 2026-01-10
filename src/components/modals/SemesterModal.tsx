@@ -12,7 +12,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/database.types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type Semester = Database['public']['Tables']['semesters']['Row'];
 
@@ -24,6 +32,7 @@ interface SemesterModalProps {
 
 const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     code: '',
@@ -104,7 +113,7 @@ const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)]' : 'max-w-2xl'} rounded-xl`}>
         <DialogHeader>
           <DialogTitle>Create New Term</DialogTitle>
           <DialogDescription>
@@ -126,7 +135,9 @@ const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
               maxLength={10}
             />
             <p className="text-xs text-muted-foreground">
-              e.g., W26 (Winter 2026), F26 (Fall 2026), Su26 (Summer 2026)
+              e.g., W26 (Winter 2026), F27 (Fall 2027)
+              {!isMobile
+                && ', Su26 (Summer 2026)'}
             </p>
           </div>
 
@@ -145,33 +156,77 @@ const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="start_date">
+              <Label>
                 Start Date <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="start_date"
-                type="date"
-                value={formData.start_date}
-                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                required
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='secondary'
+                    className={
+                      'w-full justify-start text-left font-normal' +
+                      (!formData.start_date ? ' text-muted-foreground' : '')
+                    }
+                  >
+                    {!isMobile && <CalendarIcon className="mr-2 h-4 w-4" />}
+                    {formData.start_date
+                      ? new Date(formData.start_date).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })
+                      : <span>Pick a start date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align={isMobile ? "start" : "center"}>
+                  <Calendar
+                    mode="single"
+                    selected={formData.start_date ? new Date(formData.start_date) : new Date()}
+                    onSelect={date =>
+                      setFormData({ ...formData, start_date: new Date(date).toISOString() })}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="end_date">
+              <Label>
                 End Date <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="end_date"
-                type="date"
-                value={formData.end_date}
-                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                required
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='secondary'
+                    className={
+                      'w-full justify-start text-left font-normal' +
+                      (!formData.end_date ? ' text-muted-foreground' : '')
+                    }
+                  >
+                    {!isMobile && <CalendarIcon className="mr-2 h-4 w-4" />}
+                    {formData.end_date
+                      ? new Date(formData.end_date).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })
+                      : <span>Pick an end date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align={isMobile ? "end" : "center"}>
+                  <Calendar
+                    mode="single"
+                    selected={formData.end_date ? new Date(formData.end_date) : new Date()}
+                    onSelect={date =>
+                      setFormData({ ...formData, end_date: new Date(date).toISOString() })}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>

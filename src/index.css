@@ -99,23 +99,53 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 
-  /* Hide scrollbars across the website */
-  * {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+  /* Hide scrollbars across the website EXCEPT for elements with .show-scrollbar class */
+  *:not(.show-scrollbar) {
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
   }
 
-  *::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+  *:not(.show-scrollbar)::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari, Opera */
+  }
+
+  /* Force scrollbar to show for specific elements */
+  .show-scrollbar {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(155, 155, 155, 0.5) transparent !important;
+  }
+
+  .show-scrollbar::-webkit-scrollbar {
+    width: 8px !important;
+    display: block !important;
+  }
+
+  .show-scrollbar::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+
+  .show-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(155, 155, 155, 0.5) !important;
+    border-radius: 4px !important;
+  }
+
+  .show-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(155, 155, 155, 0.7) !important;
   }
 }
 
 @layer utilities {
   @keyframes sparkle {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 0;
       transform: scale(0) rotate(0deg);
     }
+
     50% {
       opacity: 1;
       transform: scale(1) rotate(180deg);
@@ -126,6 +156,7 @@ All colors MUST be HSL.
     0% {
       transform: rotate(0deg);
     }
+
     100% {
       transform: rotate(360deg);
     }
@@ -200,23 +231,21 @@ All colors MUST be HSL.
     left: -50%;
     width: 200%;
     height: 200%;
-    background: conic-gradient(
-      from 0deg,
-      #ffd700 0deg,
-      #ffed4e 45deg,
-      #ffd700 90deg,
-      #ffed4e 135deg,
-      #ffd700 180deg,
-      #ffed4e 225deg,
-      #ffd700 270deg,
-      #ffed4e 315deg,
-      #ffd700 360deg
-    );
+    background: conic-gradient(from 0deg,
+        #ffd700 0deg,
+        #ffed4e 45deg,
+        #ffd700 90deg,
+        #ffed4e 135deg,
+        #ffd700 180deg,
+        #ffed4e 225deg,
+        #ffd700 270deg,
+        #ffed4e 315deg,
+        #ffd700 360deg);
     animation: rotate-shimmer 6s linear infinite;
     z-index: 0;
   }
 
-  .gold-shimmer > * {
+  .gold-shimmer>* {
     position: relative;
     z-index: 1;
   }

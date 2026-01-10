@@ -49,7 +49,7 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
   const [location, setLocation] = useState('');
   const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
   const [teacherId, setTeacherId] = useState<string>('');
-  const [teachers, setTeachers] = useState<Array<{id: string, full_name: string, email: string}>>([]);
+  const [teachers, setTeachers] = useState<Array<{ id: string, full_name: string, email: string }>>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Load teachers list when modal opens
@@ -308,7 +308,10 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className={`space-y-4 ${isMobile ? 'w-[80vw]' : ''}`}
+        >
           <div className="space-y-2">
             <Label htmlFor="name">Class Name *</Label>
             <Input
@@ -364,24 +367,33 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
             </Select>
           </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-2 pt-4 flex-col w-full sm:flex-row">
             {existingClass && (
               <Button
                 type="button"
                 variant="destructive"
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={loading}
-                className="flex-1"
+                className="w-full sm:flex-1"
               >
                 <Trash2 className="h-4 w-4 mr-0" />
                 Delete
               </Button>
             )}
-            <Button type="button" variant="outline" onClick={onClose} className={existingClass ? "flex-1" : "flex-1"}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="w-full sm:flex-1"
+            >
               <X className="h-4 w-4 mr-0" />
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className={existingClass ? "flex-1" : "flex-1"}>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full sm:flex-1"
+            >
               <Save className="h-4 w-4 mr-0" />
               {loading ? 'Saving...' : existingClass ? 'Update Class' : 'Create Class'}
             </Button>
@@ -393,24 +405,29 @@ export const ClassModal = ({ open, onClose, onSuccess, existingClass }: ClassMod
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+            <div className="flex w-full justify-between items-center">
+              <AlertDialogTitle className="text-left">Delete Class</AlertDialogTitle>
+              <div className="h-8 w-8 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
-              <div>
-                <AlertDialogTitle className="text-left">Delete Class</AlertDialogTitle>
-                <AlertDialogDescription className="text-left mt-2">
-                  Are you sure you want to delete "{existingClass?.name}"? This action cannot be undone and will permanently remove the class and all associated data.
-                </AlertDialogDescription>
-              </div>
             </div>
+            <AlertDialogDescription className="text-left mt-2">
+              Are you sure you want to delete "{existingClass?.name}"? This action cannot be undone and will permanently remove the class and all associated data.
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}>
+            <AlertDialogCancel
+              variant='outline'
+              disabled={loading}
+              className={!isMobile ? 'w-[47%]' : ''}
+            >
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={loading}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              variant='destructive'
+              className={!isMobile ? 'w-[47%]' : ''}
             >
               {loading ? 'Deleting...' : 'Delete Class'}
             </AlertDialogAction>

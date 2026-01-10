@@ -3,15 +3,24 @@ import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./src/**/*.{ts,tsx}",
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+  ],
   prefix: "",
   theme: {
+    screens: {
+      'sm': '640px',
+      'md': '768px', // You can skip ones you don't use
+      'lg': '1100px', // <--- CHANGED: "Dual Column" starts here
+      'xl': '1400px', // <--- CHANGED: "Triple Column" starts here
+      '2xl': '1600px',
+    },
     container: {
       center: true,
       padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
     },
     extend: {
       colors: {

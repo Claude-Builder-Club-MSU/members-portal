@@ -118,7 +118,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         />
 
         <div className="flex-1 flex flex-col">
-          <header className="h-14 border-b border-border flex items-center px-4 bg-background">
+          <header className="h-[5vh] border-b border-border flex items-center px-4 bg-background">
             <SidebarTrigger />
           </header>
 

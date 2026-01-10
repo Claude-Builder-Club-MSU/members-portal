@@ -5,9 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { Trophy, Mail, GraduationCap, Crown, Users, Award, Eye } from 'lucide-react';
+import { Trophy, Mail, GraduationCap, Crown, Users, Award, Eye, Settings, UserMinus, Ban } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/database.types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ProfileViewer from '@/components/modals/ProfileModal';
@@ -21,7 +31,7 @@ interface MemberWithRole extends Profile {
 
 const Members = () => {
   const { toast } = useToast();
-  const { role: userRole } = useAuth();
+  const { role: userRole, user } = useAuth();
   const [members, setMembers] = useState<MemberWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState<MemberWithRole | null>(null);
@@ -93,6 +103,52 @@ const Members = () => {
     }
   };
 
+  const handleKickMember = async (memberId: string, memberName: string) => {
+    // Change role back to prospect (kicked members become prospects)
+    const { error } = await supabase
+      .from('user_roles')
+      .update({ role: 'prospect' })
+      .eq('user_id', memberId);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Member Kicked',
+        description: `${memberName} has been kicked from the club`,
+      });
+      fetchMembers();
+    }
+  };
+
+  const handleBanMember = async (memberId: string, memberName: string) => {
+    // TODO: Implement ban logic - you may need to create a banned_users table
+    // For now, we'll set them as prospect and add a note
+    const { error } = await supabase
+      .from('user_roles')
+      .update({ role: 'prospect' })
+      .eq('user_id', memberId);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Member Banned',
+        description: `${memberName} has been banned from the club`,
+        variant: 'destructive',
+      });
+      fetchMembers();
+    }
+  };
+
   const handleViewProfile = (member: MemberWithRole) => {
     setSelectedMember(member);
     setIsProfileModalOpen(true);
@@ -101,11 +157,11 @@ const Members = () => {
   const getRoleBadgeVariant = (role: AppRole) => {
     switch (role) {
       case 'e-board':
-        return 'default';
-      case 'board':
-        return 'secondary';
-      case 'member':
         return 'outline';
+      case 'board':
+        return 'default';
+      case 'member':
+        return 'ghost';
       default:
         return 'outline';
     }
@@ -118,17 +174,6 @@ const Members = () => {
       .join('')
       .toUpperCase()
       .slice(0, 2);
-  };
-
-  const getRoleIcon = (role: AppRole) => {
-    switch (role) {
-      case 'e-board':
-        return <Crown className="h-4 w-4 text-yellow-500" />;
-      case 'board':
-        return <Award className="h-4 w-4 text-blue-500" />;
-      default:
-        return <Users className="h-4 w-4 text-green-500" />;
-    }
   };
 
   // Only E-board can manage roles on Members page
@@ -181,11 +226,12 @@ const Members = () => {
   });
 
   const renderMemberCard = (member: MemberWithRole) => {
+    console.log(member);
     return (
-      <Card key={member.id} className="flex flex-col h-full w-full">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+      <Card key={member.id} className="flex flex-col h-full w-full relative">
+        <CardHeader className="pb-0">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-3 flex-1 min-w-0">
               <Avatar className="h-12 w-12 shrink-0">
                 <AvatarImage src={member.profile_picture_url || undefined} />
                 <AvatarFallback className="text-lg">
@@ -204,7 +250,7 @@ const Members = () => {
                   <p className="truncate">{member.email}</p>
                 </div>
               </div>
-            </div>
+            </CardTitle>
             {member.role === 'e-board' ? (
               <Badge
                 className="capitalize shrink-0 whitespace-nowrap sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative"
@@ -214,21 +260,15 @@ const Members = () => {
                 <span className="sparkle-particle"></span>
                 <span className="relative z-10">{member.role.replace('-', ' ')}</span>
               </Badge>
-            ) : member.role === 'board' ? (
-              <Badge
-                className="capitalize shrink-0 whitespace-nowrap bg-primary text-cream font-semibold border-2 border-primary/50"
-              >
-                {member.role.replace('-', ' ')}
-              </Badge>
             ) : (
-              <Badge variant={getRoleBadgeVariant(member.role)} className="capitalize shrink-0 whitespace-nowrap">
+              <Badge variant={getRoleBadgeVariant(member.role) as any} className="capitalize shrink-0 whitespace-nowrap">
                 {member.role.replace('-', ' ')}
               </Badge>
             )}
           </div>
         </CardHeader>
         <CardContent className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-3 mt-3">
             <div className="flex items-center justify-between text-sm">
               {member.class_year ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -248,32 +288,86 @@ const Members = () => {
             </div>
           </div>
 
-          <div className="space-y-2 mt-4">
-            {canManageRoles && (
-              <Select
-                value={member.role}
-                onValueChange={(value) => handleRoleChange(member.id, value as AppRole)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="board">Board</SelectItem>
-                  <SelectItem value="e-board">E-Board</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-
+          <div className="flex flex-row gap-2 mt-4">
             <Button
               variant='default'
               size="sm"
               className="w-full"
               onClick={() => handleViewProfile(member)}
             >
-              <Eye className="h-4 w-4 mr-2" />
+              <Eye className="h-4 w-4" />
               View Profile
             </Button>
+            {canManageRoles && !isMobile && user.id !== member.id && (
+              <DropdownMenu>
+                <DropdownMenuTrigger size='sm' asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Manage
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="center"
+                  className="w-40"
+                >
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger
+                      variant='ghost'
+                    >
+                      <Crown className="h-4 w-4 mx-1" />
+                      Change Role
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem
+                        onClick={() => handleRoleChange(member.id, 'member')}
+                        disabled={member.role === 'member'}
+                      >
+                        <Users className="h-4 w-4" />
+                        Member
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleRoleChange(member.id, 'board')}
+                        disabled={member.role === 'board'}
+                      >
+                        <Award className="h-4 w-4" />
+                        Board
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleRoleChange(member.id, 'e-board')}
+                        disabled={member.role === 'e-board'}
+                      >
+                        <Crown className="h-4 w-4" />
+                        E-Board
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuItem
+                    onClick={() => handleKickMember(member.id, member.full_name || member.email)}
+                    variant='destructive'
+                    className='border-0 rounded-t-md rounded-b-none hover:rounded-md transition-all duration-200'
+                  >
+                    <UserMinus className="h-4 w-4" />
+                    Kick Member
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={() => handleBanMember(member.id, member.full_name || member.email)}
+                    variant='destructive'
+                    className='border-0 rounded-b-md rounded-t-none hover:rounded-md transition-all duration-200'
+                  >
+                    <Ban className="h-4 w-4" />
+                    Ban Member
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -306,16 +400,18 @@ const Members = () => {
       </div>
 
       {/* Members Grid - grouped by team */}
-      <div className="space-y-8 mt-6">
-        {groupedMembers.map((group) => (
-          <div key={group.team}>
-            <h2 className="text-xl font-bold mb-4">{group.team}</h2>
-            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))]">
-              {group.members.map((member) => renderMemberCard(member))}
-            </div>
+      {groupedMembers.map((group) => (
+        <div key={group.team} className="mb-6">
+          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))] mt-6">
+            {group.members.map(renderMemberCard)}
           </div>
-        ))}
-      </div>
+          {group !== groupedMembers[groupedMembers.length - 1] && (
+            <div className="w-full flex items-center my-8">
+              <div className="flex-1 border-t-2 rounded-md border-primary" style={{ borderRadius: '9999px', borderTopLeftRadius: '9999px', borderTopRightRadius: '9999px' }} />
+            </div>
+          )}
+        </div>
+      ))}
 
       {members.length === 0 && (
         <Card className="mt-6">

@@ -190,7 +190,7 @@ const Prospects = () => {
 
                 <div className="space-y-2 mt-4">
                   <Button
-                    variant='default'
+                    variant='outline'
                     size="sm"
                     className="w-full"
                     onClick={() => handleViewProfile(prospect)}

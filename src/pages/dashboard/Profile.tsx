@@ -362,10 +362,10 @@ const Profile = () => {
   return (
     <div className={`${isMobile ? 'p-4' : 'p-6'} min-h-full flex items-center justify-center`}>
       <div className="w-full max-w-6xl mx-auto">
-        <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
+        <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'} items-center`}>
           {/* Left Column - Profile Overview */}
           <div className="lg:col-span-1">
-            <Card className="h-full flex flex-col">
+            <Card className="flex flex-col">
               <CardHeader className="text-center pb-6">
                 <div className="flex justify-center mb-4">
                   <div className="relative">

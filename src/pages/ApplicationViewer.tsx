@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -48,6 +49,7 @@ const ApplicationViewerPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { toast } = useToast();
+    const isMobile = useIsMobile();
     const { user, role } = useAuth();
 
     // State
@@ -745,12 +747,18 @@ const ApplicationViewerPage = () => {
                             <p className="text-xs text-muted-foreground">This action cannot be undone.</p>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+                    <AlertDialogFooter className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}>
+                        <AlertDialogCancel
+                            variant='outline'
+                            disabled={actionLoading}
+                            className={!isMobile ? 'w-[47%]' : ''}
+                        >
+                            Cancel
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleAccept}
                             disabled={actionLoading}
-                            variant='enable'
+                            className={`bg-green-600 hover:bg-green-700 ${!isMobile ? 'w-[47%]' : ''}`}
                         >
                             {actionLoading ? 'Accepting...' : 'Yes, Accept & Auto-Assign'}
                         </AlertDialogAction>
@@ -771,12 +779,19 @@ const ApplicationViewerPage = () => {
                             <p className="text-xs text-muted-foreground">This action cannot be undone.</p>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+                    <AlertDialogFooter className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}>
+                        <AlertDialogCancel
+                            variant='outline'
+                            disabled={actionLoading}
+                            className={!isMobile ? 'w-[47%]' : ''}
+                        >
+                            Cancel
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleReject}
                             disabled={actionLoading}
-                            className="bg-destructive hover:bg-destructive/90"
+                            variant='destructive'
+                            className={!isMobile ? 'w-[47%]' : ''}
                         >
                             {actionLoading ? 'Rejecting...' : 'Yes, Reject'}
                         </AlertDialogAction>

@@ -11,6 +11,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Trophy, Mail, GraduationCap, Crown, Users, Award, Linkedin, Github } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/database.types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type AppRole = Database['public']['Enums']['app_role'];
@@ -26,6 +27,8 @@ interface ProfileViewerProps {
 }
 
 const ProfileViewer = ({ open, onClose, member }: ProfileViewerProps) => {
+  const isMobile = useIsMobile();
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -61,7 +64,8 @@ const ProfileViewer = ({ open, onClose, member }: ProfileViewerProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent
+        className={`max-w-lg ${isMobile ? 'mx-4 max-w-[90vw] overflow-y-auto rounded-xl m-0' : ''}`}>
         <DialogHeader>
           <DialogTitle>Member Profile</DialogTitle>
           <DialogDescription>View member details</DialogDescription>

@@ -119,23 +119,23 @@ const Classes = () => {
     const startDate = new Date(cls.start_date);
     const endDate = new Date(cls.end_date);
 
-    if (startDate > now) return { label: 'Available', color: 'bg-green-500', state: 'available' };
-    if (endDate < now) return { label: 'Completed', color: 'bg-gray-500', state: 'completed' };
-    return { label: 'In Progress', color: 'bg-blue-500', state: 'in_progress' };
+    if (startDate > now) return { label: 'Available', variant: 'enable', state: 'available' };
+    if (endDate < now) return { label: 'Completed', variant: 'destructive', state: 'completed' };
+    return { label: 'In Progress', variant: 'ghost', state: 'in_progress' };
   };
 
-  const handleViewDetails = (classItem: ClassWithMembers) => {
-    setSelectedClass(classItem);
+  const handleViewDetails = (cls: ClassWithMembers) => {
+    setSelectedClass(cls);
     setIsDetailsModalOpen(true);
   };
 
-  const handleEditClass = (classItem: Class) => {
-    setEditingClass(classItem);
+  const handleEditClass = (cls: Class) => {
+    setEditingClass(cls);
     setIsModalOpen(true);
   };
 
-  const handleViewMembers = (classItem: ClassWithMembers) => {
-    setSelectedClass(classItem);
+  const handleViewMembers = (cls: ClassWithMembers) => {
+    setSelectedClass(cls);
     setIsMembersModalOpen(true);
   };
 
@@ -170,24 +170,24 @@ const Classes = () => {
   });
 
 
-  const renderClassCard = (classItem: ClassWithMembers) => {
-    const isEnrolled = !!classItem.userEnrollment;
-    const isTeacher = classItem.userEnrollment?.role === 'teacher';
-    const teacher = classItem.members.find(m => m.enrollment.role === 'teacher');
-    const status = getClassStatus(classItem);
+  const renderClassCard = (cls: ClassWithMembers) => {
+    const isEnrolled = !!cls.userEnrollment;
+    const isTeacher = cls.userEnrollment?.role === 'teacher';
+    const teacher = cls.members.find(m => m.enrollment.role === 'teacher');
+    const status = getClassStatus(cls);
 
     return (
-      <Card key={classItem.id} className="flex flex-col h-full w-full relative">
+      <Card key={cls.id} className="flex flex-col h-full w-full relative">
         <CardHeader className="pb-0">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex-1">{classItem.name}</CardTitle>
+            <CardTitle className="text-lg flex-1">{cls.name}</CardTitle>
             <div className="flex flex-row gap-3 items-center">
-              {isEnrolled && (
-                <Badge variant={isTeacher ? 'default' : 'secondary'} className="shrink-0 whitespace-nowrap">
-                  {isTeacher ? 'Teacher' : 'Student'}
+              {isTeacher && (
+                <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
+                  Teacher
                 </Badge>
               )}
-              <Badge className={`${status.color} text-white text-xs z-10`}>
+              <Badge variant={status.variant as any}>
                 {status.label}
               </Badge>
             </div>
@@ -196,17 +196,17 @@ const Classes = () => {
         <CardContent className="flex flex-col flex-1 min-h-0">
           <div className="space-y-3 text-sm text-muted-foreground">
             {/* Semester Info */}
-            {classItem.semesters && (
+            {cls.semesters && (
               <div className="flex items-center gap-2 pt-2">
                 <Calendar className="h-4 w-4" />
-                {classItem.semesters.code} - {classItem.semesters.name}
+                {cls.semesters.code} - {cls.semesters.name}
               </div>
             )}
 
-            {classItem.location && (
+            {cls.location && (
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                {classItem.location}
+                {cls.location}
               </div>
             )}
 
@@ -226,14 +226,14 @@ const Classes = () => {
                 <Users className="h-4 w-4 group-hover:text-orange-600 transition-colors duration-400" />
                 <span
                   className="underline decoration-transparent group-hover:decoration-orange-600 group-hover:text-orange-600 transition-all duration-400"
-                  onClick={() => handleViewMembers(classItem)}
+                  onClick={() => handleViewMembers(cls)}
                 >
-                  {classItem.memberCount} {classItem.memberCount === 1 ? 'team member' : 'team members'}
+                  {cls.memberCount} {cls.memberCount === 1 ? 'team member' : 'team members'}
                 </span>
               </div>
-              {classItem.members.length > 0 && (
+              {cls.members.length > 0 && (
                 <div className="flex -space-x-2 mb-6">
-                  {classItem.members.slice(0, 5).map(({ enrollment, profile }) => (
+                  {cls.members.slice(0, 5).map(({ enrollment, profile }) => (
                     <Avatar key={enrollment.id} className="h-8 w-8 border-2 border-background">
                       <AvatarImage src={profile.profile_picture_url || undefined} />
                       <AvatarFallback className="text-xs">
@@ -241,18 +241,18 @@ const Classes = () => {
                       </AvatarFallback>
                     </Avatar>
                   ))}
-                  {classItem.members.length > 5 && (
+                  {cls.members.length > 5 && (
                     <div className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-xs">
-                      +{classItem.members.length - 5}
+                      +{cls.members.length - 5}
                     </div>
                   )}
                 </div>
               )}
             </div>
           </div>
-          {classItem.description && (
+          {cls.description && (
             <div className="text-sm text-muted-foreground flex-1 space-y-3 break-words pt-3 whitespace-pre-line">
-              {classItem.description}
+              {cls.description}
             </div>
           )}
 
@@ -261,7 +261,7 @@ const Classes = () => {
               <Button
                 className="w-full"
                 variant="outline"
-                onClick={() => handleEditClass(classItem)}
+                onClick={() => handleEditClass(cls)}
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Details
@@ -270,7 +270,7 @@ const Classes = () => {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => handleViewDetails(classItem)}
+                onClick={() => handleViewDetails(cls)}
               >
                 <Eye className="h-4 w-4 mr-2" />
                 View Details
@@ -345,7 +345,8 @@ const Classes = () => {
 
       {/* Class Details Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent
+          className={`max-w-lg ${isMobile ? 'mx-4 max-w-[90vw] overflow-y-auto rounded-xl m-0' : ''}`}>
           <DialogHeader>
             <DialogTitle>{selectedClass?.name}</DialogTitle>
             {selectedClass?.location && (
@@ -432,7 +433,8 @@ const Classes = () => {
 
       {/* Class Members Modal */}
       <Dialog open={isMembersModalOpen} onOpenChange={setIsMembersModalOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent
+          className={`max-w-lg ${isMobile ? 'mx-4 max-w-[90vw] overflow-y-auto rounded-xl m-0' : ''}`}>
           <DialogHeader>
             <DialogTitle>{selectedClass?.name} - Class Members</DialogTitle>
             <DialogDescription>
