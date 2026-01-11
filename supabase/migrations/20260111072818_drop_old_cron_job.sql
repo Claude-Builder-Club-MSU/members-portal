@@ -1,0 +1,1 @@
+select cron.unschedule('cleanup-old-applications');
