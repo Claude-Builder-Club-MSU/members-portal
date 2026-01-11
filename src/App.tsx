@@ -14,7 +14,7 @@ import Events from "./pages/dashboard/Events";
 import Classes from "./pages/dashboard/Classes";
 import Projects from "./pages/dashboard/Projects";
 import Members from "./pages/dashboard/Members";
-import Profile from "./pages/dashboard/Profile";
+import Profile from "./pages/Profile";
 import Prospects from "./pages/dashboard/Prospects";
 import Checkin from "./pages/CheckIn";
 import ApplicationViewerPage from "@/pages/ApplicationViewer";
@@ -46,9 +46,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (
     user.created_at &&
     user.created_at === user.updated_at &&
-    window.location.pathname !== "/dashboard/profile"
+    window.location.pathname !== "/profile"
   ) {
-    return <Navigate to="/dashboard/profile" replace />;
+    return <Navigate to="/profile" replace />;
   }
 
   return <>{children}</>;
@@ -129,7 +129,7 @@ const App = () => (
               }
             />
             <Route
-              path="/dashboard/profile"
+              path="/profile"
               element={
                 <ProtectedRoute>
                   <DashboardLayout>

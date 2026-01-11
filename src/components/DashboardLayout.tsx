@@ -267,7 +267,7 @@ const SidebarContentComponent = ({
               sideOffset={8}
             >
               <DropdownMenuItem onClick={() => {
-                navigate('/dashboard/profile');
+                navigate('/profile');
                 handleNavClick();
               }}>
                 <Settings className="h-4 w-4 mr-1" />

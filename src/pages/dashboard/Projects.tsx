@@ -269,11 +269,11 @@ const Projects = () => {
                 Edit Details
               </Button>
             )}
-            
+
             <Button
               variant={canManageProjects ? 'default' : 'outline'}
               className="w-full"
-              onClick={() => window.open(project.github_url, '_blank')}
+              onClick={() => window.open(project.repository_url, '_blank')}
             >
               <Github className="h-4 w-4 mr-2" />
               View on GitHub
@@ -443,10 +443,10 @@ const Projects = () => {
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => window.open(selectedProject.github_url, '_blank')}
+                  onClick={() => window.open(selectedProject.repository_url, '_blank')}
                 >
                   <Github className="h-4 w-4 mr-2" />
-                  {selectedProject.github_url}
+                  {selectedProject.repository_url}
                 </Button>
               </div>
             </div>

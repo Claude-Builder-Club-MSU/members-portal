@@ -230,6 +230,16 @@ export const ApplicationModal = ({
       return;
     }
 
+    if (type == 'project' && !profile.github_username) {
+      toast({
+        title: "Enable GitHub integration",
+        description: "GitHub integration must be enabled to work on projects",
+        variant: 'default',
+      })
+      setApplicationType('');
+      return;
+    }
+
     if (type === 'project' && availableProjects.length === 0) {
       toast({
         title: 'No Projects Available',

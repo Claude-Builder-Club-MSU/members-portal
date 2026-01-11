@@ -531,7 +531,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           end_date: string
-          github_url: string
+          repository_url: string
           id: string
           lead_id: string | null
           name: string
@@ -545,7 +545,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           end_date: string
-          github_url: string
+          repository_url: string
           id?: string
           lead_id?: string | null
           name: string
@@ -559,7 +559,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           end_date?: string
-          github_url?: string
+          repository_url?: string
           id?: string
           lead_id?: string | null
           name?: string

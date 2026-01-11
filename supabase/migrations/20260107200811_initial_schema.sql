@@ -55,7 +55,7 @@ CREATE TABLE projects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   description TEXT,
-  github_url TEXT NOT NULL,
+  repository_url TEXT NOT NULL,
   client_name TEXT,
   lead_id UUID REFERENCES auth.users(id),
   due_date TIMESTAMPTZ,
