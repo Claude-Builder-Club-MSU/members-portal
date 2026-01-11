@@ -65,7 +65,7 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
     if (open && existingProject) {
       setName(existingProject.name);
       setDescription(existingProject.description || '');
-      setGithubUrl(existingProject.github_url);
+      setGithubUrl(existingProject.repository_url);
       setClientName(existingProject.client_name || '');
 
       // Load semester if exists
@@ -175,7 +175,7 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
           .update({
             name,
             description: description || null,
-            github_url: githubUrl,
+            repository_url: githubUrl,
             client_name: clientName || null,
             semester_id: selectedSemester.id,
             start_date: selectedSemester.start_date,
@@ -222,7 +222,7 @@ export const ProjectModal = ({ open, onClose, onSuccess, existingProject }: Proj
         const insertData: Database['public']['Tables']['projects']['Insert'] = {
           name,
           description: description || null,
-          github_url: githubUrl,
+          repository_url: githubUrl,
           client_name: clientName || null,
           semester_id: selectedSemester.id,
           start_date: selectedSemester.start_date,

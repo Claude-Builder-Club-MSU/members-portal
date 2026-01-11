@@ -51,7 +51,7 @@ export interface Project {
   id: string;
   name: string;
   description: string | null;
-  github_url: string;
+  repository_url: string;
   client_name: string | null;
   lead_id: string | null;
   due_date: string | null;
