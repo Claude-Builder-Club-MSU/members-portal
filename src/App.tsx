@@ -18,12 +18,16 @@ import Profile from "./pages/Profile";
 import Prospects from "./pages/dashboard/Prospects";
 import Checkin from "./pages/CheckIn";
 import ApplicationViewerPage from "@/pages/ApplicationViewer";
+import { ProfileProvider, useProfile } from "./contexts/ProfileContext";
 
 const queryClient = new QueryClient();
 
 // Protected Route wrapper component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { loading: profileLoading } = useProfile();
+
+  const loading = authLoading || profileLoading;
 
   if (loading) {
     return (
@@ -36,13 +40,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
+  // After loading is complete, check if user is authenticated
   if (!user) {
-    // Store the current location for redirect after login
     sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search);
     return <Navigate to="/auth" replace />;
   }
 
-
+  // Check if new user needs to complete profile
   if (
     user.created_at &&
     user.created_at === user.updated_at &&
@@ -61,117 +65,118 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
+          <ProfileProvider>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
 
+              {/* Protected Dashboard Routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Dashboard />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/applications"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Applications />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/events"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Events />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/classes"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Classes />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/projects"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Projects />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/members"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Members />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Profile />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/prospects"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Prospects />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Protected Dashboard Routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Dashboard />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/applications"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Applications />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/events"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Events />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/classes"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Classes />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/projects"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Projects />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/members"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Members />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Profile />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/prospects"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Prospects />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
+              {/* Check-in Route */}
+              <Route
+                path="/checkin/:token"
+                element={
+                  <ProtectedRoute>
+                    <Checkin />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Check-in Route */}
-            <Route
-              path="/checkin/:token"
-              element={
-                <ProtectedRoute>
-                  <Checkin />
-                </ProtectedRoute>
-              }
-            />
+              {/* Protected route application viewer */}
+              <Route
+                path="/applications/:id"
+                element={
+                  <ProtectedRoute>
+                    <ApplicationViewerPage />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Protected route application viewer */}
-            <Route
-              path="/applications/:id"
-              element={
-                <ProtectedRoute>
-                  <ApplicationViewerPage />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* 404 - Must be last */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              {/* 404 - Must be last */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ProfileProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

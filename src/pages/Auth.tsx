@@ -17,22 +17,23 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signIn, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
 
-  // CRITICAL: useEffect must ALWAYS be called, never conditionally
+  // Redirect logged-in users (only after auth finishes loading)
   useEffect(() => {
+    if (authLoading) return; // Wait for auth to initialize
+
     if (user) {
-      // Check if there's a stored redirect URL (e.g., from check-in)
       const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
       if (redirectUrl) {
         sessionStorage.removeItem('redirectAfterLogin');
-        navigate(redirectUrl);
+        navigate(redirectUrl, { replace: true });
       } else {
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       }
     }
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const validateEmail = (email: string) => {
     if (!email.endsWith('@msu.edu')) {
@@ -57,20 +58,24 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
+        // Use signIn from AuthContext
+        await signIn(email, password);
 
         toast({
           title: 'Success',
           description: 'Logged in successfully!',
         });
-        navigate('/dashboard');
+
+        // Navigate to dashboard
+        const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+        if (redirectUrl) {
+          sessionStorage.removeItem('redirectAfterLogin');
+          navigate(redirectUrl, { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
       } else {
-        // Sign up the user
+        // Sign up
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -88,7 +93,7 @@ const Auth = () => {
           throw new Error('User creation failed');
         }
 
-        // Create profile record
+        // Create profile
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -99,11 +104,10 @@ const Auth = () => {
           });
 
         if (profileError) {
-          console.error('❌ Profile creation error:', profileError);
-          console.error('Full error details:', JSON.stringify(profileError, null, 2));
+          console.error('Profile creation error:', profileError);
         }
 
-        // Create user_role record (default to 'prospect')
+        // Create role
         const { error: roleError } = await supabase
           .from('user_roles')
           .insert({
@@ -112,13 +116,12 @@ const Auth = () => {
           });
 
         if (roleError) {
-          console.error('❌ Role creation error:', roleError);
-          console.error('Full error details:', JSON.stringify(roleError, null, 2));
+          console.error('Role creation error:', roleError);
         }
 
         toast({
           title: 'Success',
-          description: 'Account created! Please check your email to verify your account.',
+          description: 'Account created! Please check your email to verify.',
         });
         setIsLogin(true);
       }

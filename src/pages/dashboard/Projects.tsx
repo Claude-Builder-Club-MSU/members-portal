@@ -1,48 +1,60 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
+import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useModalState, useItemStatus, useFilteredItems } from '@/hooks/use-modal';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Plus, Github, Calendar, Users, Briefcase, Crown, Eye, Edit } from 'lucide-react';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { DetailModal } from '@/components/modals/DetailModal';
+import { EditModal } from '@/components/modals/EditModal';
+import { MembersListModal } from '@/components/modals/MembersListModal';
+import { ItemCard } from '@/components/ItemCard';
+import SemesterSelector from '@/components/SemesterSelector';
+import { Plus, Github, Calendar as CalendarIcon, Users, Briefcase, Crown, Eye, Edit } from 'lucide-react';
 import { format } from 'date-fns';
-import { ProjectModal } from '@/components/modals/ProjectModal';
+import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/database.types';
+import type { MembershipInfo, ItemWithMembers } from '@/types/modal.types';
 
 type Project = Database['public']['Tables']['projects']['Row'] & {
   semesters: { code: string; name: string } | null;
 };
-type ProjectMember = Database['public']['Tables']['project_members']['Row'];
-type Profile = Database['public']['Tables']['profiles']['Row'];
+type Semester = Database['public']['Tables']['semesters']['Row'];
 
-interface ProjectWithMembers extends Project {
-  members: Array<{
-    membership: ProjectMember;
-    profile: Profile;
-  }>;
-  memberCount: number;
-  userMembership?: ProjectMember;
-}
+type ProjectWithMembers = ItemWithMembers<Project>;
 
 const Projects = () => {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
+  const { role, isEBoard, isBoardOrAbove } = useProfile();
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [projects, setProjects] = useState<ProjectWithMembers[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<ProjectWithMembers | null>(null);
-  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const isMobile = useIsMobile();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+
+  // Form state
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [repositoryName, setRepositoryName] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
+
+  const modalState = useModalState<ProjectWithMembers>();
 
   useEffect(() => {
     if (user && role) {
@@ -50,12 +62,37 @@ const Projects = () => {
     }
   }, [user, role]);
 
+  // Load form data when editing
+  useEffect(() => {
+    if (modalState.modalType === 'edit' && modalState.selectedItem) {
+      const project = modalState.selectedItem;
+      setName(project.name);
+      setDescription(project.description || '');
+      setClientName(project.client_name || '');
+      // Extract repository name from full URL
+      const repoUrl = project.repository_url;
+      const repoName = repoUrl.split('/').pop() || '';
+      setRepositoryName(repoName);
+      setSelectedSemester(project.semester_id ? { id: project.semester_id } as Semester : null);
+      setStartDate(project.start_date ? new Date(project.start_date) : undefined);
+      setEndDate(project.end_date ? new Date(project.end_date) : undefined);
+    } else if (isCreateModalOpen) {
+      // Reset form
+      setName('');
+      setDescription('');
+      setClientName('');
+      setRepositoryName('');
+      setSelectedSemester(null);
+      setStartDate(undefined);
+      setEndDate(undefined);
+    }
+  }, [modalState.modalType, modalState.selectedItem, isCreateModalOpen]);
+
   const fetchProjects = async () => {
     if (!user) return;
 
     setLoading(true);
 
-    // Fetch all projects with semester info
     const { data: projectsData, error: projectsError } = await supabase
       .from('projects')
       .select(`
@@ -67,23 +104,15 @@ const Projects = () => {
       `)
       .order('start_date', { ascending: false });
 
-    if (projectsError) {
-      console.error('Error fetching projects:', projectsError);
+    if (projectsError || !projectsData) {
       setLoading(false);
       return;
     }
 
-    if (!projectsData) {
-      setLoading(false);
-      return;
-    }
-
-    // Fetch all project members
     const { data: membersData } = await supabase
       .from('project_members')
       .select('*');
 
-    // Fetch all profiles for members
     const memberUserIds = [...new Set(membersData?.map(m => m.user_id) || [])];
     const { data: profilesData } = await supabase
       .from('profiles')
@@ -92,17 +121,18 @@ const Projects = () => {
 
     const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
-    // Combine data
     const projectsWithMembers: ProjectWithMembers[] = (projectsData as Project[]).map(project => {
       const projectMembers = membersData?.filter(m => m.project_id === project.id) || [];
-      const members = projectMembers
+      const members: MembershipInfo[] = projectMembers
         .map(membership => ({
-          membership,
+          id: membership.id,
+          user_id: membership.user_id,
+          role: membership.role,
           profile: profilesMap.get(membership.user_id)!,
         }))
         .filter(m => m.profile);
 
-      const userMembership = projectMembers.find(m => m.user_id === user.id);
+      const userMembership = members.find(m => m.user_id === user.id);
 
       return {
         ...project,
@@ -116,182 +146,167 @@ const Projects = () => {
     setLoading(false);
   };
 
-  const getProjectStatus = (project: ProjectWithMembers) => {
-    const now = new Date();
-    const startDate = new Date(project.start_date);
-    const endDate = new Date(project.end_date);
+  const { available, inProgress, completed } = useFilteredItems(
+    projects,
+    (project, status) => {
+      if (status.state === 'available') return true;
+      return isBoardOrAbove || !!project.userMembership;
+    }
+  );
 
-    if (startDate > now) return { label: 'Available', variant: 'enable', state: 'available' };
-    if (endDate < now) return { label: 'Completed', variant: 'destructive', state: 'completed' };
-    return { label: 'In Progress', variant: 'ghost', state: 'in_progress' };
+  const handleSubmit = async () => {
+    if (!user) return;
+    setSaveLoading(true);
+
+    try {
+      const fullRepositoryUrl = `https://github.com/Claude-Builder-Club-MSU/${repositoryName}`;
+
+      const projectData = {
+        name,
+        description: description || null,
+        client_name: clientName || null,
+        repository_url: fullRepositoryUrl,
+        semester_id: selectedSemester?.id || null,
+        start_date: startDate?.toISOString() || null,
+        end_date: endDate?.toISOString() || null,
+      };
+
+      if (modalState.selectedItem) {
+        const { error } = await supabase
+          .from('projects')
+          .update(projectData)
+          .eq('id', modalState.selectedItem.id);
+        if (error) throw error;
+        toast({ title: 'Success', description: 'Project updated!' });
+      } else {
+        const { error } = await supabase
+          .from('projects')
+          .insert({ ...projectData, created_by: user.id });
+        if (error) throw error;
+        toast({ title: 'Success', description: 'Project created!' });
+      }
+
+      await fetchProjects();
+      modalState.close();
+      setIsCreateModalOpen(false);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
-  const handleViewDetails = (project: ProjectWithMembers) => {
-    setSelectedProject(project);
-    setIsDetailsModalOpen(true);
-  };
+  const handleDelete = async () => {
+    if (!modalState.selectedItem) return;
 
-  const handleEditProject = (project: Project) => {
-    setEditingProject(project);
-    setIsModalOpen(true);
-  };
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', modalState.selectedItem.id);
 
-  const handleViewTeam = (project: ProjectWithMembers) => {
-    setSelectedProject(project);
-    setIsTeamModalOpen(true);
-  };
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      throw error;
+    }
 
-  const canManageProjects = role === 'e-board';
-  const canSeeAll = role === 'board' || role === 'e-board';
-
-  // Filter and group projects
-  const availableProjects = projects.filter(p => {
-    const status = getProjectStatus(p);
-    return status.state === 'available';
-  });
-
-  const inProgressProjects = projects.filter(p => {
-    const status = getProjectStatus(p);
-    if (status.state !== 'in_progress') return false;
-    return canSeeAll || p.userMembership;
-  });
-
-  const completedProjects = projects.filter(p => {
-    const status = getProjectStatus(p);
-    if (status.state !== 'completed') return false;
-    return canSeeAll || p.userMembership;
-  });
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+    toast({ title: 'Success', description: 'Project deleted!' });
+    await fetchProjects();
+    modalState.close();
   };
 
   const renderProjectCard = (project: ProjectWithMembers) => {
     const isMember = !!project.userMembership;
     const isLead = project.userMembership?.role === 'lead';
-    const lead = project.members.find(m => m.membership.role === 'lead');
-    const status = getProjectStatus(project);
+    const lead = project.members.find(m => m.role === 'lead');
+    const status = useItemStatus(project);
+
+    if (!status) return null;
+
+    const badges = [];
+    if (isMember) {
+      badges.push(
+        <Badge key="member" variant={isLead ? 'default' : 'secondary'} className="shrink-0 whitespace-nowrap">
+          {isLead ? 'Lead' : 'Member'}
+        </Badge>
+      );
+    }
+    badges.push(
+      <Badge key="status" variant={status.variant}>
+        {status.label}
+      </Badge>
+    );
+
+    const metadata = [];
+
+    if (project.semesters) {
+      metadata.push({
+        icon: <CalendarIcon className="h-4 w-4" />,
+        text: `${project.semesters.code} - ${project.semesters.name}`,
+      });
+    }
+
+    if (project.client_name) {
+      metadata.push({
+        icon: <Briefcase className="h-4 w-4" />,
+        text: `Client: ${project.client_name}`,
+      });
+    }
+
+    if (lead) {
+      metadata.push({
+        icon: <Crown className="h-4 w-4 text-yellow-500" />,
+        text: `Lead: ${lead.profile.full_name || lead.profile.email}`,
+      });
+    }
+
+    metadata.push({
+      icon: <Users className="h-4 w-4 group-hover:text-orange-600 transition-colors duration-400" />,
+      text: `${project.memberCount} ${project.memberCount === 1 ? 'team member' : 'team members'}`,
+      interactive: true,
+      onClick: () => modalState.openMembers(project),
+    });
+
+    const actions = [];
+
+    if (isEBoard) {
+      actions.push({
+        label: 'Edit Details',
+        onClick: () => modalState.openEdit(project),
+        icon: <Edit className="h-4 w-4 mr-2" />,
+        variant: 'outline' as const,
+      });
+    }
+
+    actions.push({
+      label: 'View on GitHub',
+      onClick: () => window.open(project.repository_url, '_blank'),
+      icon: <Github className="h-4 w-4 mr-2" />,
+      variant: isEBoard ? 'default' : 'outline',
+    });
+
+    if (!isEBoard) {
+      actions.push({
+        label: 'View Details',
+        onClick: () => modalState.openDetails(project),
+        icon: <Eye className="h-4 w-4 mr-2" />,
+        variant: 'default' as const,
+      });
+    }
 
     return (
-      <Card key={project.id} className="flex flex-col h-full w-full relative">
-        <CardHeader className="pb-0">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex-1">{project.name}</CardTitle>
-            <div className="flex flex-row gap-3 items-center">
-              {isMember && (
-                <Badge variant={isLead ? 'default' : 'secondary'} className="shrink-0 whitespace-nowrap">
-                  {isLead ? 'Lead' : 'Member'}
-                </Badge>
-              )}
-              <Badge variant={status.variant as any}>
-                {status.label}
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col flex-1 min-h-0">
-          <div className="space-y-3 text-sm text-muted-foreground pt-1">
-            {/* Semester Info */}
-            {project.semesters && (
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                {project.semesters.code} - {project.semesters.name}
-              </div>
-            )}
-
-            {/* Client Info */}
-            {project.client_name && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-5 pt-1">
-                <Briefcase className="h-4 w-4" />
-                Client: {project.client_name}
-              </div>
-            )}
-
-            {/* Team Lead Info */}
-            {lead && (
-              <div className="flex items-center gap-2">
-                <Crown className="h-4 w-4 text-yellow-500" />
-                <span className="text-muted-foreground">Lead:</span>
-                <span className="font-medium">{lead.profile.full_name || lead.profile.email}</span>
-              </div>
-            )}
-
-            {/* Team Members Preview */}
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2 cursor-pointer group w-fit">
-                <Users className="h-4 w-4 group-hover:text-orange-600 transition-colors duration-400" />
-                <span
-                  className="underline decoration-transparent group-hover:decoration-orange-600 group-hover:text-orange-600 transition-all duration-400"
-                  onClick={() => handleViewTeam(project)}
-                >
-                  {project.memberCount} {project.memberCount === 1 ? 'team member' : 'team members'}
-                </span>
-              </div>
-              {project.members.length > 0 && (
-                <div className="flex -space-x-2 mb-6">
-                  {project.members.slice(0, 5).map(({ membership, profile }) => (
-                    <Avatar key={membership.id} className="h-8 w-8 border-2 border-background">
-                      <AvatarImage src={profile.profile_picture_url || undefined} />
-                      <AvatarFallback className="text-xs">
-                        {profile.full_name ? getInitials(profile.full_name) : profile.email.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  ))}
-                  {project.members.length > 5 && (
-                    <div className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-xs">
-                      +{project.members.length - 5}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          {project.description && (
-            <div className="text-sm text-muted-foreground flex-1 space-y-3 break-words pt-3 whitespace-pre-line">
-              {project.description}
-            </div>
-          )}
-
-
-          <div className="space-y-2 mt-4">
-            {canManageProjects && (
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => handleEditProject(project)}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Details
-              </Button>
-            )}
-
-            <Button
-              variant={canManageProjects ? 'default' : 'outline'}
-              className="w-full"
-              onClick={() => window.open(project.repository_url, '_blank')}
-            >
-              <Github className="h-4 w-4 mr-2" />
-              View on GitHub
-            </Button>
-
-            {!canManageProjects && (
-              <Button
-                variant="default"
-                className="w-full"
-                onClick={() => handleViewDetails(project)}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                View Details
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <ItemCard
+        key={project.id}
+        title={project.name}
+        badges={badges}
+        metadata={metadata}
+        description={project.description || undefined}
+        members={{
+          data: project.members,
+          onViewAll: () => modalState.openMembers(project),
+          maxDisplay: 5,
+        }}
+        actions={actions}
+      />
     );
   };
 
@@ -302,11 +317,8 @@ const Projects = () => {
           <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Projects</h1>
           <p className="text-muted-foreground">Club projects</p>
         </div>
-        {canManageProjects && (
-          <Button onClick={() => {
-            setEditingProject(null);
-            setIsModalOpen(true);
-          }}>
+        {isEBoard && (
+          <Button onClick={() => setIsCreateModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Create Project
           </Button>
@@ -319,178 +331,239 @@ const Projects = () => {
             <p className="text-center text-muted-foreground">Loading projects...</p>
           </CardContent>
         </Card>
-      ) : availableProjects.length === 0 && inProgressProjects.length === 0 && completedProjects.length === 0 ? (
+      ) : available.length === 0 && inProgress.length === 0 && completed.length === 0 ? (
         <Card className="mt-6">
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              No projects at this time.
-            </p>
+            <p className="text-center text-muted-foreground">No projects at this time.</p>
           </CardContent>
         </Card>
-
       ) : (
-        <div className="mt-6">
-          {/* In Progress Projects */}
-          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
-            {inProgressProjects.map(renderProjectCard)}
-          </div>
+        <div className="mt-6 space-y-6">
+          {inProgress.length > 0 && (
+            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+              {inProgress.map(renderProjectCard)}
+            </div>
+          )}
 
-          {/* Available Projects */}
-          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
-            {availableProjects.map(renderProjectCard)}
-          </div>
+          {available.length > 0 && (
+            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+              {available.map(renderProjectCard)}
+            </div>
+          )}
 
-
-          {/* Completed Projects */}
-          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
-            {completedProjects.map(renderProjectCard)}
-          </div>
-
+          {completed.length > 0 && (
+            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+              {completed.map(renderProjectCard)}
+            </div>
+          )}
         </div>
       )}
 
-      <ProjectModal
-        open={isModalOpen}
+      {/* EDIT MODAL */}
+      <EditModal
+        open={isCreateModalOpen || modalState.modalType === 'edit'}
         onClose={() => {
-          setIsModalOpen(false);
-          setEditingProject(null);
+          setIsCreateModalOpen(false);
+          modalState.close();
         }}
-        onSuccess={fetchProjects}
-        existingProject={editingProject}
-      />
+        title={modalState.selectedItem ? 'Edit Project' : 'Create New Project'}
+        description={modalState.selectedItem ? 'Update project details' : 'Add a new project'}
+        onSubmit={handleSubmit}
+        onDelete={modalState.selectedItem ? handleDelete : undefined}
+        loading={saveLoading}
+        deleteItemName={modalState.selectedItem?.name}
+        submitLabel={modalState.selectedItem ? 'Update Project' : 'Create Project'}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="name">Project Name *</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            placeholder="AI Chatbot"
+          />
+        </div>
 
-      {/* Project Details Modal */}
-      <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{selectedProject?.name}</DialogTitle>
-            {selectedProject?.client_name && (
-              <DialogDescription>
-                Client: {selectedProject.client_name}
-              </DialogDescription>
-            )}
-          </DialogHeader>
-          {selectedProject && (
-            <div className="space-y-6">
-              {selectedProject.description && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-sm">Description</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedProject.description}
-                  </p>
-                </div>
-              )}
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            placeholder="Project description..."
+          />
+        </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                {selectedProject.semesters && (
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-sm">Term</h3>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      {selectedProject.semesters.code} - {selectedProject.semesters.name}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="clientName">Client Name</Label>
+            <Input
+              id="clientName"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              placeholder="Acme Corp"
+            />
+          </div>
+
+          <SemesterSelector
+            value={selectedSemester?.id || ''}
+            onSelect={setSelectedSemester}
+            required={false}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="repositoryName">GitHub Repository Name *</Label>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
+              github.com/Claude-Builder-Club-MSU/
+            </span>
+            <Input
+              id="repositoryName"
+              value={repositoryName}
+              onChange={(e) => setRepositoryName(e.target.value)}
+              required
+              placeholder="project-name"
+              className="flex-1"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Start Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="secondary"
+                  className={cn(
+                    'w-full justify-start text-left font-normal',
+                    !startDate && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, 'PPP') : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <Label>End Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="secondary"
+                  className={cn(
+                    'w-full justify-start text-left font-normal',
+                    !endDate && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, 'PPP') : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      </EditModal>
+
+      {/* DETAIL MODAL */}
+      {modalState.selectedItem && modalState.modalType === 'details' && (
+        <DetailModal
+          open={modalState.isOpen}
+          onClose={modalState.close}
+          title={modalState.selectedItem.name}
+          subtitle={modalState.selectedItem.client_name ? `Client: ${modalState.selectedItem.client_name}` : undefined}
+          sections={[
+            ...(modalState.selectedItem.description
+              ? [
+                {
+                  title: 'Description',
+                  content: modalState.selectedItem.description,
+                },
+              ]
+              : []),
+            ...(modalState.selectedItem.semesters
+              ? [
+                {
+                  title: 'Term',
+                  icon: <CalendarIcon className="h-4 w-4" />,
+                  content: `${modalState.selectedItem.semesters.code} - ${modalState.selectedItem.semesters.name}`,
+                },
+              ]
+              : []),
+            {
+              title: 'Team Size',
+              icon: <Users className="h-4 w-4" />,
+              content: `${modalState.selectedItem.memberCount} ${modalState.selectedItem.memberCount === 1 ? 'member' : 'members'
+                }`,
+            },
+            {
+              title: 'Dates',
+              icon: <CalendarIcon className="h-4 w-4" />,
+              content: `${modalState.selectedItem.start_date
+                  ? `Start: ${new Date(modalState.selectedItem.start_date).toLocaleDateString()}`
+                  : ''
+                }${modalState.selectedItem.end_date
+                  ? ` | End: ${new Date(modalState.selectedItem.end_date).toLocaleDateString()}`
+                  : ''
+                }`,
+            },
+            ...(modalState.selectedItem.members.some(m => m.role === 'lead')
+              ? [
+                {
+                  title: 'Project Lead',
+                  content: (
+                    <div className="flex items-center gap-2">
+                      {modalState.selectedItem.members
+                        .filter(m => m.role === 'lead')
+                        .map(m => (
+                          <div key={m.id} className="flex items-center gap-2">
+                            <span className="font-semibold">{m.profile.full_name || 'No name'}</span>
+                            <span className="text-xs text-muted-foreground">{m.profile.email}</span>
+                          </div>
+                        ))}
                     </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-sm">Team Size</h3>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    {selectedProject.memberCount} {selectedProject.memberCount === 1 ? 'member' : 'members'}
-                  </div>
-                </div>
-
-                {/* Dates */}
-                <div className="space-y-2 col-span-2">
-                  <h3 className="font-semibold text-sm">Dates</h3>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    {selectedProject.start_date
-                      ? `Start: ${new Date(selectedProject.start_date).toLocaleDateString()}`
-                      : null}
-                    {selectedProject.end_date
-                      ? ` | End: ${new Date(selectedProject.end_date).toLocaleDateString()}`
-                      : null}
-                  </div>
-                </div>
-              </div>
-
-              {/* Teacher */}
-              {selectedProject.members?.some(({ membership }) => membership.role === "lead") && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-sm">Teacher</h3>
-                  {selectedProject.members
-                    ?.filter(({ membership }) => membership.role === "lead")
-                    .map(({ membership, profile }) => (
-                      <div key={membership.id} className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={profile.profile_picture_url || undefined} />
-                          <AvatarFallback>
-                            {profile.full_name
-                              ? getInitials(profile.full_name)
-                              : profile.email.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-semibold">{profile.full_name || "No name"}</span>
-                        <span className="text-xs text-muted-foreground">{profile.email}</span>
-                      </div>
-                    ))}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm">GitHub Repository</h3>
+                  ),
+                },
+              ]
+              : []),
+            {
+              title: 'GitHub Repository',
+              content: (
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => window.open(selectedProject.repository_url, '_blank')}
+                  onClick={() => window.open(modalState.selectedItem!.repository_url, '_blank')}
                 >
                   <Github className="h-4 w-4 mr-2" />
-                  {selectedProject.repository_url}
+                  {modalState.selectedItem.repository_url}
                 </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+              ),
+            },
+          ]}
+        />
+      )}
 
-      {/* Team Members Modal */}
-      <Dialog open={isTeamModalOpen} onOpenChange={setIsTeamModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{selectedProject?.name} - Team Members</DialogTitle>
-            <DialogDescription>
-              {selectedProject?.memberCount} {selectedProject?.memberCount === 1 ? 'member' : 'members'} on this project
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {selectedProject?.members.map(({ membership, profile }) => (
-              <div
-                key={membership.id}
-                className="flex items-center gap-3 p-3 rounded-lg border bg-card"
-              >
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={profile.profile_picture_url || undefined} />
-                  <AvatarFallback>
-                    {profile.full_name ? getInitials(profile.full_name) : profile.email.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">
-                    {profile.full_name || 'No name'}
-                  </p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {profile.email}
-                  </p>
-                </div>
-                <Badge variant={membership.role === 'lead' ? 'default' : 'secondary'} className="capitalize">
-                  {membership.role}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* MEMBERS MODAL */}
+      {modalState.selectedItem && modalState.modalType === 'members' && (
+        <MembersListModal
+          open={modalState.isOpen}
+          onClose={modalState.close}
+          title={`${modalState.selectedItem.name} - Team Members`}
+          members={modalState.selectedItem.members}
+          showRole={true}
+        />
+      )}
     </div>
   );
 };

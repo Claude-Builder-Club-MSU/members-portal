@@ -5,14 +5,16 @@ import { useNavigate } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
-type UserRole = Database['public']['Enums']['app_role'];
 
 interface AuthContextType {
+  // Identity
   user: User | null;
   session: Session | null;
   profile: Profile | null;
-  role: UserRole | null;
   loading: boolean;
+
+  // Actions
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -21,8 +23,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   profile: null,
-  role: null,
   loading: true,
+  signIn: async () => {},
   signOut: async () => {},
   refreshProfile: async () => {},
 });
@@ -39,44 +41,99 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const mountedRef = useRef(true);
+  const fetchingRef = useRef(false);
+  const profileCacheRef = useRef<{ userId: string; data: Profile; timestamp: number } | null>(null);
 
-  const fetchProfile = async (userId: string) => {
+  // Cache duration: 30 seconds
+  const CACHE_DURATION = 30 * 1000;
+
+  const fetchProfile = async (userId: string, skipCache = false) => {
+    // Prevent duplicate concurrent fetches
+    if (fetchingRef.current) return;
+
+    // Check cache first (unless explicitly skipped)
+    if (!skipCache && profileCacheRef.current) {
+      const { userId: cachedUserId, data, timestamp } = profileCacheRef.current;
+      const now = Date.now();
+
+      if (cachedUserId === userId && now - timestamp < CACHE_DURATION) {
+        if (mountedRef.current) {
+          setProfile(data);
+        }
+        return;
+      }
+    }
+
+    fetchingRef.current = true;
+
     try {
-      // Fetch profile directly
-      const { data: profileData, error: profileError } = await supabase
+      // Fetch profile with timeout protection
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
+        .abortSignal(controller.signal)
         .single();
 
-      // Fetch role directly
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .single();
+      clearTimeout(timeoutId);
 
-      // Set data even if there were errors
-      if (mountedRef.current) {
-        setProfile(profileData ?? null);
-        setRole(roleData?.role ?? 'prospect');
+      if (error) {
+        // Check if it's an abort error
+        if (error.message?.includes('aborted')) {
+          throw new Error('Profile fetch timeout');
+        }
+        throw error;
       }
+
+      if (!mountedRef.current) return;
+
+      // Update cache
+      profileCacheRef.current = {
+        userId,
+        data: profileData,
+        timestamp: Date.now(),
+      };
+
+      setProfile(profileData);
     } catch (error) {
+      console.error('Error fetching profile:', error);
+
       if (mountedRef.current) {
-        setProfile(null);
-        setRole('prospect');
+        // Set minimal fallback profile
+        const fallbackProfile: Profile = {
+          id: userId,
+          email: user?.email || '',
+          full_name: '',
+          class_year: null,
+          linkedin_username: null,
+          profile_picture_url: null,
+          resume_url: null,
+          points: 0,
+          github_username: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          team: null,
+          position: null,
+          term_joined: null,
+        };
+
+        setProfile(fallbackProfile);
       }
-      // Optionally log the error, but don't throw.
+    } finally {
+      fetchingRef.current = false;
     }
   };
 
   const refreshProfile = async () => {
     if (user) {
-      await fetchProfile(user.id);
+      // Skip cache when explicitly refreshing
+      await fetchProfile(user.id, true);
     }
   };
 
@@ -84,55 +141,90 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     mountedRef.current = true;
 
     const initAuth = async () => {
-      // Get initial session
-      const { data: { session } } = await supabase.auth.getSession();
+      try {
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
 
-      if (!mountedRef.current) return;
+        if (!mountedRef.current) return;
 
-      setSession(session);
-      setUser(session?.user ?? null);
+        setSession(session);
+        setUser(session?.user ?? null);
 
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
       }
-
-      setLoading(false);
     };
 
     initAuth();
 
-    // Set up listener for future auth changes, but avoid async listener pitfalls
-    // by not making the callback itself async, and calling async code within.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        // Use an IIFE for async logic to avoid returning a Promise to the event.
-        (async () => {
-          if (!mountedRef.current) return;
-
-          setSession(session);
-          setUser(session?.user ?? null);
-
-          if (session?.user) {
-            await fetchProfile(session.user.id);
-          } else {
-            setProfile(null);
-            setRole(null);
-          }
-        })();
-      }
-    );
-
     return () => {
       mountedRef.current = false;
-      subscription.unsubscribe();
     };
-  }, []);
+  }, []); // ✅ Only run once on mount - no auth listener needed!
+
+  // Separate effect for profile real-time subscription
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Real-time subscription for profile updates
+    const profileSubscription = supabase
+      .channel(`profile_changes_${user.id}`) // Unique channel name per user
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        () => {
+          if (!mountedRef.current) return;
+
+          // Invalidate cache and refetch when profile changes
+          profileCacheRef.current = null;
+          fetchProfile(user.id, true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      profileSubscription.unsubscribe();
+    };
+  }, [user?.id]); // ✅ This effect CAN safely depend on user.id
+
+  const signIn = async (email: string, password: string) => {
+    // Sign in with Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+
+    // Update state with new session
+    setSession(data.session);
+    setUser(data.user);
+
+    // Fetch profile
+    if (data.user) {
+      await fetchProfile(data.user.id);
+    }
+  };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Clear local state first
     setProfile(null);
-    setRole(null);
-    navigate('/');
+    setUser(null);
+    setSession(null);
+    profileCacheRef.current = null;
+
+    // Sign out from Supabase
+    await supabase.auth.signOut();
   };
 
   return (
@@ -140,10 +232,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       user,
       session,
       profile,
-      role,
       loading,
+      signIn,
       signOut,
-      refreshProfile
+      refreshProfile,
     }}>
       {children}
     </AuthContext.Provider>

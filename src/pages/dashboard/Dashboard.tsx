@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,20 +37,18 @@ type Class = Database['public']['Tables']['classes']['Row'] & {
   class_enrollments: { count: number }[];
 };
 
+type AdminStats = {
+  members: number;
+  prospects: number;
+  board: number;
+  eBoard: number;
+};
+
 type DashboardData = {
   events: Event[];
-  projects: Project[];
-  classes: Class[];
-  stats: {
-    type: 'admin' | 'personal';
-    members?: number;
-    prospects?: number;
-    board?: number;
-    eBoard?: number;
-    points?: number;
-    myProjects?: number;
-    myClasses?: number;
-  };
+  projects?: Project[];
+  classes?: Class[];
+  adminStats?: AdminStats;
 };
 
 // --- Helper Functions ---
@@ -71,130 +70,125 @@ const getClassStatus = (cls: Class) => {
   return { label: 'Active', color: 'bg-blue-500' };
 };
 
+// --- Data Fetching Functions ---
+
+// E-Board sees: all roles stats + all events + all projects/classes
+async function fetchEBoardDashboard(): Promise<DashboardData> {
+  const [eventsRes, rolesRes, projectsRes, classesRes] = await Promise.all([
+    supabase
+      .from('events')
+      .select('*')
+      .gte('event_date', new Date().toISOString())
+      .order('event_date', { ascending: true })
+      .limit(10),
+    supabase.from('user_roles').select('role'),
+    supabase
+      .from('projects')
+      .select(`*, semesters (code, name), project_members(count)`)
+      .order('start_date', { ascending: false })
+      .limit(6),
+    supabase
+      .from('classes')
+      .select(`*, semesters (code, name), class_enrollments(count)`)
+      .order('start_date', { ascending: false })
+      .limit(6)
+  ]);
+
+  if (eventsRes.error) throw eventsRes.error;
+  if (rolesRes.error) throw rolesRes.error;
+  if (projectsRes.error) throw projectsRes.error;
+  if (classesRes.error) throw classesRes.error;
+
+  return {
+    events: eventsRes.data || [],
+    projects: (projectsRes.data as Project[]) || [],
+    classes: (classesRes.data as Class[]) || [],
+    adminStats: {
+      members: rolesRes.data?.filter(r => r.role === 'member').length || 0,
+      prospects: rolesRes.data?.filter(r => r.role === 'prospect').length || 0,
+      board: rolesRes.data?.filter(r => r.role === 'board').length || 0,
+      eBoard: rolesRes.data?.filter(r => r.role === 'e-board').length || 0,
+    }
+  };
+}
+
+// Board sees: all events + all projects/classes (stats from ProfileContext)
+async function fetchBoardDashboard(): Promise<DashboardData> {
+  const [eventsRes, projectsRes, classesRes] = await Promise.all([
+    supabase
+      .from('events')
+      .select('*')
+      .gte('event_date', new Date().toISOString())
+      .order('event_date', { ascending: true })
+      .limit(10),
+    supabase
+      .from('projects')
+      .select(`*, semesters (code, name), project_members(count)`)
+      .order('start_date', { ascending: false })
+      .limit(6),
+    supabase
+      .from('classes')
+      .select(`*, semesters (code, name), class_enrollments(count)`)
+      .order('start_date', { ascending: false })
+      .limit(6)
+  ]);
+
+  if (eventsRes.error) throw eventsRes.error;
+  if (projectsRes.error) throw projectsRes.error;
+  if (classesRes.error) throw classesRes.error;
+
+  return {
+    events: eventsRes.data || [],
+    projects: (projectsRes.data as Project[]) || [],
+    classes: (classesRes.data as Class[]) || [],
+  };
+}
+
+// Members see: role-filtered events + their projects/classes (from ProfileContext)
+async function fetchMemberDashboard(userRole: string): Promise<DashboardData> {
+  const { data: events, error } = await supabase
+    .from('events')
+    .select('*')
+    .contains('allowed_roles', [userRole])
+    .gte('event_date', new Date().toISOString())
+    .order('event_date', { ascending: true })
+    .limit(5);
+
+  if (error) throw error;
+
+  return {
+    events: events || [],
+  };
+}
+
 export default function Dashboard() {
-  const { user, profile, role } = useAuth();
+  const { user, profile } = useAuth();
+  const { role, isEBoard, isBoardOrAbove, stats, projects, classes } = useProfile();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<DashboardData>({
-    events: [],
-    projects: [],
-    classes: [],
-    stats: { type: 'personal' },
-  });
+  // Fetch dashboard-specific data (events + admin views)
+  const { data: dashboardData, isLoading } = useQuery<DashboardData>({
+    queryKey: ['dashboard-data', role],
+    queryFn: async () => {
+      if (!role) throw new Error('No role');
 
-  const showAdminStats = role === 'e-board';
-  const showAdminContent = role === 'board' || role === 'e-board';
-
-  useEffect(() => {
-    if (!user || !role) return;
-    fetchDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, role]);
-
-  async function fetchDashboardData() {
-    setLoading(true);
-    try {
       if (role === 'e-board') {
-        await fetchEBoardData();
+        return fetchEBoardDashboard();
       } else if (role === 'board') {
-        await fetchBoardData();
+        return fetchBoardDashboard();
       } else {
-        await fetchMemberData();
+        return fetchMemberDashboard(role);
       }
-    } catch (error) {
-      console.error('Error loading dashboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Strategy 1: E-Board
-  async function fetchEBoardData() {
-    const [eventsRes, rolesRes, projectsRes, classesRes] = await Promise.all([
-      supabase.from('events').select('*').gte('event_date', new Date().toISOString()).order('event_date', { ascending: true }).limit(10),
-      supabase.from('user_roles').select('role'),
-      supabase.from('projects').select(`*, semesters (code, name), project_members(count)`).order('start_date', { ascending: false }).limit(6),
-      supabase.from('classes').select(`*, semesters (code, name), class_enrollments(count)`).order('start_date', { ascending: false }).limit(6)
-    ]);
-
-    setData({
-      events: eventsRes.data || [],
-      projects: (projectsRes.data as any[]) || [],
-      classes: (classesRes.data as any[]) || [],
-      stats: {
-        type: 'admin',
-        members: rolesRes.data?.filter(r => r.role === 'member').length || 0,
-        prospects: rolesRes.data?.filter(r => r.role === 'prospect').length || 0,
-        board: rolesRes.data?.filter(r => r.role === 'board').length || 0,
-        eBoard: rolesRes.data?.filter(r => r.role === 'e-board').length || 0,
-      }
-    });
-  }
-
-  // Strategy 2: Board
-  async function fetchBoardData() {
-    const [eventsRes, projectsRes, classesRes, myProjects, myClasses] = await Promise.all([
-      supabase.from('events').select('*').gte('event_date', new Date().toISOString()).order('event_date', { ascending: true }).limit(10),
-      supabase.from('projects').select(`*, semesters (code, name), project_members(count)`).order('start_date', { ascending: false }).limit(6),
-      supabase.from('classes').select(`*, semesters (code, name), class_enrollments(count)`).order('start_date', { ascending: false }).limit(6),
-      supabase.from('project_members').select('project_id', { count: 'exact', head: true }).eq('user_id', user!.id),
-      supabase.from('class_enrollments').select('class_id', { count: 'exact', head: true }).eq('user_id', user!.id),
-    ]);
-
-    setData({
-      events: eventsRes.data || [],
-      projects: (projectsRes.data as any[]) || [],
-      classes: (classesRes.data as any[]) || [],
-      stats: {
-        type: 'personal',
-        points: profile?.points || 0,
-        myProjects: myProjects.count || 0,
-        myClasses: myClasses.count || 0,
-      }
-    });
-  }
-
-  // Strategy 3: Member
-  async function fetchMemberData() {
-    const eventsPromise = supabase.from('events').select('*').contains('allowed_roles', [role]).gte('event_date', new Date().toISOString()).order('event_date', { ascending: true }).limit(5);
-
-    const projectsPromise = (async () => {
-      const { data: pm } = await supabase.from('project_members').select('project_id').eq('user_id', user!.id);
-      if (!pm?.length) return [];
-      const { data } = await supabase.from('projects')
-        .select(`*, semesters (code, name), project_members(count)`)
-        .in('id', pm.map(p => p.project_id))
-        .order('start_date', { ascending: false })
-        .limit(5);
-      return data as any[];
-    })();
-
-    const classesPromise = (async () => {
-      const { data: ce } = await supabase.from('class_enrollments').select('class_id').eq('user_id', user!.id);
-      if (!ce?.length) return [];
-      const { data } = await supabase.from('classes')
-        .select(`*, semesters (code, name), class_enrollments(count)`)
-        .in('id', ce.map(c => c.class_id))
-        .order('start_date', { ascending: false });
-      return data as any[];
-    })();
-
-    const [eventsRes, projectsData, classesData] = await Promise.all([eventsPromise, projectsPromise, classesPromise]);
-
-    setData({
-      events: eventsRes.data || [],
-      projects: projectsData || [],
-      classes: classesData || [],
-      stats: {
-        type: 'personal',
-        points: profile?.points || 0,
-        myProjects: projectsData?.length || 0,
-        myClasses: classesData?.length || 0,
-      }
-    });
-  }
+    },
+    enabled: !!role,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    gcTime: 1000 * 60 * 5,
+    // Provide default empty structure to prevent undefined errors
+    placeholderData: {
+      events: [],
+    },
+  });
 
   // --- Sub-Components ---
 
@@ -261,119 +255,170 @@ export default function Dashboard() {
   );
 
   const StatsGrid = () => {
+    // E-Board shows admin stats
+    if (isEBoard && dashboardData?.adminStats) {
+      const adminStats = dashboardData.adminStats;
+
+      return (
+        <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
+          <StatItem
+            icon={Users}
+            color="text-green-600 dark:text-green-500"
+            bg="bg-green-500/10"
+            value={adminStats.members}
+            label={adminStats.members === 1 ? "Active Member" : "Active Members"}
+            link="/dashboard/members"
+          />
+          <StatItem
+            icon={UserPlus}
+            color="text-primary dark:text-primary/80"
+            bg="bg-primary/10"
+            value={adminStats.prospects}
+            label={adminStats.prospects === 1 ? "Prospect" : "Prospects"}
+            link="/dashboard/prospects"
+          />
+          <StatItem
+            icon={Award}
+            color="text-blue-600 dark:text-blue-500"
+            bg="bg-blue-500/10"
+            value={adminStats.board}
+            label={adminStats.board === 1 ? "Board Member" : "Board Members"}
+            link="/dashboard/members"
+          />
+          <StatItem
+            icon={Crown}
+            color="text-purple-600 dark:text-purple-500"
+            bg="bg-purple-500/10"
+            value={adminStats.eBoard}
+            label={adminStats.eBoard === 1 ? "E-Board Member" : "E-Board Members"}
+            link="/dashboard/members"
+          />
+        </div>
+      );
+    }
+
+    // Everyone else shows personal stats (from ProfileContext)
     return (
       <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
-        {showAdminStats ? (
-          <>
-            <StatItem
-              icon={Users} color="text-green-600 dark:text-green-500" bg="bg-green-500/10"
-              value={data.stats.members}
-              label={data.stats.members === 1 ? "Active Member" : "Active Members"}
-              link="/dashboard/members"
-            />
-            <StatItem
-              icon={UserPlus} color="text-primary dark:text-primary/80" bg="bg-primary/10"
-              value={data.stats.prospects}
-              label={data.stats.prospects === 1 ? "Prospect" : "Prospects"}
-              link="/dashboard/prospects"
-            />
-            <StatItem
-              icon={Award} color="text-blue-600 dark:text-blue-500" bg="bg-blue-500/10"
-              value={data.stats.board}
-              label={data.stats.board === 1 ? "Board Member" : "Board Members"}
-              link="/dashboard/members"
-            />
-            <StatItem
-              icon={Crown} color="text-purple-600 dark:text-purple-500" bg="bg-purple-500/10"
-              value={data.stats.eBoard}
-              label={data.stats.eBoard === 1 ? "E-Board Member" : "E-Board Members"}
-              link="/dashboard/members"
-            />
-          </>
-        ) : (
-          <>
-            <StatItem icon={Trophy} color="text-yellow-600 dark:text-yellow-500" bg="bg-yellow-500/10" value={data.stats.points} label="Points" />
-            <StatItem
-              icon={FolderKanban} color="text-blue-600 dark:text-blue-500" bg="bg-blue-500/10"
-              value={data.stats.myProjects}
-              label={data.stats.myProjects === 1 ? "Active Project" : "Active Projects"}
-              link="/dashboard/projects"
-            />
-            <StatItem
-              icon={BookOpen} color="text-purple-600 dark:text-purple-500" bg="bg-purple-500/10"
-              value={data.stats.myClasses}
-              label={data.stats.myClasses === 1 ? "Enrolled Class" : "Enrolled Classes"}
-              link="/dashboard/classes"
-            />
-            <StatItem icon={Award} color="text-green-600 dark:text-green-500" bg="bg-green-500/10" value={role?.replace('-', ' ') || 'Prospect'} label="Status" />
-          </>
-        )}
+        <StatItem
+          icon={Trophy}
+          color="text-yellow-600 dark:text-yellow-500"
+          bg="bg-yellow-500/10"
+          value={profile?.points || 0}
+          label="Points"
+        />
+        <StatItem
+          icon={FolderKanban}
+          color="text-blue-600 dark:text-blue-500"
+          bg="bg-blue-500/10"
+          value={stats?.totalProjects || 0}
+          label={stats?.totalProjects === 1 ? "Active Project" : "Active Projects"}
+          link="/dashboard/projects"
+        />
+        <StatItem
+          icon={BookOpen}
+          color="text-purple-600 dark:text-purple-500"
+          bg="bg-purple-500/10"
+          value={stats?.totalClasses || 0}
+          label={stats?.totalClasses === 1 ? "Enrolled Class" : "Enrolled Classes"}
+          link="/dashboard/classes"
+        />
+        <StatItem
+          icon={Award}
+          color="text-green-600 dark:text-green-500"
+          bg="bg-green-500/10"
+          value={role?.replace('-', ' ') || 'Prospect'}
+          label="Status"
+        />
       </div>
     );
   };
 
-  const EventsCard = () => (
-    <Card className="hover:shadow-lg transition-shadow h-full flex flex-col min-w-[300px]">
-      <CardHeader className="p-4 pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg"><Calendar className="h-5 w-5 text-primary" /></div>
-            <div>
-              <CardTitle className="text-xl">Upcoming Events</CardTitle>
-              <CardDescription>{`${data.events.length} event${data.events.length !== 1 ? 's' : ''}`}</CardDescription>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/dashboard/events')}
-            className="hover:bg-primary/10 hover:text-primary"
-          >
-            View All <ArrowRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className={`flex-1 flex flex-col overflow-y-auto max-h-[600px] ${isMobile ? 'p-4 justify-center' : 'p-2'}`}>
-        {loading ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading...</div>
-        ) : data.events.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No upcoming events</div>
-        ) : (
-          <div className="space-y-3">
-            {data.events.map((event) => (
-              <Card key={event.id} className="w-full border bg-card hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => navigate('/dashboard/events')}>
-                <CardHeader className="p-3 pb-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-lg font-semibold truncate">{event.name}</CardTitle>
-                    {event.points > 0 && <Badge variant="secondary" className="scale-90 origin-right">+{event.points}</Badge>}
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 pt-0.5 space-y-1">
-                  <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    <span>{format(new Date(event.event_date), 'MMM d, yyyy • h:mm a')}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
-                    <MapPin className="h-3 w-3" />
-                    <span className="truncate">{event.location}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+  const EventsCard = () => {
+    const events = dashboardData?.events || [];
 
-  const ResourceCard = ({ type, items }: { type: 'Projects' | 'Classes', items: Project[] | Class[] }) => {
+    return (
+      <Card className="hover:shadow-lg transition-shadow h-full flex flex-col min-w-[300px]">
+        <CardHeader className="p-4 pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Calendar className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">Upcoming Events</CardTitle>
+                <CardDescription>{`${events.length} event${events.length !== 1 ? 's' : ''}`}</CardDescription>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/dashboard/events')}
+              className="hover:bg-primary/10 hover:text-primary"
+            >
+              View All <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className={`flex-1 flex flex-col overflow-y-auto max-h-[600px] ${isMobile ? 'p-4 justify-center' : 'p-2'}`}>
+          {isLoading ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading...</div>
+          ) : events.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No upcoming events</div>
+          ) : (
+            <div className="space-y-3">
+              {events.map((event) => (
+                <Card key={event.id} className="w-full border bg-card hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => navigate('/dashboard/events')}>
+                  <CardHeader className="p-3 pb-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-lg font-semibold truncate">{event.name}</CardTitle>
+                      {event.points > 0 && <Badge variant="secondary" className="scale-90 origin-right">+{event.points}</Badge>}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0.5 space-y-1">
+                    <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      <span>{format(new Date(event.event_date), 'MMM d, yyyy • h:mm a')}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      <span className="truncate">{event.location}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const ResourceCard = ({ type }: { type: 'Projects' | 'Classes' }) => {
     const isProject = type === 'Projects';
     const Icon = isProject ? FolderKanban : BookOpen;
     const colorClass = isProject ? "text-blue-600 dark:text-blue-500" : "text-purple-600 dark:text-purple-500";
     const bgClass = isProject ? "bg-blue-500/10" : "bg-purple-500/10";
     const hoverBtnClass = isProject ? "hover:bg-blue-500/10 hover:text-blue-600" : "hover:bg-purple-500/10 hover:text-purple-600";
     const link = isProject ? '/dashboard/projects' : '/dashboard/classes';
-    const title = showAdminContent ? `Active ${type}` : `Your ${type}`;
+
+    // For board/e-board: show all projects/classes from dashboard query
+    // For members: show their projects/classes from ProfileContext
+    let items: any[] = [];  // Use any[] to handle different data shapes
+    let title = '';
+
+    if (isBoardOrAbove) {
+      items = isProject
+        ? (dashboardData?.projects || [])
+        : (dashboardData?.classes || []);
+      title = `Active ${type}`;
+    } else {
+      items = isProject
+        ? (projects?.projects || [])
+        : (classes?.classes || []);
+      title = `Your ${type}`;
+    }
+
     const desc = `${items.length} ${items.length === 1 ? type.slice(0, -1).toLowerCase() : type.toLowerCase()}`;
 
     return (
@@ -381,7 +426,9 @@ export default function Dashboard() {
         <CardHeader className="p-6 pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`p-2 ${bgClass} rounded-lg`}><Icon className={`h-5 w-5 ${colorClass}`} /></div>
+              <div className={`p-2 ${bgClass} rounded-lg`}>
+                <Icon className={`h-5 w-5 ${colorClass}`} />
+              </div>
               <div>
                 <CardTitle className="text-xl">{title}</CardTitle>
                 <CardDescription>{desc}</CardDescription>
@@ -398,7 +445,7 @@ export default function Dashboard() {
           </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto p-4 flex flex-col justify-center">
-          {loading ? (
+          {isLoading ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading...</div>
           ) : items.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
@@ -406,12 +453,17 @@ export default function Dashboard() {
               <p className="text-sm">No active {type.toLowerCase()}</p>
             </div>
           ) : (
-            <div className={`grid gap-3 ${showAdminContent && !isMobile ? 'grid-cols-1 md:grid-cols-1 lg:grid-cols-1 xl-grid-cols-2' : type === 'Classes' && !isMobile && !showAdminContent ? 'grid-cols-1 md:grid-cols-1 lg:grid-cols-1 xl: grid-cols-2' : 'grid-cols-1'}`}>
+            <div className={`grid gap-3 ${isBoardOrAbove && !isMobile ? 'grid-cols-1 md:grid-cols-1 lg:grid-cols-1 xl-grid-cols-2' : type === 'Classes' && !isMobile && !isBoardOrAbove ? 'grid-cols-1 md:grid-cols-1 lg:grid-cols-1 xl: grid-cols-2' : 'grid-cols-1'}`}>
               {items.map((item: any) => {
                 const status = isProject ? getProjectStatus(item) : getClassStatus(item);
-                const count = isProject
-                  ? (item.project_members?.[0]?.count || 0)
-                  : (item.class_enrollments?.[0]?.count || 0);
+
+                // For dashboard data (board/e-board), count comes from aggregated query
+                // For ProfileContext data (members), we don't have the count, so default to 0
+                const count = isBoardOrAbove
+                  ? (isProject
+                      ? (item.project_members?.[0]?.count || 0)
+                      : (item.class_enrollments?.[0]?.count || 0))
+                  : 0;
 
                 return (
                   <Card key={item.id} className="w-full border bg-card hover:bg-primary/5 transition-colors cursor-pointer" onClick={(e) => {
@@ -449,10 +501,12 @@ export default function Dashboard() {
                             <span className="capitalize">{item.location}</span>
                           </span>
                         )}
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          <span>{count} {isProject ? 'members' : 'students'}</span>
-                        </span>
+                        {isBoardOrAbove && (
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            <span>{count} {isProject ? 'members' : 'students'}</span>
+                          </span>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -466,9 +520,6 @@ export default function Dashboard() {
   };
 
   return (
-    // Main Container
-    // xl:h-[95vh] enforces the fixed height ONLY on extra large screens (1280px+).
-    // On anything smaller, it reverts to h-auto (scrollable), avoiding the squashed look.
     <div className={`flex flex-col p-4 gap-4 ${isMobile ? 'min-h-[calc(100vh-5vh)]' : 'xl:h-[95vh] h-auto'} overflow-hidden`}>
       {/* 1. Header */}
       <div className="shrink-0">
@@ -481,36 +532,18 @@ export default function Dashboard() {
       </div>
 
       {/* 3. Main Content Grid */}
-      {/* Flattened Grid Logic: */}
-      {/* Mobile: 1 Column */}
-      {/* Tablet/Laptop (md): 2 Columns (Events Left, Projects Right, Classes Bottom) - "Dual Column System" */}
-      {/* Desktop (xl): 3 Columns (Events Left, Stack Right) - The "Ideal" Layout */}
       <div className={`grid gap-4 flex-1 min-h-0 ${isMobile ? 'grid-cols-1 auto-rows-fr' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
-
-        {/* Events:
-            md: 2 x 1
-            xl: 2 x 1
-        */}
         <div className={`h-full ${isMobile ? 'min-h-[100px]' : 'min-h-0'} md:col-span-1 md:row-span-2 xl:col-span-1 xl:row-span-2`}>
           <EventsCard />
         </div>
 
-        {/* Projects:
-            md: 1 x 1
-            xl: 1 x 2
-        */}
         <div className={`h-full ${isMobile ? 'min-h-[100px]' : 'min-h-[250px]'} md:col-span-1 xl:col-span-2`}>
-          <ResourceCard type="Projects" items={data.projects} />
+          <ResourceCard type="Projects" />
         </div>
 
-        {/* Classes:
-            md: 1 x 1
-            xl: 1 x 2
-        */}
         <div className={`h-full ${isMobile ? 'min-h-[100px]' : 'min-h-[250px]'} md:col-span-1 xl:col-span-2`}>
-          <ResourceCard type="Classes" items={data.classes} />
+          <ResourceCard type="Classes" />
         </div>
-
       </div>
     </div>
   );

@@ -1,0 +1,488 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/contexts/ProfileContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Save, X } from 'lucide-react';
+import type { Database } from '@/integrations/supabase/database.types';
+
+type ApplicationType = Database['public']['Enums']['application_type'];
+type Class = Database['public']['Tables']['classes']['Row'] & {
+  semesters: { code: string; name: string } | null;
+};
+type Project = Database['public']['Tables']['projects']['Row'] & {
+  semesters: { code: string; name: string } | null;
+};
+
+interface ApplicationCreateModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+const BOARD_POSITIONS = [
+  'President',
+  'Vice President',
+  'Treasurer',
+  'Secretary',
+  'Technical Lead',
+  'Marketing Lead',
+  'Events Coordinator',
+];
+
+export const ApplicationCreateModal = ({
+  open,
+  onClose,
+  onSuccess,
+}: ApplicationCreateModalProps) => {
+  const { user, profile } = useAuth();
+  const { role } = useProfile();
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const [loading, setLoading] = useState(false);
+  const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
+  const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
+
+  // Form fields
+  const [applicationType, setApplicationType] = useState<ApplicationType | ''>('');
+  const [fullName, setFullName] = useState('');
+  const [classYear, setClassYear] = useState('');
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
+  const [whyJoin, setWhyJoin] = useState('');
+  const [whyPosition, setWhyPosition] = useState('');
+  const [relevantExperience, setRelevantExperience] = useState('');
+  const [otherCommitments, setOtherCommitments] = useState('');
+  const [projectDetail, setProjectDetail] = useState('');
+  const [problemSolved, setProblemSolved] = useState('');
+  const [previousExperience, setPreviousExperience] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedBoardPosition, setSelectedBoardPosition] = useState('');
+
+  // Initialize form
+  useEffect(() => {
+    if (profile && open) {
+      setFullName(profile.full_name || '');
+      setClassYear(profile.class_year || '');
+    }
+  }, [profile, open]);
+
+  // Fetch available options
+  useEffect(() => {
+    if (open) {
+      fetchAvailableOptions();
+    }
+  }, [open]);
+
+  const fetchAvailableOptions = async () => {
+    const now = new Date().toISOString();
+
+    // Fetch classes where the semester start date is in the future
+    const { data: classesData } = await supabase
+      .from('classes')
+      .select(`
+        *,
+        semesters!inner (
+          code,
+          name,
+          start_date
+        )
+      `)
+      .gt('semesters.start_date', now)
+      .order('name', { ascending: true });
+
+    if (classesData) setAvailableClasses(classesData);
+
+    // Fetch projects where the semester start date is in the future
+    const { data: projectsData } = await supabase
+      .from('projects')
+      .select(`
+        *,
+        semesters!inner (
+          code,
+          name,
+          start_date
+        )
+      `)
+      .gt('semesters.start_date', now)
+      .order('name', { ascending: true });
+
+    if (projectsData) setAvailableProjects(projectsData);
+  };
+
+  const handleApplicationTypeChange = (type: ApplicationType) => {
+    // Check if user has GitHub username for project applications
+    if (type === 'project' && !profile?.github_username) {
+      toast({
+        title: 'GitHub Username Required',
+        description: 'Please add your GitHub username to your profile before applying to projects.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setApplicationType(type);
+
+    if (type === 'class' && availableClasses.length === 0) {
+      toast({
+        title: 'No Classes Available',
+        description: 'There are currently no classes available to apply for.',
+        variant: 'destructive',
+      });
+      setApplicationType('');
+      return;
+    }
+
+    if (type === 'project' && availableProjects.length === 0) {
+      toast({
+        title: 'No Projects Available',
+        description: 'There are currently no projects available to apply for.',
+        variant: 'destructive',
+      });
+      setApplicationType('');
+      return;
+    }
+  };
+
+  const uploadFile = async (file: File, folder: string): Promise<string> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user!.id}-${Date.now()}.${fileExt}`;
+    const filePath = `${folder}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage.from('applications').upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage.from('applications').getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
+  const handleSubmit = async () => {
+    if (!user) return;
+    setLoading(true);
+
+    try {
+      let resumeUrl: string | null = null;
+      let transcriptUrl: string | null = null;
+
+      if (resumeFile) {
+        resumeUrl = await uploadFile(resumeFile, 'resumes');
+      }
+
+      if (transcriptFile) {
+        transcriptUrl = await uploadFile(transcriptFile, 'transcripts');
+      }
+
+      const applicationData: any = {
+        user_id: user.id,
+        application_type: applicationType,
+        full_name: fullName,
+        class_year: classYear,
+        resume_url: resumeUrl,
+        transcript_url: transcriptUrl,
+        status: 'pending',
+      };
+
+      if (applicationType === 'board') {
+        applicationData.board_position = selectedBoardPosition;
+        applicationData.why_position = whyPosition;
+        applicationData.relevant_experience = relevantExperience;
+        applicationData.previous_experience = previousExperience;
+        applicationData.other_commitments = otherCommitments;
+      } else if (applicationType === 'class') {
+        applicationData.class_id = selectedClassId;
+        applicationData.class_role = 'student';
+        applicationData.why_join = whyJoin;
+        applicationData.relevant_experience = relevantExperience;
+        applicationData.other_commitments = otherCommitments;
+      } else if (applicationType === 'project') {
+        applicationData.project_id = selectedProjectId;
+        applicationData.project_role = 'member';
+        applicationData.project_detail = projectDetail;
+        applicationData.problem_solved = problemSolved;
+        applicationData.relevant_experience = relevantExperience;
+        applicationData.other_commitments = otherCommitments;
+      }
+
+      const { error } = await supabase.from('applications').insert(applicationData);
+
+      if (error) throw error;
+
+      toast({ title: 'Success', description: 'Application submitted successfully!' });
+      onSuccess();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderFormFields = () => {
+    if (!applicationType) return null;
+
+    return (
+      <>
+        {/* Common Fields */}
+        <div className="space-y-2">
+          <Label htmlFor="fullName">Full Name *</Label>
+          <Input
+            id="fullName"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="classYear">Class Year *</Label>
+          <Select value={classYear} onValueChange={setClassYear}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="freshman">Freshman</SelectItem>
+              <SelectItem value="sophomore">Sophomore</SelectItem>
+              <SelectItem value="junior">Junior</SelectItem>
+              <SelectItem value="senior">Senior</SelectItem>
+              <SelectItem value="graduate">Graduate</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Type-specific Fields */}
+        {applicationType === 'board' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="boardPosition">Position *</Label>
+              <Select value={selectedBoardPosition} onValueChange={setSelectedBoardPosition}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select position" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BOARD_POSITIONS.map((pos) => (
+                    <SelectItem key={pos} value={pos}>
+                      {pos}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="whyPosition">Why this position? *</Label>
+              <Textarea
+                id="whyPosition"
+                value={whyPosition}
+                onChange={(e) => setWhyPosition(e.target.value)}
+                rows={4}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="previousExperience">Previous Board Experience</Label>
+              <Textarea
+                id="previousExperience"
+                value={previousExperience}
+                onChange={(e) => setPreviousExperience(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </>
+        )}
+
+        {applicationType === 'class' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="class">Select Class *</Label>
+              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableClasses.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                      {cls.semesters && ` (${cls.semesters.code})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="whyJoin">Why do you want to join this class? *</Label>
+              <Textarea
+                id="whyJoin"
+                value={whyJoin}
+                onChange={(e) => setWhyJoin(e.target.value)}
+                rows={4}
+                required
+              />
+            </div>
+          </>
+        )}
+
+        {applicationType === 'project' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="project">Select Project *</Label>
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProjects.map((proj) => (
+                    <SelectItem key={proj.id} value={proj.id}>
+                      {proj.name}
+                      {proj.semesters && ` (${proj.semesters.code})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="projectDetail">Why this project? *</Label>
+              <Textarea
+                id="projectDetail"
+                value={projectDetail}
+                onChange={(e) => setProjectDetail(e.target.value)}
+                rows={4}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="problemSolved">What problem do you want to solve? *</Label>
+              <Textarea
+                id="problemSolved"
+                value={problemSolved}
+                onChange={(e) => setProblemSolved(e.target.value)}
+                rows={3}
+                required
+              />
+            </div>
+          </>
+        )}
+
+        {/* Common optional fields */}
+        <div className="space-y-2">
+          <Label htmlFor="relevantExperience">Relevant Experience</Label>
+          <Textarea
+            id="relevantExperience"
+            value={relevantExperience}
+            onChange={(e) => setRelevantExperience(e.target.value)}
+            rows={3}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="otherCommitments">Other Commitments</Label>
+          <Textarea
+            id="otherCommitments"
+            value={otherCommitments}
+            onChange={(e) => setOtherCommitments(e.target.value)}
+            rows={3}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="resume">Resume</Label>
+          <Input
+            id="resume"
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="transcript">Transcript</Label>
+          <Input
+            id="transcript"
+            type="file"
+            accept=".pdf"
+            onChange={(e) => setTranscriptFile(e.target.files?.[0] || null)}
+          />
+        </div>
+      </>
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent
+        className={`${
+          isMobile ? 'max-w-[calc(100vw-2rem)] max-h-[90vh]' : 'max-w-2xl max-h-[90vh]'
+        } overflow-y-auto rounded-xl`}
+      >
+        <DialogHeader>
+          <DialogTitle>New Application</DialogTitle>
+          <DialogDescription>Submit your application to Claude Builder Club</DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className={`space-y-4 ${isMobile ? 'w-[80vw]' : ''}`}>
+          <div className="space-y-2">
+            <Label htmlFor="applicationType">Application Type *</Label>
+            <Select
+              value={applicationType}
+              onValueChange={(value) => handleApplicationTypeChange(value as ApplicationType)}
+            >
+              <SelectTrigger id="applicationType">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                {role !== 'prospect' && <SelectItem value="board">Board Position</SelectItem>}
+                <SelectItem value="project">Project</SelectItem>
+                <SelectItem value="class">Class</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {renderFormFields()}
+
+          {applicationType && (
+            <div className="flex gap-2 pt-4 flex-col w-full sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={loading}
+                className="w-full sm:flex-1"
+              >
+                <X className="h-4 w-4 mr-0" />
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading} className="w-full sm:flex-1">
+                <Save className="h-4 w-4 mr-0" />
+                {loading ? 'Submitting...' : 'Submit Application'}
+              </Button>
+            </div>
+          )}
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
