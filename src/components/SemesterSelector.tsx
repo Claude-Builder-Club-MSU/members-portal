@@ -112,7 +112,6 @@ const SemesterSelector = ({ value, onSelect, required = true }: SemesterSelector
               semesters.map((semester) => (
                 <SelectItem key={semester.id} value={semester.id}>
                   {semester.code} - {semester.name}
-                  {semester.is_current && ' (Current)'}
                 </SelectItem>
               ))
             )}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useModalState, useItemStatus, useFilteredItems } from '@/hooks/use-modal';
@@ -17,19 +17,26 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { DetailModal } from '@/components/modals/DetailModal';
 import { EditModal } from '@/components/modals/EditModal';
 import { MembersListModal } from '@/components/modals/MembersListModal';
 import { ItemCard } from '@/components/ItemCard';
 import SemesterSelector from '@/components/SemesterSelector';
-import { Plus, MapPin, Users, Edit, GraduationCap, Calendar as CalendarIcon, Eye, Crown } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, MapPin, Users, Edit, GraduationCap, Calendar as CalendarIcon, Eye, Crown, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/database.types';
 import type { MembershipInfo, ItemWithMembers } from '@/types/modal.types';
 
 type Class = Database['public']['Tables']['classes']['Row'] & {
-  semesters: { code: string; name: string } | null;
+  semesters: { code: string; name: string; start_date: string; end_date: string } | null;
 };
 type Semester = Database['public']['Tables']['semesters']['Row'];
 
@@ -40,6 +47,7 @@ const Classes = () => {
   const { role, isBoardOrAbove } = useProfile();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const [classes, setClasses] = useState<ClassWithMembers[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -50,14 +58,16 @@ const Classes = () => {
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
   const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
-  const [startDate, setStartDate] = useState<Date>();
-  const [endDate, setEndDate] = useState<Date>();
+  const [selectedTeacher, setSelectedTeacher] = useState<string>('');
+  const [teacherSearchOpen, setTeacherSearchOpen] = useState(false);
+  const [availableTeachers, setAvailableTeachers] = useState<Database['public']['Tables']['profiles']['Row'][]>([]);
 
   const modalState = useModalState<ClassWithMembers>();
 
   useEffect(() => {
     if (user && role) {
       fetchClasses();
+      fetchAvailableTeachers();
     }
   }, [user, role]);
 
@@ -69,16 +79,15 @@ const Classes = () => {
       setDescription(cls.description || '');
       setLocation(cls.location || '');
       setSelectedSemester(cls.semester_id ? { id: cls.semester_id } as Semester : null);
-      setStartDate(cls.start_date ? new Date(cls.start_date) : undefined);
-      setEndDate(cls.end_date ? new Date(cls.end_date) : undefined);
+      const teacher = cls.members.find(m => m.role === 'teacher');
+      setSelectedTeacher(teacher ? teacher.user_id : '');
     } else if (isCreateModalOpen) {
       // Reset form
       setName('');
       setDescription('');
       setLocation('');
       setSelectedSemester(null);
-      setStartDate(undefined);
-      setEndDate(undefined);
+      setSelectedTeacher('');
     }
   }, [modalState.modalType, modalState.selectedItem, isCreateModalOpen]);
 
@@ -91,10 +100,11 @@ const Classes = () => {
         *,
         semesters (
           code,
-          name
+          name,
+          start_date,
+          end_date
         )
-      `)
-      .order('start_date', { ascending: false });
+      `);
 
     if (classesError || !classesData) {
       setLoading(false);
@@ -134,10 +144,28 @@ const Classes = () => {
         memberCount: members.length,
         userMembership: userEnrollment,
       };
+    })
+    .sort((a, b) => {
+      // Sort by semester start date (most recent first)
+      const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
+      const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
+      return bStart.getTime() - aStart.getTime();
     });
 
     setClasses(classesWithMembers);
     setLoading(false);
+  };
+
+  const fetchAvailableTeachers = async () => {
+    const { data: teachersData, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('is_banned', false)
+      .order('full_name');
+
+    if (!error && teachersData) {
+      setAvailableTeachers(teachersData);
+    }
   };
 
   const { available, inProgress, completed } = useFilteredItems(
@@ -158,9 +186,9 @@ const Classes = () => {
         description: description || null,
         location: location || null,
         semester_id: selectedSemester?.id || null,
-        start_date: startDate?.toISOString() || null,
-        end_date: endDate?.toISOString() || null,
       };
+
+      let classId = modalState.selectedItem?.id;
 
       if (modalState.selectedItem) {
         const { error } = await supabase
@@ -170,14 +198,43 @@ const Classes = () => {
         if (error) throw error;
         toast({ title: 'Success', description: 'Class updated!' });
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('classes')
-          .insert({ ...classData, created_by: user.id });
+          .insert({ ...classData, created_by: user.id })
+          .select('id')
+          .single();
         if (error) throw error;
+        classId = data.id;
         toast({ title: 'Success', description: 'Class created!' });
       }
 
+      // Handle teacher assignment
+      if (classId) {
+        // Remove existing teacher if any
+        await supabase
+          .from('class_enrollments')
+          .delete()
+          .eq('class_id', classId)
+          .eq('role', 'teacher');
+
+        // Add new teacher if selected
+        if (selectedTeacher) {
+          const { error: teacherError } = await supabase
+            .from('class_enrollments')
+            .insert({
+              class_id: classId,
+              user_id: selectedTeacher,
+              role: 'teacher'
+            });
+          if (teacherError) throw teacherError;
+        }
+      }
+
       await fetchClasses();
+
+      // Invalidate dashboard queries to refresh status
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+
       modalState.close();
       setIsCreateModalOpen(false);
     } catch (error: any) {
@@ -396,48 +453,56 @@ const Classes = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Start Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="secondary"
-                  className={cn(
-                    'w-full justify-start text-left font-normal',
-                    !startDate && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {startDate ? format(startDate, 'PPP') : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="center">
-                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <Label>End Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="secondary"
-                  className={cn(
-                    'w-full justify-start text-left font-normal',
-                    !endDate && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {endDate ? format(endDate, 'PPP') : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="center">
-                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
-              </PopoverContent>
-            </Popover>
-          </div>
+        <div className="space-y-2">
+          <Label>Teacher</Label>
+          <Popover open={teacherSearchOpen} onOpenChange={setTeacherSearchOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="secondary"
+                role="combobox"
+                aria-expanded={teacherSearchOpen}
+                className="w-full justify-between"
+              >
+                {selectedTeacher
+                  ? availableTeachers.find((teacher) => teacher.id === selectedTeacher)?.full_name ||
+                    availableTeachers.find((teacher) => teacher.id === selectedTeacher)?.email ||
+                    'Select teacher...'
+                  : 'Select teacher...'}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96 p-0">
+              <Command>
+                <CommandInput placeholder="Search teachers..." />
+                <CommandList>
+                  <CommandEmpty>No teachers found.</CommandEmpty>
+                  <CommandGroup>
+                    {availableTeachers.map((teacher) => (
+                      <CommandItem
+                        key={teacher.id}
+                        value={`${teacher.full_name || ''} ${teacher.email}`}
+                        onSelect={() => {
+                          setSelectedTeacher(selectedTeacher === teacher.id ? '' : teacher.id);
+                          setTeacherSearchOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            selectedTeacher === teacher.id ? 'opacity-100' : 'opacity-0'
+                          )}
+                        />
+                        <div className="flex flex-col">
+                          <span>{teacher.full_name || 'No name'}</span>
+                          <span className="text-xs">{teacher.email}</span>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
       </EditModal>
 
@@ -472,17 +537,21 @@ const Classes = () => {
               content: `${modalState.selectedItem.memberCount} ${modalState.selectedItem.memberCount === 1 ? 'member' : 'members'
                 }`,
             },
-            {
-              title: 'Dates',
-              icon: <CalendarIcon className="h-4 w-4" />,
-              content: `${modalState.selectedItem.start_date
-                  ? `Start: ${new Date(modalState.selectedItem.start_date).toLocaleDateString()}`
-                  : ''
-                }${modalState.selectedItem.end_date
-                  ? ` | End: ${new Date(modalState.selectedItem.end_date).toLocaleDateString()}`
-                  : ''
-                }`,
-            },
+            ...(modalState.selectedItem.semesters
+              ? [
+                {
+                  title: 'Dates',
+                  icon: <CalendarIcon className="h-4 w-4" />,
+                  content: `${modalState.selectedItem.semesters.start_date
+                      ? `Start: ${new Date(modalState.selectedItem.semesters.start_date).toLocaleDateString()}`
+                      : ''
+                    }${modalState.selectedItem.semesters.end_date
+                      ? ` | End: ${new Date(modalState.selectedItem.semesters.end_date).toLocaleDateString()}`
+                      : ''
+                    }`,
+                },
+              ]
+              : []),
             ...(modalState.selectedItem.members.some(m => m.role === 'teacher')
               ? [
                 {

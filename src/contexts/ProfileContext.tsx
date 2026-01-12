@@ -5,9 +5,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/database.types';
 
 // Types
-type Project = Database['public']['Tables']['projects']['Row'];
+type Project = Database['public']['Tables']['projects']['Row'] & {
+    semesters: { start_date: string } | null;
+};
 type ProjectMember = Database['public']['Tables']['project_members']['Row'];
-type Class = Database['public']['Tables']['classes']['Row'];
+type Class = Database['public']['Tables']['classes']['Row'] & {
+    semesters: { start_date: string } | null;
+};
 type ClassEnrollment = Database['public']['Tables']['class_enrollments']['Row'];
 type Application = Database['public']['Tables']['applications']['Row'];
 type EventAttendance = Database['public']['Tables']['event_attendance']['Row'];
@@ -149,13 +153,24 @@ async function fetchUserProjects(userId: string): Promise<UserProjects> {
     const projectIds = memberships.map(m => m.project_id);
     const { data: projects, error: projectsError } = await supabase
         .from('projects')
-        .select('*')
-        .in('id', projectIds)
-        .order('start_date', { ascending: false });
+        .select(`
+            *,
+            semesters (
+                start_date
+            )
+        `)
+        .in('id', projectIds);
 
     if (projectsError) throw projectsError;
 
-    const projectsMap = new Map(projects?.map(p => [p.id, p]) || []);
+    // Sort projects by semester start date (most recent first)
+    const sortedProjects = projects?.sort((a, b) => {
+        const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
+        const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
+        return bStart.getTime() - aStart.getTime();
+    }) || [];
+
+    const projectsMap = new Map(sortedProjects.map(p => [p.id, p]));
 
     const leadProjects: Project[] = [];
     const memberProjects: Project[] = [];
@@ -203,13 +218,24 @@ async function fetchUserClasses(userId: string): Promise<UserClasses> {
     const classIds = enrollments.map(e => e.class_id);
     const { data: classes, error: classesError } = await supabase
         .from('classes')
-        .select('*')
-        .in('id', classIds)
-        .order('start_date', { ascending: false });
+        .select(`
+            *,
+            semesters (
+                start_date
+            )
+        `)
+        .in('id', classIds);
 
     if (classesError) throw classesError;
 
-    const classesMap = new Map(classes?.map(c => [c.id, c]) || []);
+    // Sort classes by semester start date (most recent first)
+    const sortedClasses = classes?.sort((a, b) => {
+        const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
+        const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
+        return bStart.getTime() - aStart.getTime();
+    }) || [];
+
+    const classesMap = new Map(sortedClasses.map(c => [c.id, c]));
 
     const teachingClasses: Class[] = [];
     const studentClasses: Class[] = [];

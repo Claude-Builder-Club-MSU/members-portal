@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PersonCard } from '@/components/PersonCard';
-import ProfileViewer from '@/components/modals/ProfileModal';
+import ProfileViewer from '@/components/modals/ProfileViewer';
 import type { Database } from '@/integrations/supabase/database.types';
 import { useProfile } from '@/contexts/ProfileContext';
 

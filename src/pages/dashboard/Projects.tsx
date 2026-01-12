@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useModalState, useItemStatus, useFilteredItems } from '@/hooks/use-modal';
@@ -17,19 +17,26 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { DetailModal } from '@/components/modals/DetailModal';
 import { EditModal } from '@/components/modals/EditModal';
 import { MembersListModal } from '@/components/modals/MembersListModal';
 import { ItemCard } from '@/components/ItemCard';
 import SemesterSelector from '@/components/SemesterSelector';
-import { Plus, Github, Calendar as CalendarIcon, Users, Briefcase, Crown, Eye, Edit } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, Github, Calendar as CalendarIcon, Users, Briefcase, Crown, Eye, Edit, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/database.types';
 import type { MembershipInfo, ItemWithMembers } from '@/types/modal.types';
 
 type Project = Database['public']['Tables']['projects']['Row'] & {
-  semesters: { code: string; name: string } | null;
+  semesters: { code: string; name: string; start_date: string; end_date: string } | null;
 };
 type Semester = Database['public']['Tables']['semesters']['Row'];
 
@@ -40,6 +47,7 @@ const Projects = () => {
   const { role, isEBoard, isBoardOrAbove } = useProfile();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const [projects, setProjects] = useState<ProjectWithMembers[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -51,14 +59,16 @@ const Projects = () => {
   const [clientName, setClientName] = useState('');
   const [repositoryName, setRepositoryName] = useState('');
   const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
-  const [startDate, setStartDate] = useState<Date>();
-  const [endDate, setEndDate] = useState<Date>();
+  const [selectedLead, setSelectedLead] = useState<string>('');
+  const [leadSearchOpen, setLeadSearchOpen] = useState(false);
+  const [availableLeads, setAvailableLeads] = useState<Database['public']['Tables']['profiles']['Row'][]>([]);
 
   const modalState = useModalState<ProjectWithMembers>();
 
   useEffect(() => {
     if (user && role) {
       fetchProjects();
+      fetchAvailableLeads();
     }
   }, [user, role]);
 
@@ -74,8 +84,8 @@ const Projects = () => {
       const repoName = repoUrl.split('/').pop() || '';
       setRepositoryName(repoName);
       setSelectedSemester(project.semester_id ? { id: project.semester_id } as Semester : null);
-      setStartDate(project.start_date ? new Date(project.start_date) : undefined);
-      setEndDate(project.end_date ? new Date(project.end_date) : undefined);
+      const lead = project.members.find(m => m.role === 'lead');
+      setSelectedLead(lead ? lead.user_id : '');
     } else if (isCreateModalOpen) {
       // Reset form
       setName('');
@@ -83,8 +93,7 @@ const Projects = () => {
       setClientName('');
       setRepositoryName('');
       setSelectedSemester(null);
-      setStartDate(undefined);
-      setEndDate(undefined);
+      setSelectedLead('');
     }
   }, [modalState.modalType, modalState.selectedItem, isCreateModalOpen]);
 
@@ -99,10 +108,11 @@ const Projects = () => {
         *,
         semesters (
           code,
-          name
+          name,
+          start_date,
+          end_date
         )
-      `)
-      .order('start_date', { ascending: false });
+      `);
 
     if (projectsError || !projectsData) {
       setLoading(false);
@@ -142,10 +152,28 @@ const Projects = () => {
         memberCount: members.length,
         userMembership,
       };
+    })
+    .sort((a, b) => {
+      // Sort by semester start date (most recent first)
+      const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
+      const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
+      return bStart.getTime() - aStart.getTime();
     });
 
     setProjects(projectsWithMembers);
     setLoading(false);
+  };
+
+  const fetchAvailableLeads = async () => {
+    const { data: leadsData, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('is_banned', false)
+      .order('full_name');
+
+    if (!error && leadsData) {
+      setAvailableLeads(leadsData);
+    }
   };
 
   const { available, inProgress, completed } = useFilteredItems(
@@ -169,9 +197,9 @@ const Projects = () => {
         client_name: clientName || null,
         repository_url: fullRepositoryUrl,
         semester_id: selectedSemester?.id || null,
-        start_date: startDate?.toISOString() || null,
-        end_date: endDate?.toISOString() || null,
       };
+
+      let projectId = modalState.selectedItem?.id;
 
       if (modalState.selectedItem) {
         const { error } = await supabase
@@ -181,14 +209,43 @@ const Projects = () => {
         if (error) throw error;
         toast({ title: 'Success', description: 'Project updated!' });
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('projects')
-          .insert({ ...projectData, created_by: user.id });
+          .insert({ ...projectData, created_by: user.id })
+          .select('id')
+          .single();
         if (error) throw error;
+        projectId = data.id;
         toast({ title: 'Success', description: 'Project created!' });
       }
 
+      // Handle lead assignment
+      if (projectId) {
+        // Remove existing lead if any
+        await supabase
+          .from('project_members')
+          .delete()
+          .eq('project_id', projectId)
+          .eq('role', 'lead');
+
+        // Add new lead if selected
+        if (selectedLead) {
+          const { error: leadError } = await supabase
+            .from('project_members')
+            .insert({
+              project_id: projectId,
+              user_id: selectedLead,
+              role: 'lead'
+            });
+          if (leadError) throw leadError;
+        }
+      }
+
       await fetchProjects();
+
+      // Invalidate dashboard queries to refresh status
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+
       modalState.close();
       setIsCreateModalOpen(false);
     } catch (error: any) {
@@ -436,48 +493,56 @@ const Projects = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Start Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="secondary"
-                  className={cn(
-                    'w-full justify-start text-left font-normal',
-                    !startDate && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {startDate ? format(startDate, 'PPP') : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="center">
-                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <Label>End Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="secondary"
-                  className={cn(
-                    'w-full justify-start text-left font-normal',
-                    !endDate && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {endDate ? format(endDate, 'PPP') : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="center">
-                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
-              </PopoverContent>
-            </Popover>
-          </div>
+        <div className="space-y-2">
+          <Label>Project Lead</Label>
+          <Popover open={leadSearchOpen} onOpenChange={setLeadSearchOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="secondary"
+                role="combobox"
+                aria-expanded={leadSearchOpen}
+                className="w-full justify-between"
+              >
+                {selectedLead
+                  ? availableLeads.find((lead) => lead.id === selectedLead)?.full_name ||
+                    availableLeads.find((lead) => lead.id === selectedLead)?.email ||
+                    'Select lead...'
+                  : 'Select lead...'}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96 p-0">
+              <Command>
+                <CommandInput placeholder="Search leads..." />
+                <CommandList>
+                  <CommandEmpty>No leads found.</CommandEmpty>
+                  <CommandGroup>
+                    {availableLeads.map((lead) => (
+                      <CommandItem
+                        key={lead.id}
+                        value={`${lead.full_name || ''} ${lead.email}`}
+                        onSelect={() => {
+                          setSelectedLead(selectedLead === lead.id ? '' : lead.id);
+                          setLeadSearchOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            selectedLead === lead.id ? 'opacity-100' : 'opacity-0'
+                          )}
+                        />
+                        <div className="flex flex-col">
+                          <span>{lead.full_name || 'No name'}</span>
+                          <span className="text-xs text-muted-foreground">{lead.email}</span>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
       </EditModal>
 
@@ -512,17 +577,21 @@ const Projects = () => {
               content: `${modalState.selectedItem.memberCount} ${modalState.selectedItem.memberCount === 1 ? 'member' : 'members'
                 }`,
             },
-            {
-              title: 'Dates',
-              icon: <CalendarIcon className="h-4 w-4" />,
-              content: `${modalState.selectedItem.start_date
-                ? `Start: ${new Date(modalState.selectedItem.start_date).toLocaleDateString()}`
-                : ''
-                }${modalState.selectedItem.end_date
-                  ? ` | End: ${new Date(modalState.selectedItem.end_date).toLocaleDateString()}`
-                  : ''
-                }`,
-            },
+            ...(modalState.selectedItem.semesters
+              ? [
+                {
+                  title: 'Dates',
+                  icon: <CalendarIcon className="h-4 w-4" />,
+                  content: `${modalState.selectedItem.semesters.start_date
+                      ? `Start: ${new Date(modalState.selectedItem.semesters.start_date).toLocaleDateString()}`
+                      : ''
+                    }${modalState.selectedItem.semesters.end_date
+                      ? ` | End: ${new Date(modalState.selectedItem.semesters.end_date).toLocaleDateString()}`
+                      : ''
+                    }`,
+                },
+              ]
+              : []),
             ...(modalState.selectedItem.members.some(m => m.role === 'lead')
               ? [
                 {

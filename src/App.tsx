@@ -46,8 +46,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" replace />;
   }
 
-  console.log(user.last_sign_in_at);
-
   // Check if new user needs to complete profile
   if (!user.last_sign_in_at && window.location.pathname !== "/profile") {
     return <Navigate to="/profile" replace />;

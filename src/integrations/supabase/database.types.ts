@@ -63,7 +63,6 @@ export type Database = {
           transcript_url: string | null
           updated_at: string
           user_id: string
-          why_join: string | null
           why_position: string | null
         }
         Insert: {
@@ -91,7 +90,6 @@ export type Database = {
           transcript_url?: string | null
           updated_at?: string
           user_id: string
-          why_join?: string | null
           why_position?: string | null
         }
         Update: {
@@ -119,7 +117,6 @@ export type Database = {
           transcript_url?: string | null
           updated_at?: string
           user_id?: string
-          why_join?: string | null
           why_position?: string | null
         }
         Relationships: [
@@ -176,36 +173,30 @@ export type Database = {
           created_at: string
           created_by: string
           description: string | null
-          end_date: string
           id: string
           location: string | null
           name: string
           semester_id: string | null
-          start_date: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           created_by: string
           description?: string | null
-          end_date: string
           id?: string
           location?: string | null
           name: string
           semester_id?: string | null
-          start_date: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           created_by?: string
           description?: string | null
-          end_date?: string
           id?: string
           location?: string | null
           name?: string
           semester_id?: string | null
-          start_date?: string
           updated_at?: string
         }
         Relationships: [
@@ -470,7 +461,6 @@ export type Database = {
           created_at: string
           end_date: string
           id: string
-          is_current: boolean
           name: string
           start_date: string
           updated_at: string
@@ -480,7 +470,6 @@ export type Database = {
           created_at?: string
           end_date: string
           id?: string
-          is_current?: boolean
           name: string
           start_date: string
           updated_at?: string
@@ -490,7 +479,6 @@ export type Database = {
           created_at?: string
           end_date?: string
           id?: string
-          is_current?: boolean
           name?: string
           start_date?: string
           updated_at?: string
@@ -503,13 +491,11 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
-          end_date: string
           repository_url: string
           id: string
           lead_id: string | null
           name: string
           semester_id: string | null
-          start_date: string
           updated_at: string
         }
         Insert: {
@@ -517,13 +503,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
-          end_date: string
           repository_url: string
           id?: string
           lead_id?: string | null
           name: string
           semester_id?: string | null
-          start_date: string
           updated_at?: string
         }
         Update: {
@@ -531,13 +515,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
-          end_date?: string
           repository_url?: string
           id?: string
           lead_id?: string | null
           name?: string
           semester_id?: string | null
-          start_date?: string
           updated_at?: string
         }
         Relationships: [

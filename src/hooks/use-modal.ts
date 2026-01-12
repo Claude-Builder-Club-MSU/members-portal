@@ -29,12 +29,32 @@ export const useModalState = <T,>() => {
 };
 
 // Hook for computing item status (available/in-progress/completed)
-export const useItemStatus = (item: { start_date: string; end_date: string } | null) => {
+export const useItemStatus = (item: any) => {
     if (!item) return null;
 
     const now = new Date();
-    const start = new Date(item.start_date);
-    const end = new Date(item.end_date);
+
+    // Try to get dates from semester first, then fall back to direct properties
+    const start = item.semesters
+        ? new Date(item.semesters.start_date)
+        : item.start_date
+            ? new Date(item.start_date)
+            : null;
+
+    const end = item.semesters
+        ? new Date(item.semesters.end_date)
+        : item.end_date
+            ? new Date(item.end_date)
+            : null;
+
+    if (!start || !end) {
+      // If no dates available, consider it available (for items without semesters)
+      return {
+        label: 'Available',
+        variant: 'default' as const,
+        state: 'available' as const,
+      };
+    }
 
     if (start > now) {
         return {
@@ -60,7 +80,7 @@ export const useItemStatus = (item: { start_date: string; end_date: string } | n
 };
 
 // Hook for filtering items by status
-export const useFilteredItems = <T extends { start_date: string; end_date: string }>(
+export const useFilteredItems = <T>(
     items: T[],
     filterFn?: (item: T, status: ReturnType<typeof useItemStatus>) => boolean
 ) => {

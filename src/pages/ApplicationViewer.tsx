@@ -29,13 +29,22 @@ import {
     FileText,
     Trash2,
     Info,
-    User,
     Briefcase,
     BookOpen,
+    PartyPopper,
+    BookUser,
+    Github,
+    MapPin,
+    User,
+    Users,
 } from 'lucide-react';
 import { format, addDays, differenceInDays } from 'date-fns';
-import ProfileViewer from '@/components/modals/ProfileModal';
+import { motion, AnimatePresence } from 'framer-motion';
+import ProfileViewer from '@/components/modals/ProfileViewer';
+import { DetailModal } from '@/components/modals/DetailModal';
 import type { Database } from '@/integrations/supabase/database.types';
+import type { DetailSection } from '@/types/modal.types';
+import { useProfile } from '@/contexts/ProfileContext';
 
 type Application = Database['public']['Tables']['applications']['Row'];
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -50,23 +59,25 @@ const ApplicationViewerPage = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const isMobile = useIsMobile();
-    const { user, role } = useAuth();
+    const { user } = useAuth();
+    const { role } = useProfile();
 
     // State
     const [application, setApplication] = useState<Application | null>(null);
     const [applicantProfile, setApplicantProfile] = useState<MemberWithRole | null>(null);
-    const [className, setClassName] = useState<string | null>(null);
-    const [projectName, setProjectName] = useState<string | null>(null);
+    const [classData, setClassData] = useState<any | null>(null);
+    const [projectData, setProjectData] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
 
     // Modal states
-    const [showProfileViewer, setShowProfileViewer] = useState(false);
     const [showAcceptDialog, setShowAcceptDialog] = useState(false);
     const [showRejectDialog, setShowRejectDialog] = useState(false);
 
-    // Animation states
-    const [animateIn, setAnimateIn] = useState(false);
+    // Success/Rejection screen states
+    const [showSuccessScreen, setShowSuccessScreen] = useState(false);
+    const [showRejectionScreen, setShowRejectionScreen] = useState(false);
+    const [actionType, setActionType] = useState<'accept' | 'reject' | null>(null);
 
     useEffect(() => {
         if (id) {
@@ -74,18 +85,10 @@ const ApplicationViewerPage = () => {
         }
     }, [id]);
 
-    useEffect(() => {
-        if (application) {
-            // Trigger animations after data loads
-            setTimeout(() => setAnimateIn(true), 100);
-        }
-    }, [application]);
-
     const fetchApplication = async () => {
         if (!id) return;
 
         try {
-            // Fetch application
             const { data: appData, error: appError } = await supabase
                 .from('applications')
                 .select('*')
@@ -99,7 +102,7 @@ const ApplicationViewerPage = () => {
                     description: 'Application not found.',
                     variant: 'destructive',
                 });
-                navigate('/applications');
+                navigate('/dashboard/applications');
                 return;
             }
 
@@ -112,14 +115,7 @@ const ApplicationViewerPage = () => {
                 .eq('id', appData.user_id)
                 .single();
 
-            if (profileData) {
-                // Check if user is banned
-                if (profileData.is_banned) {
-                    setApplicantProfile(null);
-                    return;
-                }
-
-                // Fetch user role
+            if (profileData && !profileData.is_banned) {
                 const { data: roleData } = await supabase
                     .from('user_roles')
                     .select('role')
@@ -132,26 +128,53 @@ const ApplicationViewerPage = () => {
                 });
             }
 
-            // Fetch class name if applicable
+            // Fetch class/project data
             if (appData.class_id) {
-                const { data: classData } = await supabase
+                const { data: classInfo } = await supabase
                     .from('classes')
-                    .select('name')
+                    .select(`
+            *,
+            semesters (
+              code,
+              name
+            )
+          `)
                     .eq('id', appData.class_id)
                     .single();
 
-                if (classData) setClassName(classData.name);
+                if (classInfo) {
+                    // Get enrollment count
+                    const { count } = await supabase
+                        .from('class_enrollments')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('class_id', appData.class_id);
+
+                    setClassData({ ...classInfo, memberCount: count || 0 });
+                }
             }
 
-            // Fetch project name if applicable
             if (appData.project_id) {
-                const { data: projectData } = await supabase
+                const { data: projectInfo } = await supabase
                     .from('projects')
-                    .select('name')
+                    .select(`
+            *,
+            semesters (
+              code,
+              name
+            )
+          `)
                     .eq('id', appData.project_id)
                     .single();
 
-                if (projectData) setProjectName(projectData.name);
+                if (projectInfo) {
+                    // Get team member count
+                    const { count } = await supabase
+                        .from('project_members')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('project_id', appData.project_id);
+
+                    setProjectData({ ...projectInfo, memberCount: count || 0 });
+                }
             }
         } catch (error: any) {
             console.error('Error fetching application:', error);
@@ -160,7 +183,7 @@ const ApplicationViewerPage = () => {
                 description: 'Failed to load application.',
                 variant: 'destructive',
             });
-            navigate('/applications');
+            navigate('/dashboard/applications');
         } finally {
             setLoading(false);
         }
@@ -170,6 +193,8 @@ const ApplicationViewerPage = () => {
         if (!user || !application) return;
 
         setActionLoading(true);
+        setActionType('accept');
+
         try {
             const { error } = await supabase
                 .from('applications')
@@ -182,20 +207,23 @@ const ApplicationViewerPage = () => {
 
             if (error) throw error;
 
-            toast({
-                title: 'Application Accepted',
-                description: `${application.full_name}'s application has been accepted.`,
-            });
-
             setShowAcceptDialog(false);
-            fetchApplication();
+
+            // Show success screen
+            setTimeout(() => {
+                setShowSuccessScreen(true);
+            }, 300);
+
+            // Navigate back after showing success
+            setTimeout(() => {
+                navigate('/dashboard/applications');
+            }, 3000);
         } catch (error: any) {
             toast({
                 title: 'Error',
                 description: error.message,
                 variant: 'destructive',
             });
-        } finally {
             setActionLoading(false);
         }
     };
@@ -204,6 +232,8 @@ const ApplicationViewerPage = () => {
         if (!user || !application) return;
 
         setActionLoading(true);
+        setActionType('reject');
+
         try {
             const { error } = await supabase
                 .from('applications')
@@ -216,25 +246,29 @@ const ApplicationViewerPage = () => {
 
             if (error) throw error;
 
-            toast({
-                title: 'Application Rejected',
-                description: `${application.full_name}'s application has been rejected.`,
-            });
-
             setShowRejectDialog(false);
-            fetchApplication();
+
+            // Show rejection screen
+            setTimeout(() => {
+                setShowRejectionScreen(true);
+            }, 300);
+
+            // Navigate back after showing rejection
+            setTimeout(() => {
+                navigate('/dashboard/applications');
+            }, 3000);
         } catch (error: any) {
             toast({
                 title: 'Error',
                 description: error.message,
                 variant: 'destructive',
             });
-        } finally {
             setActionLoading(false);
         }
     };
 
     const handleOpenDocument = async (filePath: string) => {
+        console.log(filePath);
         try {
             const { data, error } = await supabase.storage
                 .from('applications')
@@ -254,32 +288,37 @@ const ApplicationViewerPage = () => {
     };
 
     const formatApplicationType = (type: string) => {
-        return type
-            .split('_')
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
+        return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     };
 
     const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'accepted':
-                return (
-                    <Badge variant="default" className="bg-green-500 text-base px-4 py-1">
-                        Accepted
-                    </Badge>
-                );
-            case 'rejected':
-                return (
-                    <Badge variant="destructive" className="text-base px-4 py-1">
-                        Rejected
-                    </Badge>
-                );
+        const variants = {
+            accepted: { variant: 'default', className: 'bg-green-500', text: 'Accepted' },
+            rejected: { variant: 'destructive', className: '', text: 'Rejected' },
+            pending: { variant: 'secondary', className: '', text: 'Pending' },
+        };
+        const config = variants[status as keyof typeof variants] || variants.pending;
+
+        return (
+            <Badge variant={config.variant as any} className={`text-base px-4 py-1 ${config.className || ''}`}>
+                {config.text}
+            </Badge>
+        );
+    };
+
+    const getAcceptanceMessage = () => {
+        if (!application) return '';
+
+        const name = application.full_name;
+        switch (application.application_type) {
+            case 'board':
+                return `Added ${name} to ${application.board_position || 'Board'}!`;
+            case 'class':
+                return `Enrolled ${name} in ${classData?.name || 'class'}!`;
+            case 'project':
+                return `Added ${name} to ${projectData?.name || 'project'}!`;
             default:
-                return (
-                    <Badge variant="secondary" className="text-base px-4 py-1">
-                        Pending
-                    </Badge>
-                );
+                return `Accepted ${name}'s application!`;
         }
     };
 
@@ -288,15 +327,14 @@ const ApplicationViewerPage = () => {
 
         switch (application.application_type) {
             case 'board':
-                return `This will automatically assign them the ${application.board_position || 'board'
-                    } position and change their role to Board.`;
+                return `This will automatically assign them the ${application.board_position || 'board'} position and change their role to Board.`;
             case 'class':
-                return className
-                    ? `This will automatically enroll them in "${className}" as a student.`
+                return classData?.name
+                    ? `This will automatically enroll them in "${classData.name}" as a student.`
                     : 'This will automatically enroll them in the selected class as a student.';
             case 'project':
-                return projectName
-                    ? `This will automatically add them to "${projectName}" as a member.`
+                return projectData?.name
+                    ? `This will automatically add them to "${projectData.name}" as a member.`
                     : 'This will automatically add them to the selected project as a member.';
             default:
                 return '';
@@ -310,147 +348,141 @@ const ApplicationViewerPage = () => {
         const deletionDate = addDays(reviewedDate, 30);
         const daysRemaining = differenceInDays(deletionDate, new Date());
 
-        if (daysRemaining < 0) {
-            return 'This application will be deleted soon.';
-        }
+        if (daysRemaining < 0) return 'This application will be deleted soon.';
 
         return `This application will be automatically deleted in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''
             } (${format(deletionDate, 'MMM d, yyyy')}).`;
     };
 
+    const buildDetailSections = (item: any, type: 'class' | 'project'): DetailSection[] => {
+        const sections: DetailSection[] = [];
+
+        // Description
+        if (item.description) {
+            sections.push({
+                title: 'Description',
+                content: <p className="whitespace-pre-wrap">{item.description}</p>,
+            });
+        }
+
+        // Details Grid
+        const gridItems = [];
+
+        // Term
+        if (item.semesters) {
+            gridItems.push(
+                <div key="term" className="space-y-2">
+                    <h4 className="font-semibold text-sm">Term</h4>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        {item.semesters.code} - {item.semesters.name}
+                    </div>
+                </div>
+            );
+        }
+
+        // Size
+        gridItems.push(
+            <div key="size" className="space-y-2">
+                <h4 className="font-semibold text-sm">{type === 'class' ? 'Class Size' : 'Team Size'}</h4>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    {item.memberCount || 0} {item.memberCount === 1 ? (type === 'class' ? 'student' : 'member') : type === 'class' ? 'students' : 'members'}
+                </div>
+            </div>
+        );
+
+        // Location (classes) or Repository (projects)
+        if (type === 'class' && item.location) {
+            gridItems.push(
+                <div key="location" className="space-y-2">
+                    <h4 className="font-semibold text-sm">Location</h4>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4" />
+                        {item.location}
+                    </div>
+                </div>
+            );
+        } else if (type === 'project' && item.repository_url) {
+            gridItems.push(
+                <div key="repo" className="space-y-2">
+                    <h4 className="font-semibold text-sm">Repository</h4>
+                    <a
+                        href={item.repository_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                        <Github className="h-4 w-4" />
+                        View on GitHub
+                    </a>
+                </div>
+            );
+        }
+
+        sections.push({
+            content: <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{gridItems}</div>,
+            fullWidth: true,
+            title: ''
+        });
+
+        return sections;
+    };
+
     const renderApplicationFields = () => {
         if (!application) return null;
 
-        switch (application.application_type) {
-            case 'board':
-                return (
-                    <>
-                        {application.why_position && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">Why this position?</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.why_position}
-                                </p>
-                            </div>
-                        )}
-                        {application.relevant_experience && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">Relevant Experience</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.relevant_experience}
-                                </p>
-                            </div>
-                        )}
-                        {application.previous_experience && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">Previous Board Experience</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.previous_experience}
-                                </p>
-                            </div>
-                        )}
-                        {application.other_commitments && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">Other Commitments</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.other_commitments}
-                                </p>
-                            </div>
-                        )}
-                    </>
-                );
+        const fields = {
+            board: [
+                { key: 'why_position', title: 'Why this position?' },
+                { key: 'relevant_experience', title: 'Relevant Experience' },
+                { key: 'previous_experience', title: 'Previous Board Experience' },
+                { key: 'other_commitments', title: 'Other Commitments' },
+            ],
+            project: [
+                { key: 'project_detail', title: 'Why this project?' },
+                { key: 'relevant_experience', title: 'Relevant Technical Skills' },
+                { key: 'problem_solved', title: 'Technical Challenge Overcome' },
+                { key: 'other_commitments', title: 'Other Commitments' },
+            ],
+            class: [
+                { key: 'why_join', title: 'Why this class?' },
+                { key: 'previous_experience', title: 'Previous Experience' },
+                { key: 'relevant_experience', title: 'What will you bring?' },
+            ],
+        };
 
-            case 'project':
-                return (
-                    <>
-                        {application.why_position && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">Why this project?</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.why_position}
-                                </p>
-                            </div>
-                        )}
-                        {application.relevant_experience && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">Relevant Technical Skills</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.relevant_experience}
-                                </p>
-                            </div>
-                        )}
-                        {application.project_detail && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">Project Detail</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.project_detail}
-                                </p>
-                            </div>
-                        )}
-                        {application.problem_solved && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">Technical Challenge Overcome</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.problem_solved}
-                                </p>
-                            </div>
-                        )}
-                        {application.other_commitments && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">Other Commitments</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.other_commitments}
-                                </p>
-                            </div>
-                        )}
-                    </>
-                );
+        const typeFields = fields[application.application_type as keyof typeof fields] || [];
 
-            case 'class':
-                return (
-                    <>
-                        {application.why_position && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">Why this class?</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.why_position}
-                                </p>
-                            </div>
-                        )}
-                        {application.previous_experience && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">Previous Experience</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.previous_experience}
-                                </p>
-                            </div>
-                        )}
-                        {application.relevant_experience && (
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-base">What will you bring?</h3>
-                                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {application.relevant_experience}
-                                </p>
-                            </div>
-                        )}
-                    </>
-                );
-        }
+        return typeFields.map(
+            ({ key, title }) =>
+                application[key as keyof Application] && (
+                    <motion.div
+                        key={key}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-2"
+                    >
+                        <h3 className="font-semibold text-base">{title}</h3>
+                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                            {application[key as keyof Application] as string}
+                        </p>
+                    </motion.div>
+                )
+        );
     };
 
-    const canReview =
-        user && (role === 'board' || role === 'e-board') && application?.user_id !== user.id;
+    const canReview = user && (role === 'board' || role === 'e-board') && application?.user_id !== user.id;
     const deletionInfo = getDeletionInfo();
 
     if (loading) {
         return (
             <div className="min-h-screen bg-background">
                 <div className="max-w-7xl mx-auto px-6 py-8">
-                    <Button variant="ghost" onClick={() => navigate('/applications')} className="mb-6">
+                    <Button variant="ghost" onClick={() => navigate('/dashboard/applications')} className="mb-6">
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back to Applications
                     </Button>
-
                     <div className="space-y-6">
                         <Skeleton className="h-12 w-3/4" />
                         <Skeleton className="h-6 w-1/2" />
@@ -476,266 +508,329 @@ const ApplicationViewerPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            <div className="max-w-7xl mx-auto px-6 py-8">
-                {/* Header with Back Button */}
-                <div className="mb-8">
-                    <Button
-                        variant="ghost"
-                        onClick={() => navigate('/dashboard/applications')}
-                        className="mb-6 hover:bg-primary"
+        <>
+            <AnimatePresence>
+                {showSuccessScreen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-green-500"
                     >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back to Applications
-                    </Button>
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', duration: 0.6 }}
+                            className="text-center text-white"
+                        >
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: [0, 1.2, 1] }}
+                                transition={{ delay: 0.2, duration: 0.5 }}
+                            >
+                                <CheckCircle className="w-32 h-32 mx-auto mb-6" />
+                            </motion.div>
+                            <motion.h1
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4 }}
+                                className="text-4xl font-bold mb-2"
+                            >
+                                Application Accepted!
+                            </motion.h1>
+                            <motion.p
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.6 }}
+                                className="text-xl"
+                            >
+                                {getAcceptanceMessage()}
+                            </motion.p>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.8 }}
+                                className="mt-8"
+                            >
+                                <PartyPopper className="w-16 h-16 mx-auto animate-bounce" />
+                            </motion.div>
+                        </motion.div>
 
-                    <div
-                        className={`transition-all duration-700 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                            }`}
+                        {/* Ripple effect */}
+                        <motion.div
+                            initial={{ scale: 0, opacity: 1 }}
+                            animate={{ scale: 3, opacity: 0 }}
+                            transition={{ duration: 1 }}
+                            className="absolute inset-0 rounded-full bg-green-400"
+                            style={{ transformOrigin: 'center' }}
+                        />
+                    </motion.div>
+                )}
+
+                {showRejectionScreen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-red-500"
                     >
-                        <div className="flex items-start justify-between mb-4">
-                            <div>
-                                <h1 className="text-4xl font-bold mb-2">{application.full_name}</h1>
-                                <div className="flex items-center gap-3 flex-wrap">
-                                    <Badge variant="outline" className="text-base px-3 py-1">
-                                        {formatApplicationType(application.application_type)}
-                                    </Badge>
-                                    {getStatusBadge(application.status)}
-                                </div>
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', duration: 0.6 }}
+                            className="text-center text-white"
+                        >
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: [0, 1.2, 1] }}
+                                transition={{ delay: 0.2, duration: 0.5 }}
+                            >
+                                <XCircle className="w-32 h-32 mx-auto mb-6" />
+                            </motion.div>
+                            <motion.h1
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4 }}
+                                className="text-4xl font-bold mb-2"
+                            >
+                                Application Rejected
+                            </motion.h1>
+                            <motion.p
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.6 }}
+                                className="text-xl"
+                            >
+                                {application.full_name}'s application has been declined
+                            </motion.p>
+                        </motion.div>
+
+                        {/* Ripple effect */}
+                        <motion.div
+                            initial={{ scale: 0, opacity: 1 }}
+                            animate={{ scale: 3, opacity: 0 }}
+                            transition={{ duration: 1 }}
+                            className="absolute inset-0 rounded-full bg-red-400"
+                            style={{ transformOrigin: 'center' }}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className="min-h-screen bg-background">
+                <div className="max-w-7xl mx-auto px-6 py-8">
+                    {/* Header */}
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-8"
+                    >
+                        <Button variant="ghost" onClick={() => navigate('/dashboard/applications')} className="mb-6 hover:bg-primary">
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Back to Applications
+                        </Button>
+
+                        <div>
+                            <h1 className="text-4xl font-bold mb-2">{application.full_name}</h1>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <Badge variant="outline" className="text-base px-3 py-1">
+                                    {formatApplicationType(application.application_type)}
+                                </Badge>
+                                {getStatusBadge(application.status)}
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </motion.div>
 
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column - Application Details */}
-                    <div
-                        className={`lg:col-span-2 space-y-6 transition-all duration-700 delay-100 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                            }`}
-                    >
-                        {/* Deletion Warning */}
-                        {deletionInfo && application.status !== 'pending' && (
-                            <Alert className="bg-muted/50 border-muted-foreground/20">
-                                <Info className="h-4 w-4" />
-                                <AlertDescription className="text-sm text-muted-foreground">
-                                    <div className="flex items-center gap-2">
-                                        <Trash2 className="h-4 w-4" />
-                                        {deletionInfo}
-                                    </div>
-                                </AlertDescription>
-                            </Alert>
-                        )}
-
-                        {/* Basic Information Card */}
-                        <div className="bg-card border rounded-lg p-6 shadow-sm">
-                            <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-1">
-                                    <p className="text-sm text-muted-foreground">Class Year</p>
-                                    <div className="flex items-center gap-2">
-                                        <GraduationCap className="h-5 w-5 text-muted-foreground" />
-                                        <p className="font-medium capitalize text-lg">{application.class_year}</p>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-sm text-muted-foreground">Submitted</p>
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="h-5 w-5 text-muted-foreground" />
-                                        <p className="font-medium text-lg">
-                                            {format(new Date(application.created_at), 'MMM d, yyyy')}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Application Target */}
-                            {application.application_type === 'board' && application.board_position && (
-                                <>
-                                    <Separator className="my-4" />
-                                    <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
-                                        <p className="text-sm font-medium mb-1 text-muted-foreground">
-                                            Position Applied For
-                                        </p>
+                    {/* Main Content */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Left Column */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="lg:col-span-2 space-y-6"
+                        >
+                            {/* Deletion Warning */}
+                            {deletionInfo && application.status !== 'pending' && (
+                                <Alert className="bg-muted/50 border-muted-foreground/20">
+                                    <Info className="h-4 w-4" />
+                                    <AlertDescription className="text-sm text-muted-foreground">
                                         <div className="flex items-center gap-2">
-                                            <Briefcase className="h-5 w-5" />
-                                            <p className="text-lg font-semibold">{application.board_position}</p>
+                                            <Trash2 className="h-4 w-4" />
+                                            {deletionInfo}
                                         </div>
-                                    </div>
-                                </>
+                                    </AlertDescription>
+                                </Alert>
                             )}
 
-                            {application.application_type === 'class' && className && (
-                                <>
-                                    <Separator className="my-4" />
-                                    <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
-                                        <p className="text-sm font-medium mb-1 text-muted-foreground">
-                                            Class Applied For
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                            <BookOpen className="h-5 w-5" />
-                                            <p className="text-lg font-semibold">{className}</p>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-
-                            {application.application_type === 'project' && projectName && (
-                                <>
-                                    <Separator className="my-4" />
-                                    <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
-                                        <p className="text-sm font-medium mb-1 text-muted-foreground">
-                                            Project Applied For
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                            <Briefcase className="h-5 w-5" />
-                                            <p className="text-lg font-semibold">{projectName}</p>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Application Responses Card */}
-                        <div className="bg-card border rounded-lg p-6 shadow-sm">
-                            <h2 className="text-xl font-semibold mb-4">Application Responses</h2>
-                            <div className="space-y-6">{renderApplicationFields()}</div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        {application.status === 'pending' && canReview && (
+                            {/* Basic Information */}
                             <div className="bg-card border rounded-lg p-6 shadow-sm">
-                                <h2 className="text-xl font-semibold mb-4">Review Actions</h2>
-                                <div className="flex gap-4">
-                                    <Button
-                                        variant='enable'
-                                        className="flex-1 h-12 text-base"
-                                        onClick={() => setShowAcceptDialog(true)}
-                                    >
-                                        <CheckCircle className="h-5 w-5 mr-2" />
-                                        Accept Application
-                                    </Button>
-                                    <Button
-                                        variant="destructive"
-                                        className="flex-1 h-12 text-base"
-                                        onClick={() => setShowRejectDialog(true)}
-                                    >
-                                        <XCircle className="h-5 w-5 mr-2" />
-                                        Reject Application
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Right Column - Applicant Profile */}
-                    <div
-                        className={`transition-all duration-700 delay-200 ${animateIn ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'
-                            }`}
-                    >
-
-                        <div className="space-y-6 lg:sticky lg:top-24">
-
-                            {/* Applicant Profile Card */}
-                            <div className="bg-card border rounded-lg p-6 shadow-sm">
-                                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                                    <User className="h-5 w-5" />
-                                    Applicant Profile
-                                </h2>
-
-                                {applicantProfile ? (
-                                    <div className="space-y-4">
-                                        <div className="text-center pb-4 border-b">
-                                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 mx-auto mb-3 flex items-center justify-center text-white text-3xl font-bold">
-                                                {applicantProfile.full_name?.[0]?.toUpperCase() ||
-                                                    applicantProfile.email[0].toUpperCase()}
-                                            </div>
-                                            <h3 className="font-semibold text-lg">
-                                                {applicantProfile.full_name || 'No name'}
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground">{applicantProfile.email}</p>
+                                <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-1">
+                                        <p className="text-sm text-muted-foreground">Class Year</p>
+                                        <div className="flex items-center gap-2">
+                                            <GraduationCap className="h-5 w-5 text-muted-foreground" />
+                                            <p className="font-medium capitalize text-lg">{application.class_year}</p>
                                         </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-sm text-muted-foreground">Submitted</p>
+                                        <div className="flex items-center gap-2">
+                                            <Calendar className="h-5 w-5 text-muted-foreground" />
+                                            <p className="font-medium text-lg">{format(new Date(application.created_at), 'MMM d, yyyy')}</p>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                        <div className="space-y-3">
-                                            {applicantProfile.class_year && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-sm text-muted-foreground">Class Year</span>
-                                                    <span className="font-medium capitalize">
-                                                        {applicantProfile.class_year}
-                                                    </span>
+                                {/* Application Target */}
+                                {((application.application_type === 'board' && application.board_position) ||
+                                    (application.application_type === 'class' && classData) ||
+                                    (application.application_type === 'project' && projectData)) && (
+                                        <>
+                                            <Separator className="my-4" />
+                                            <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
+                                                <p className="text-sm font-medium mb-1 text-muted-foreground">
+                                                    {application.application_type === 'board' && 'Position Applied For'}
+                                                    {application.application_type === 'class' && 'Class Applied For'}
+                                                    {application.application_type === 'project' && 'Project Applied For'}
+                                                </p>
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <div className="flex items-center gap-2">
+                                                        {application.application_type === 'board' && <Briefcase className="h-5 w-5" />}
+                                                        {application.application_type === 'class' && <BookOpen className="h-5 w-5" />}
+                                                        {application.application_type === 'project' && <Briefcase className="h-5 w-5" />}
+                                                        <p className="text-lg font-semibold">
+                                                            {application.application_type === 'board' && application.board_position}
+                                                            {application.application_type === 'class' && classData?.name}
+                                                            {application.application_type === 'project' && projectData?.name}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {application.application_type === 'class' && application.class_role && (
+                                                            <>
+                                                                <BookUser className="h-5 w-5 text-muted-foreground" />
+                                                                <span className="text-lg font-semibold capitalize">
+                                                                    {application.class_role.replace('_', ' ')}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                        {application.application_type === 'project' && application.project_role && (
+                                                            <>
+                                                                <BookUser className="h-5 w-5 text-muted-foreground" />
+                                                                <span className="text-lg font-semibold capitalize">
+                                                                    {application.project_role.replace('_', ' ')}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            )}
-                                            <div className="flex justify-between">
-                                                <span className="text-sm text-muted-foreground">Club Points</span>
-                                                <span className="font-medium">{applicantProfile.points}</span>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-sm text-muted-foreground">Current Role</span>
-                                                <Badge variant="outline" className="capitalize">
-                                                    {applicantProfile.role.replace('-', ' ')}
-                                                </Badge>
-                                            </div>
-                                        </div>
+                                        </>
+                                    )}
+                            </div>
 
+                            {/* Application Responses */}
+                            <div className="bg-card border rounded-lg p-6 shadow-sm">
+                                <h2 className="text-xl font-semibold mb-4">Application Responses</h2>
+                                <div className="space-y-6">{renderApplicationFields()}</div>
+                            </div>
+
+                            {/* Documents - Sticky below class/project */}
+                            {(application.resume_url || application.transcript_url) && (
+                                <div>
+                                    <div className="bg-card border rounded-lg p-6 shadow-sm">
+                                        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                                            <FileText className="h-5 w-5" />
+                                            Documents
+                                        </h2>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            {application.resume_url && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => handleOpenDocument(application.resume_url!)}
+                                                    className="w-full"
+                                                >
+                                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                                    {isMobile ? 'Resume' : 'View Resume'}
+                                                </Button>
+                                            )}
+                                            {application.transcript_url && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => handleOpenDocument(application.transcript_url!)}
+                                                    className="w-full"
+                                                >
+                                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                                    {isMobile ? 'Transcript' : 'View Transcript'}
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            {application.status === 'pending' && canReview && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.3 }}
+                                    className="bg-card border rounded-lg p-6 shadow-sm"
+                                >
+                                    <h2 className="text-xl font-semibold mb-4">Review Actions</h2>
+                                    <div className="flex gap-4">
                                         <Button
-                                            variant="outline"
-                                            className="w-full"
-                                            onClick={() => setShowProfileViewer(true)}
+                                            variant="enable"
+                                            className="flex-1 h-12 text-base"
+                                            onClick={() => setShowAcceptDialog(true)}
                                         >
-                                            View Full Profile
+                                            <CheckCircle className="h-5 w-5 mr-2" />
+                                            Accept Application
+                                        </Button>
+                                        <Button
+                                            variant="destructive"
+                                            className="flex-1 h-12 text-base"
+                                            onClick={() => setShowRejectDialog(true)}
+                                        >
+                                            <XCircle className="h-5 w-5 mr-2" />
+                                            Reject Application
                                         </Button>
                                     </div>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground text-center py-4">
-                                        Profile information unavailable
-                                    </p>
-                                )}
-                            </div>
+                                </motion.div>
+                            )}
+                        </motion.div>
 
-                            {/* Documents Card - Inside the sticky wrapper */}
-                            {(application.resume_url || application.transcript_url) && (
-                                <div className="bg-card border rounded-lg p-6 shadow-sm">
-                                    <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                                        <FileText className="h-5 w-5" />
-                                        Documents
-                                    </h2>
-                                    <div className="flex flex-col gap-3">
-                                        {application.resume_url && (
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => handleOpenDocument(application.resume_url!)}
-                                                className="w-full justify-start"
-                                            >
-                                                <ExternalLink className="h-4 w-4 mr-2" />
-                                                View Resume
-                                            </Button>
-                                        )}
-                                        {application.transcript_url && (
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => handleOpenDocument(application.transcript_url!)}
-                                                className="w-full justify-start"
-                                            >
-                                                <ExternalLink className="h-4 w-4 mr-2" />
-                                                View Transcript
-                                            </Button>
-                                        )}
-                                    </div>
+                        {/* Right Column */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="space-y-6"
+                        >
+                            {/* Embedded Profile */}
+                            {applicantProfile && (
+                                <div>
+                                    <ProfileViewer member={applicantProfile} embedded className="lg:sticky lg:top-24" />
                                 </div>
                             )}
-                        </div>
+
+                            {/* Class/Project Details - below profile */}
+                            {(classData || projectData) && (
+                                <DetailModal
+                                    title={(classData || projectData).name}
+                                    subtitle={projectData?.client_name ? `Client: ${projectData.client_name}` : undefined}
+                                    sections={buildDetailSections(
+                                        classData || projectData,
+                                        classData ? 'class' : 'project'
+                                    )}
+                                    embedded
+                                />
+                            )}
+                        </motion.div>
                     </div>
                 </div>
             </div>
-
-            {/* Profile Viewer Modal */}
-            {applicantProfile && (
-                <ProfileViewer
-                    open={showProfileViewer}
-                    onClose={() => setShowProfileViewer(false)}
-                    member={applicantProfile}
-                />
-            )}
 
             {/* Accept Dialog */}
             <AlertDialog open={showAcceptDialog} onOpenChange={setShowAcceptDialog}>
@@ -754,11 +849,7 @@ const ApplicationViewerPage = () => {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}>
-                        <AlertDialogCancel
-                            variant='outline'
-                            disabled={actionLoading}
-                            className={!isMobile ? 'w-[47%]' : ''}
-                        >
+                        <AlertDialogCancel variant="outline" disabled={actionLoading} className={!isMobile ? 'w-[47%]' : ''}>
                             Cancel
                         </AlertDialogCancel>
                         <AlertDialogAction
@@ -786,17 +877,13 @@ const ApplicationViewerPage = () => {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}>
-                        <AlertDialogCancel
-                            variant='outline'
-                            disabled={actionLoading}
-                            className={!isMobile ? 'w-[47%]' : ''}
-                        >
+                        <AlertDialogCancel variant="outline" disabled={actionLoading} className={!isMobile ? 'w-[47%]' : ''}>
                             Cancel
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleReject}
                             disabled={actionLoading}
-                            variant='destructive'
+                            variant="destructive"
                             className={!isMobile ? 'w-[47%]' : ''}
                         >
                             {actionLoading ? 'Rejecting...' : 'Yes, Reject'}
@@ -804,7 +891,7 @@ const ApplicationViewerPage = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </>
     );
 };
 

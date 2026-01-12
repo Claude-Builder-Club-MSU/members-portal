@@ -22,6 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from '@/components/ui/radio-group';
 import { Save, X } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/database.types';
 
@@ -78,6 +82,8 @@ export const ApplicationCreateModal = ({
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedBoardPosition, setSelectedBoardPosition] = useState('');
+  const [selectedClassRole, setSelectedClassRole] = useState<'student' | 'teacher'>('student');
+  const [selectedProjectRole, setSelectedProjectRole] = useState<'member' | 'lead'>('member');
 
   // Initialize form
   useEffect(() => {
@@ -164,18 +170,18 @@ export const ApplicationCreateModal = ({
     }
   };
 
-  const uploadFile = async (file: File, folder: string): Promise<string> => {
+  const uploadFile = async (file: File, type: 'resume' | 'transcript'): Promise<string> => {
+    const safeUserName = fullName.replace(/\s+/g, '-');
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user!.id}-${Date.now()}.${fileExt}`;
-    const filePath = `${folder}/${fileName}`;
+    const fileName = `${type}.${fileExt}`;
+    // Build folder path: {userName}_{userId}/resume.pdf
+    const filePath = `${safeUserName}_${user!.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage.from('applications').upload(filePath, file);
 
     if (uploadError) throw uploadError;
 
-    const { data: { publicUrl } } = supabase.storage.from('applications').getPublicUrl(filePath);
-
-    return publicUrl;
+    return filePath;
   };
 
   const handleSubmit = async () => {
@@ -187,11 +193,11 @@ export const ApplicationCreateModal = ({
       let transcriptUrl: string | null = null;
 
       if (resumeFile) {
-        resumeUrl = await uploadFile(resumeFile, 'resumes');
+        resumeUrl = await uploadFile(resumeFile, 'resume');
       }
 
       if (transcriptFile) {
-        transcriptUrl = await uploadFile(transcriptFile, 'transcripts');
+        transcriptUrl = await uploadFile(transcriptFile, 'transcript');
       }
 
       const applicationData: any = {
@@ -212,13 +218,13 @@ export const ApplicationCreateModal = ({
         applicationData.other_commitments = otherCommitments;
       } else if (applicationType === 'class') {
         applicationData.class_id = selectedClassId;
-        applicationData.class_role = 'student';
+        applicationData.class_role = selectedClassRole;
         applicationData.why_join = whyJoin;
         applicationData.relevant_experience = relevantExperience;
         applicationData.other_commitments = otherCommitments;
       } else if (applicationType === 'project') {
         applicationData.project_id = selectedProjectId;
-        applicationData.project_role = 'member';
+        applicationData.project_role = selectedProjectRole;
         applicationData.project_detail = projectDetail;
         applicationData.problem_solved = problemSolved;
         applicationData.relevant_experience = relevantExperience;
@@ -265,7 +271,6 @@ export const ApplicationCreateModal = ({
               <SelectItem value="sophomore">Sophomore</SelectItem>
               <SelectItem value="junior">Junior</SelectItem>
               <SelectItem value="senior">Senior</SelectItem>
-              <SelectItem value="graduate">Graduate</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -332,6 +337,20 @@ export const ApplicationCreateModal = ({
             </div>
 
             <div className="space-y-2">
+              <Label>Class Role *</Label>
+              <RadioGroup value={selectedClassRole} onValueChange={(value) => setSelectedClassRole(value as 'student' | 'teacher')}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="student" id="class-student" />
+                  <Label htmlFor="class-student">Student</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="teacher" id="class-teacher" />
+                  <Label htmlFor="class-teacher">Teacher</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="whyJoin">Why do you want to join this class? *</Label>
               <Textarea
                 id="whyJoin"
@@ -361,6 +380,20 @@ export const ApplicationCreateModal = ({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Project Role *</Label>
+              <RadioGroup value={selectedProjectRole} onValueChange={(value) => setSelectedProjectRole(value as 'member' | 'lead')}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="member" id="project-member" />
+                  <Label htmlFor="project-member">Member</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="lead" id="project-lead" />
+                  <Label htmlFor="project-lead">Lead</Label>
+                </div>
+              </RadioGroup>
             </div>
 
             <div className="space-y-2">
@@ -434,9 +467,8 @@ export const ApplicationCreateModal = ({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent
-        className={`${
-          isMobile ? 'max-w-[calc(100vw-2rem)] max-h-[90vh]' : 'max-w-2xl max-h-[90vh]'
-        } overflow-y-auto rounded-xl`}
+        className={`${isMobile ? 'max-w-[calc(100vw-2rem)] max-h-[90vh]' : 'max-w-2xl max-h-[90vh]'
+          } overflow-y-auto rounded-xl`}
       >
         <DialogHeader>
           <DialogTitle>New Application</DialogTitle>

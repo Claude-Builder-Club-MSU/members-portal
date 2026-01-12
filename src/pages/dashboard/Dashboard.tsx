@@ -28,12 +28,12 @@ import type { Database } from '@/integrations/supabase/database.types';
 type Event = Database['public']['Tables']['events']['Row'];
 
 type Project = Database['public']['Tables']['projects']['Row'] & {
-  semesters: { code: string; name: string } | null;
+  semesters: { code: string; name: string; start_date: string; end_date: string } | null;
   project_members: { count: number }[];
 };
 
 type Class = Database['public']['Tables']['classes']['Row'] & {
-  semesters: { code: string; name: string } | null;
+  semesters: { code: string; name: string; start_date: string; end_date: string } | null;
   class_enrollments: { count: number }[];
 };
 
@@ -53,18 +53,20 @@ type DashboardData = {
 
 // --- Helper Functions ---
 const getProjectStatus = (project: Project) => {
+  if (!project.semesters) return { label: 'Unknown', color: 'bg-gray-300' };
   const now = new Date();
-  const startDate = new Date(project.start_date);
-  const endDate = new Date(project.end_date);
+  const startDate = new Date(project.semesters.start_date);
+  const endDate = new Date(project.semesters.end_date);
   if (startDate > now) return { label: 'Open', color: 'bg-green-500' };
   if (endDate < now) return { label: 'Completed', color: 'bg-gray-500' };
   return { label: 'Active', color: 'bg-blue-500' };
 };
 
 const getClassStatus = (cls: Class) => {
+  if (!cls.semesters) return { label: 'Unknown', color: 'bg-gray-300' };
   const now = new Date();
-  const startDate = new Date(cls.start_date);
-  const endDate = new Date(cls.end_date);
+  const startDate = new Date(cls.semesters.start_date);
+  const endDate = new Date(cls.semesters.end_date);
   if (startDate > now) return { label: 'Open', color: 'bg-green-500' };
   if (endDate < now) return { label: 'Completed', color: 'bg-gray-500' };
   return { label: 'Active', color: 'bg-blue-500' };
@@ -84,13 +86,11 @@ async function fetchEBoardDashboard(): Promise<DashboardData> {
     supabase.from('user_roles').select('role'),
     supabase
       .from('projects')
-      .select(`*, semesters (code, name), project_members(count)`)
-      .order('start_date', { ascending: false })
+      .select(`*, semesters (code, name, start_date, end_date), project_members(count)`)
       .limit(6),
     supabase
       .from('classes')
-      .select(`*, semesters (code, name), class_enrollments(count)`)
-      .order('start_date', { ascending: false })
+      .select(`*, semesters (code, name, start_date, end_date), class_enrollments(count)`)
       .limit(6)
   ]);
 
@@ -99,10 +99,23 @@ async function fetchEBoardDashboard(): Promise<DashboardData> {
   if (projectsRes.error) throw projectsRes.error;
   if (classesRes.error) throw classesRes.error;
 
+  // Sort projects and classes by semester start date (most recent first)
+  const sortedProjects = ((projectsRes.data as Project[]) || []).sort((a, b) => {
+    const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
+    const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
+    return bStart.getTime() - aStart.getTime();
+  });
+
+  const sortedClasses = ((classesRes.data as Class[]) || []).sort((a, b) => {
+    const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
+    const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
+    return bStart.getTime() - aStart.getTime();
+  });
+
   return {
     events: eventsRes.data || [],
-    projects: (projectsRes.data as Project[]) || [],
-    classes: (classesRes.data as Class[]) || [],
+    projects: sortedProjects,
+    classes: sortedClasses,
     adminStats: {
       members: rolesRes.data?.filter(r => r.role === 'member').length || 0,
       prospects: rolesRes.data?.filter(r => r.role === 'prospect').length || 0,
@@ -123,13 +136,11 @@ async function fetchBoardDashboard(): Promise<DashboardData> {
       .limit(10),
     supabase
       .from('projects')
-      .select(`*, semesters (code, name), project_members(count)`)
-      .order('start_date', { ascending: false })
+      .select(`*, semesters (code, name, start_date, end_date), project_members(count)`)
       .limit(6),
     supabase
       .from('classes')
-      .select(`*, semesters (code, name), class_enrollments(count)`)
-      .order('start_date', { ascending: false })
+      .select(`*, semesters (code, name, start_date, end_date), class_enrollments(count)`)
       .limit(6)
   ]);
 
@@ -137,10 +148,23 @@ async function fetchBoardDashboard(): Promise<DashboardData> {
   if (projectsRes.error) throw projectsRes.error;
   if (classesRes.error) throw classesRes.error;
 
+  // Sort projects and classes by semester start date (most recent first)
+  const sortedProjects = ((projectsRes.data as Project[]) || []).sort((a, b) => {
+    const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
+    const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
+    return bStart.getTime() - aStart.getTime();
+  });
+
+  const sortedClasses = ((classesRes.data as Class[]) || []).sort((a, b) => {
+    const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
+    const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
+    return bStart.getTime() - aStart.getTime();
+  });
+
   return {
     events: eventsRes.data || [],
-    projects: (projectsRes.data as Project[]) || [],
-    classes: (classesRes.data as Class[]) || [],
+    projects: sortedProjects,
+    classes: sortedClasses,
   };
 }
 
