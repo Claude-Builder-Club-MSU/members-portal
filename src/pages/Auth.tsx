@@ -93,32 +93,6 @@ const Auth = () => {
           throw new Error('User creation failed');
         }
 
-        // Create profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            email: email,
-            full_name: fullName,
-            points: 0,
-          });
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-        }
-
-        // Create role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            role: 'prospect',
-          });
-
-        if (roleError) {
-          console.error('Role creation error:', roleError);
-        }
-
         toast({
           title: 'Success',
           description: 'Account created! Please check your email to verify.',
@@ -131,6 +105,7 @@ const Auth = () => {
         description: error.message,
         variant: 'destructive',
       });
+      console.error(error);
     } finally {
       setLoading(false);
     }

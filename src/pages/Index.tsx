@@ -151,11 +151,22 @@ const Index = () => {
                 <motion.div variants={fadeInUp}>
                   <Card className="relative h-full border-2 border-border hover:border-primary transition-all duration-300 hover:shadow-2xl group overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                    <CardContent className={`relative space-y-6 ${isMobile ? 'p-6' : 'p-8'}`}>
-                      <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg`}>
-                        <Code className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
-                      </div>
-                      <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Innovative Projects</h3>
+                    <CardContent className={`relative ${isMobile ? 'p-6 space-y-4' : 'p-8 space-y-6'}`}>
+                      {isMobile ? (
+                        <div className="flex items-center gap-4">
+                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg`}>
+                            <Code className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          </div>
+                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Innovative Projects</h3>
+                        </div>
+                      ) : (
+                        <>
+                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg`}>
+                            <Code className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          </div>
+                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Innovative Projects</h3>
+                        </>
+                      )}
                       <p className={`${isMobile ? 'text-base' : 'text-lg'} text-muted-foreground leading-relaxed`}>
                         Partner with companies far and wide to give students real-world experience. Build and deploy
                         production-grade applications, work with actual clients, and create solutions that matter.
@@ -169,11 +180,22 @@ const Index = () => {
                 <motion.div variants={fadeInUp}>
                   <Card className="relative h-full border-2 border-border hover:border-blue-500 transition-all duration-300 hover:shadow-2xl group overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                    <CardContent className={`relative space-y-6 ${isMobile ? 'p-6' : 'p-8'}`}>
-                      <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg`}>
-                        <GraduationCap className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
-                      </div>
-                      <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Education Pipeline</h3>
+                    <CardContent className={`relative ${isMobile ? 'p-6 space-y-4' : 'p-8 space-y-6'}`}>
+                      {isMobile ? (
+                        <div className="flex items-center gap-4">
+                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg`}>
+                            <GraduationCap className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          </div>
+                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Education Pipeline</h3>
+                        </div>
+                      ) : (
+                        <>
+                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg`}>
+                            <GraduationCap className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          </div>
+                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Education Pipeline</h3>
+                        </>
+                      )}
                       <p className={`${isMobile ? 'text-base' : 'text-lg'} text-muted-foreground leading-relaxed`}>
                         Learn from industry experts and seasoned professionals. Master system design, conquer LeetCode,
                         and prepare for top-tier internships at FAANG and beyond. Our comprehensive curriculum covers
@@ -187,11 +209,24 @@ const Index = () => {
                 <motion.div variants={fadeInUp}>
                   <Card className="relative h-full border-2 border-border hover:border-purple-500 transition-all duration-300 hover:shadow-2xl group overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                    <CardContent className={`relative space-y-6 ${isMobile ? 'p-6' : 'p-8'}`}>
-                      <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg`}>
-                        <Sparkles className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
-                      </div>
-                      <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>AI Development Support</h3>
+                    <CardContent className={`relative ${isMobile ? 'p-6 space-y-4' : 'p-8 space-y-6'}`}>
+                      {isMobile ? (
+                        <div className="flex items-center gap-4">
+                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg`}>
+                            <Sparkles className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          </div>
+                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>
+                            {isMobile ? 'AI Support' : 'AI Development Support'}
+                          </h3>
+                        </div>
+                      ) : (
+                        <>
+                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg`}>
+                            <Sparkles className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          </div>
+                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>AI Development Support</h3>
+                        </>
+                      )}
                       <p className={`${isMobile ? 'text-base' : 'text-lg'} text-muted-foreground leading-relaxed`}>
                         Kickstart your AI journey with $50 in Claude API credits for every member. Experiment with
                         cutting-edge language models, build intelligent applications, and bring your AI ideas to life
@@ -205,11 +240,22 @@ const Index = () => {
                 <motion.div variants={fadeInUp}>
                   <Card className="relative h-full border-2 border-border hover:border-green-500 transition-all duration-300 hover:shadow-2xl group overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                    <CardContent className={`relative space-y-6 ${isMobile ? 'p-6' : 'p-8'}`}>
-                      <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg`}>
-                        <Trophy className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
-                      </div>
-                      <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>The Devvys</h3>
+                    <CardContent className={`relative ${isMobile ? 'p-6 space-y-4' : 'p-8 space-y-6'}`}>
+                      {isMobile ? (
+                        <div className="flex items-center gap-4">
+                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg`}>
+                            <Trophy className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          </div>
+                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>The Devvys</h3>
+                        </div>
+                      ) : (
+                        <>
+                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg`}>
+                            <Trophy className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          </div>
+                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>The Devvys</h3>
+                        </>
+                      )}
                       <p className={`${isMobile ? 'text-base' : 'text-lg'} text-muted-foreground leading-relaxed`}>
                         Our annual project showcase where innovation takes center stage. Present your personal projects,
                         hackathon wins, or client work in front of recruiters, professors, and the MSU community.
