@@ -65,6 +65,8 @@ const Events = () => {
   const [maxAttendance, setMaxAttendance] = useState(50);
   const [rsvpRequired, setRsvpRequired] = useState(false);
   const [inviteProspects, setInviteProspects] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
 
   const modalState = useModalState<Event>();
 
@@ -597,7 +599,7 @@ const Events = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Date *</Label>
-            <Popover>
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="secondary"
@@ -611,14 +613,22 @@ const Events = () => {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="center">
-                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(selectedDate) => {
+                    setDate(selectedDate);
+                    setCalendarOpen(false);
+                  }}
+                  initialFocus
+                />
               </PopoverContent>
             </Popover>
           </div>
 
           <div className="space-y-2">
             <Label>Time *</Label>
-            <Popover>
+            <Popover open={timePickerOpen} onOpenChange={setTimePickerOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="secondary"
@@ -633,14 +643,36 @@ const Events = () => {
                     : <span>Select time</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-0" align="center">
-                <div className="p-1 h-[300px] overflow-y-scroll">
+              <PopoverContent
+                className="w-64 p-0"
+                align="center"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+              >
+                <div
+                  className="p-1"
+                  style={{
+                    height: '300px',
+                    overflowY: 'scroll',
+                    overflowX: 'hidden',
+                    position: 'relative',
+                    WebkitOverflowScrolling: 'touch'
+                  }}
+                  onWheel={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onTouchMove={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
                   {TIME_OPTIONS.map((option) => (
                     <Button
                       key={option.value}
                       variant={eventTime === option.value ? 'default' : 'ghost'}
-                      className="w-full justify-start font-normal mb-1"
-                      onClick={() => setEventTime(option.value)}
+                      className="w-full justify-start font-normal hover:bg-background hover:text-primary border-0 mb-1"
+                      onClick={() => {
+                        setEventTime(option.value);
+                        setTimePickerOpen(false);
+                      }}
                     >
                       {option.label}
                     </Button>

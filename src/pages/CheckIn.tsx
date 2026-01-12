@@ -43,7 +43,7 @@ const Checkin = () => {
                 points_awarded?: number;
                 event_name?: string;
             };
-            
+
             setResult(resultData);
 
             // Clear redirect URL and refresh profile (to update points) after successful check-in
