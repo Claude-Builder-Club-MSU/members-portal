@@ -175,6 +175,8 @@ const Prospects = () => {
               onBan={handleBanProspect}
               canManage={canManageProspects}
               isMobile={isMobile}
+              currentUserId={user?.id}
+              currentUserRole={userRole}
               type="prospect"
             />
           ))}

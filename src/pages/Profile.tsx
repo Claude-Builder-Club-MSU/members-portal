@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Trophy, Mail, Award, Linkedin, Github, FileText, Camera, RotateCw, Crown, Users } from 'lucide-react';
+import { Trophy, Mail, Award, Linkedin, Github, FileText, Camera, RotateCw, Crown, Users, ExternalLink, Trash2 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import {
   Select,
@@ -29,6 +30,7 @@ const Profile = () => {
   const { role, isEBoard, stats } = useProfile();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   // Form states
   const [loading, setLoading] = useState(false);
@@ -275,6 +277,74 @@ const Profile = () => {
     return publicUrl;
   };
 
+  const deleteResume = async () => {
+    if (!user || !profile?.resume_url) return;
+
+    try {
+      setLoading(true);
+
+      // Extract file path from URL or construct it
+      // The URL format is: https://[project].supabase.co/storage/v1/object/public/profiles/[filePath]
+      const urlParts = profile.resume_url.split('/profiles/');
+      let filePath: string | null = null;
+
+      if (urlParts.length > 1) {
+        // Extract path from URL (remove query params if any)
+        filePath = urlParts[1].split('?')[0];
+      } else {
+        // Fallback: try to find resume file by listing folder
+        const sanitizedName = (profile.full_name || fullName)
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '');
+        const folderPath = `${sanitizedName}_${user.id}`;
+
+        const { data: files } = await supabase.storage
+          .from('profiles')
+          .list(folderPath);
+
+        if (files && files.length > 0) {
+          const resumeFile = files.find(file => file.name.includes('_resume'));
+          if (resumeFile) {
+            filePath = `${folderPath}/${resumeFile.name}`;
+          }
+        }
+      }
+
+      // Delete from storage if we found the path
+      if (filePath) {
+        const { error: deleteError } = await supabase.storage
+          .from('profiles')
+          .remove([filePath]);
+
+        if (deleteError) throw deleteError;
+      }
+
+      // Update profile to remove resume_url
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ resume_url: null })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: 'Success',
+        description: 'Resume deleted successfully!',
+      });
+
+      await refreshProfile();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete resume',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -310,6 +380,13 @@ const Profile = () => {
 
       await refreshProfile();
       setResumeFile(null);
+
+      // Check if there's a redirect URL stored (e.g., from check-in flow)
+      const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+      if (redirectUrl) {
+        sessionStorage.removeItem('redirectAfterLogin');
+        navigate(redirectUrl, { replace: true });
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -597,12 +674,38 @@ const Profile = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="resume">Resume (PDF, DOC, or DOCX)</Label>
-                    <Input
-                      id="resume"
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="resume"
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                        className={profile?.resume_url ? "flex-[4]" : "w-full"}
+                      />
+                      {profile?.resume_url && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => window.open(profile.resume_url, '_blank')}
+                            className="flex items-center gap-2 px-3"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            {isMobile ? null : "Resume"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={deleteResume}
+                            disabled={loading}
+                            className="px-3"
+                            title="Delete resume"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                     {resumeFile && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <FileText className="h-3 w-3" />

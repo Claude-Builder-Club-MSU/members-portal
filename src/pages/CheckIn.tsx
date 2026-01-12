@@ -8,7 +8,7 @@ import { CheckCircle, XCircle, Trophy } from 'lucide-react';
 
 const Checkin = () => {
     const { token } = useParams<{ token: string }>();
-    const { user, loading } = useAuth();
+    const { user, loading, refreshProfile } = useAuth();
     const navigate = useNavigate();
     const [checking, setChecking] = useState(false);
     const [result, setResult] = useState<{
@@ -19,9 +19,8 @@ const Checkin = () => {
     } | null>(null);
 
     useEffect(() => {
-        if (!loading && !user) {
-            navigate('/auth');
-        } else if (user && token) {
+        // User must be logged in to check in (ProtectedRoute handles redirect)
+        if (!loading && user && token) {
             handleCheckin();
         }
     }, [user, loading, token]);
@@ -38,12 +37,21 @@ const Checkin = () => {
 
             if (error) throw error;
 
-            setResult(data as {
+            const resultData = data as {
                 success: boolean;
                 message: string;
                 points_awarded?: number;
                 event_name?: string;
-            });
+            };
+
+            setResult(resultData);
+
+            // Clear redirect URL and refresh profile (to update points) after successful check-in
+            if (resultData?.success) {
+                sessionStorage.removeItem('redirectAfterLogin');
+                // Refresh profile to get updated points
+                await refreshProfile();
+            }
         } catch (error: any) {
             console.error('Check-in error:', error);
             setResult({

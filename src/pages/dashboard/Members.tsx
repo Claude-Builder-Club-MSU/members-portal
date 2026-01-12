@@ -136,7 +136,9 @@ const Members = () => {
     setIsProfileModalOpen(true);
   };
 
+  // Only e-board can change roles; board and e-board can kick/ban
   const canManageRoles = userRole === 'e-board';
+  const canManageActions = userRole === 'board' || userRole === 'e-board';
 
   // Group members by team
   const groupedMembers = members.reduce((acc, member) => {
@@ -212,12 +214,14 @@ const Members = () => {
                 key={member.id}
                 person={member}
                 onViewProfile={handleViewProfile}
-                onRoleChange={handleRoleChange}
-                onKick={handleKickMember}
-                onBan={handleBanMember}
-                canManage={canManageRoles}
+                onRoleChange={canManageRoles ? handleRoleChange : undefined}
+                onKick={canManageActions ? handleKickMember : undefined}
+                onBan={canManageActions ? handleBanMember : undefined}
+                canManage={canManageActions}
+                canChangeRoles={canManageRoles}
                 isMobile={isMobile}
                 currentUserId={user?.id}
+                currentUserRole={userRole}
                 type="member"
               />
             ))}

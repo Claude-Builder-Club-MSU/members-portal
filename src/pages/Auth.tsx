@@ -29,7 +29,7 @@ const Auth = () => {
     if (user) {
       const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
       if (redirectUrl) {
-        sessionStorage.removeItem('redirectAfterLogin');
+        // Don't clear it here - let ProtectedRoute handle it when redirecting to profile if needed
         navigate(redirectUrl, { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
@@ -68,14 +68,8 @@ const Auth = () => {
           description: 'Logged in successfully!',
         });
 
-        // Navigate to dashboard
-        const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
-        if (redirectUrl) {
-          sessionStorage.removeItem('redirectAfterLogin');
-          navigate(redirectUrl, { replace: true });
-        } else {
-          navigate('/dashboard', { replace: true });
-        }
+        // Navigate - don't clear redirectAfterLogin here, let ProtectedRoute handle it
+        // The useEffect above will handle the navigation when user state updates
       } else {
         // Check if email belongs to a banned user before signup
         const { data: existingProfile } = await supabase

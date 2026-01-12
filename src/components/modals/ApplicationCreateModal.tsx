@@ -65,6 +65,10 @@ export const ApplicationCreateModal = ({
   const [loading, setLoading] = useState(false);
   const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
+  const [existingApplications, setExistingApplications] = useState<Array<{
+    class_id: string | null;
+    project_id: string | null;
+  }>>([]);
 
   // Form fields
   const [applicationType, setApplicationType] = useState<ApplicationType | ''>('');
@@ -93,14 +97,36 @@ export const ApplicationCreateModal = ({
     }
   }, [profile, open]);
 
-  // Fetch available options
+  // Fetch available options and existing applications
   useEffect(() => {
-    if (open) {
-      fetchAvailableOptions();
+    if (open && user) {
+      const loadData = async () => {
+        const applications = await fetchExistingApplications();
+        await fetchAvailableOptions(applications);
+      };
+      loadData();
     }
-  }, [open]);
+  }, [open, user]);
 
-  const fetchAvailableOptions = async () => {
+  const fetchExistingApplications = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('applications')
+      .select('class_id, project_id')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error fetching existing applications:', error);
+      return [];
+    }
+
+    const applications = data || [];
+    setExistingApplications(applications);
+    return applications;
+  };
+
+  const fetchAvailableOptions = async (applicationsToFilter: Array<{ class_id: string | null; project_id: string | null }> = existingApplications) => {
     const now = new Date().toISOString();
 
     // Fetch classes where the semester start date is in the future
@@ -117,7 +143,18 @@ export const ApplicationCreateModal = ({
       .gt('semesters.start_date', now)
       .order('name', { ascending: true });
 
-    if (classesData) setAvailableClasses(classesData);
+    if (classesData) {
+      // Filter out classes the user has already applied to
+      const appliedClassIds = new Set(
+        applicationsToFilter
+          .filter(app => app.class_id !== null)
+          .map(app => app.class_id)
+      );
+      const filteredClasses = classesData.filter(
+        cls => !appliedClassIds.has(cls.id)
+      );
+      setAvailableClasses(filteredClasses);
+    }
 
     // Fetch projects where the semester start date is in the future
     const { data: projectsData } = await supabase
@@ -133,7 +170,18 @@ export const ApplicationCreateModal = ({
       .gt('semesters.start_date', now)
       .order('name', { ascending: true });
 
-    if (projectsData) setAvailableProjects(projectsData);
+    if (projectsData) {
+      // Filter out projects the user has already applied to
+      const appliedProjectIds = new Set(
+        applicationsToFilter
+          .filter(app => app.project_id !== null)
+          .map(app => app.project_id)
+      );
+      const filteredProjects = projectsData.filter(
+        proj => !appliedProjectIds.has(proj.id)
+      );
+      setAvailableProjects(filteredProjects);
+    }
   };
 
   const handleApplicationTypeChange = (type: ApplicationType) => {
@@ -174,8 +222,17 @@ export const ApplicationCreateModal = ({
     const safeUserName = fullName.replace(/\s+/g, '-');
     const fileExt = file.name.split('.').pop();
     const fileName = `${type}.${fileExt}`;
-    // Build folder path: {userName}_{userId}/resume.pdf
-    const filePath = `${safeUserName}_${user!.id}/${fileName}`;
+
+    // Build folder path: {userName}_{thing_id}/resume.pdf
+    let filePath;
+    if (applicationType === 'class' && selectedClassId) {
+      filePath = `${safeUserName}_${selectedClassId}/${fileName}`;
+    } else if (applicationType === 'project' && selectedProjectId) {
+      filePath = `${safeUserName}_${selectedProjectId}/${fileName}`;
+    } else {
+      // fallback to user id for board or unspecified
+      filePath = `${safeUserName}_${user!.id}/${fileName}`;
+    }
 
     const { error: uploadError } = await supabase.storage.from('applications').upload(filePath, file);
 
@@ -184,11 +241,60 @@ export const ApplicationCreateModal = ({
     return filePath;
   };
 
+  const resetForm = () => {
+    setApplicationType('');
+    setFullName(profile?.full_name || '');
+    setClassYear(profile?.class_year || '');
+    setResumeFile(null);
+    setTranscriptFile(null);
+    setWhyJoin('');
+    setWhyPosition('');
+    setRelevantExperience('');
+    setOtherCommitments('');
+    setProjectDetail('');
+    setProblemSolved('');
+    setPreviousExperience('');
+    setSelectedClassId('');
+    setSelectedProjectId('');
+    setSelectedBoardPosition('');
+    setSelectedClassRole('student');
+    setSelectedProjectRole('member');
+  };
+
   const handleSubmit = async () => {
     if (!user) return;
     setLoading(true);
 
     try {
+      // Check for duplicate applications
+      if (applicationType === 'class' && selectedClassId) {
+        const hasExistingClassApplication = existingApplications.some(
+          app => app.class_id === selectedClassId
+        );
+        if (hasExistingClassApplication) {
+          toast({
+            title: 'Duplicate Application',
+            description: 'You have already applied to this class. You cannot apply again.',
+            variant: 'destructive',
+          });
+          setLoading(false);
+          return;
+        }
+      } else if (applicationType === 'project' && selectedProjectId) {
+        const hasExistingProjectApplication = existingApplications.some(
+          app => app.project_id === selectedProjectId
+        );
+        if (hasExistingProjectApplication) {
+          toast({
+            title: 'Duplicate Application',
+            description: 'You have already applied to this project. You cannot apply again.',
+            variant: 'destructive',
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
       let resumeUrl: string | null = null;
       let transcriptUrl: string | null = null;
 
@@ -235,6 +341,11 @@ export const ApplicationCreateModal = ({
       if (error) throw error;
 
       toast({ title: 'Success', description: 'Application submitted successfully!' });
+
+      // Reset form and refresh existing applications and available options
+      resetForm();
+      const updatedApplications = await fetchExistingApplications();
+      await fetchAvailableOptions(updatedApplications);
       onSuccess();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -462,6 +573,13 @@ export const ApplicationCreateModal = ({
       </>
     );
   };
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

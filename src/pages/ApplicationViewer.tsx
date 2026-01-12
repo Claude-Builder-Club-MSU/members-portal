@@ -10,16 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
     ArrowLeft,
     CheckCircle,
     XCircle,
@@ -35,7 +25,6 @@ import {
     BookUser,
     Github,
     MapPin,
-    User,
     Users,
 } from 'lucide-react';
 import { format, addDays, differenceInDays } from 'date-fns';
@@ -68,16 +57,10 @@ const ApplicationViewerPage = () => {
     const [classData, setClassData] = useState<any | null>(null);
     const [projectData, setProjectData] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
-    const [actionLoading, setActionLoading] = useState(false);
-
-    // Modal states
-    const [showAcceptDialog, setShowAcceptDialog] = useState(false);
-    const [showRejectDialog, setShowRejectDialog] = useState(false);
 
     // Success/Rejection screen states
     const [showSuccessScreen, setShowSuccessScreen] = useState(false);
     const [showRejectionScreen, setShowRejectionScreen] = useState(false);
-    const [actionType, setActionType] = useState<'accept' | 'reject' | null>(null);
 
     useEffect(() => {
         if (id) {
@@ -192,9 +175,6 @@ const ApplicationViewerPage = () => {
     const handleAccept = async () => {
         if (!user || !application) return;
 
-        setActionLoading(true);
-        setActionType('accept');
-
         try {
             const { error } = await supabase
                 .from('applications')
@@ -206,8 +186,6 @@ const ApplicationViewerPage = () => {
                 .eq('id', application.id);
 
             if (error) throw error;
-
-            setShowAcceptDialog(false);
 
             // Show success screen
             setTimeout(() => {
@@ -224,15 +202,11 @@ const ApplicationViewerPage = () => {
                 description: error.message,
                 variant: 'destructive',
             });
-            setActionLoading(false);
         }
     };
 
     const handleReject = async () => {
         if (!user || !application) return;
-
-        setActionLoading(true);
-        setActionType('reject');
 
         try {
             const { error } = await supabase
@@ -245,8 +219,6 @@ const ApplicationViewerPage = () => {
                 .eq('id', application.id);
 
             if (error) throw error;
-
-            setShowRejectDialog(false);
 
             // Show rejection screen
             setTimeout(() => {
@@ -263,7 +235,6 @@ const ApplicationViewerPage = () => {
                 description: error.message,
                 variant: 'destructive',
             });
-            setActionLoading(false);
         }
     };
 
@@ -319,25 +290,6 @@ const ApplicationViewerPage = () => {
                 return `Added ${name} to ${projectData?.name || 'project'}!`;
             default:
                 return `Accepted ${name}'s application!`;
-        }
-    };
-
-    const getAcceptanceAction = () => {
-        if (!application) return '';
-
-        switch (application.application_type) {
-            case 'board':
-                return `This will automatically assign them the ${application.board_position || 'board'} position and change their role to Board.`;
-            case 'class':
-                return classData?.name
-                    ? `This will automatically enroll them in "${classData.name}" as a student.`
-                    : 'This will automatically enroll them in the selected class as a student.';
-            case 'project':
-                return projectData?.name
-                    ? `This will automatically add them to "${projectData.name}" as a member.`
-                    : 'This will automatically add them to the selected project as a member.';
-            default:
-                return '';
         }
     };
 
@@ -545,14 +497,6 @@ const ApplicationViewerPage = () => {
                             >
                                 {getAcceptanceMessage()}
                             </motion.p>
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.8 }}
-                                className="mt-8"
-                            >
-                                <PartyPopper className="w-16 h-16 mx-auto animate-bounce" />
-                            </motion.div>
                         </motion.div>
 
                         {/* Ripple effect */}
@@ -782,7 +726,7 @@ const ApplicationViewerPage = () => {
                                         <Button
                                             variant="enable"
                                             className="flex-1 h-12 text-base"
-                                            onClick={() => setShowAcceptDialog(true)}
+                                            onClick={handleAccept}
                                         >
                                             <CheckCircle className="h-5 w-5 mr-2" />
                                             Accept Application
@@ -790,7 +734,7 @@ const ApplicationViewerPage = () => {
                                         <Button
                                             variant="destructive"
                                             className="flex-1 h-12 text-base"
-                                            onClick={() => setShowRejectDialog(true)}
+                                            onClick={handleReject}
                                         >
                                             <XCircle className="h-5 w-5 mr-2" />
                                             Reject Application
@@ -830,66 +774,6 @@ const ApplicationViewerPage = () => {
                     </div>
                 </div>
             </div>
-
-            {/* Accept Dialog */}
-            <AlertDialog open={showAcceptDialog} onOpenChange={setShowAcceptDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Accept Application?</AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-3">
-                            <p>
-                                Are you sure you want to accept {application.full_name}'s application for{' '}
-                                {formatApplicationType(application.application_type)}?
-                            </p>
-                            <div className="bg-blue-50 dark:bg-blue-950 rounded-md p-3">
-                                <p className="text-sm font-medium text-foreground">{getAcceptanceAction()}</p>
-                            </div>
-                            <p className="text-xs text-muted-foreground">This action cannot be undone.</p>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}>
-                        <AlertDialogCancel variant="outline" disabled={actionLoading} className={!isMobile ? 'w-[47%]' : ''}>
-                            Cancel
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleAccept}
-                            disabled={actionLoading}
-                            className={`bg-green-600 hover:bg-green-700 ${!isMobile ? 'w-[47%]' : ''}`}
-                        >
-                            {actionLoading ? 'Accepting...' : 'Yes, Accept & Auto-Assign'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Reject Dialog */}
-            <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Reject Application?</AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-2">
-                            <p>
-                                Are you sure you want to reject {application.full_name}'s application for{' '}
-                                {formatApplicationType(application.application_type)}?
-                            </p>
-                            <p className="text-xs text-muted-foreground">This action cannot be undone.</p>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}>
-                        <AlertDialogCancel variant="outline" disabled={actionLoading} className={!isMobile ? 'w-[47%]' : ''}>
-                            Cancel
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleReject}
-                            disabled={actionLoading}
-                            variant="destructive"
-                            className={!isMobile ? 'w-[47%]' : ''}
-                        >
-                            {actionLoading ? 'Rejecting...' : 'Yes, Reject'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </>
     );
 };

@@ -332,7 +332,7 @@ const Projects = () => {
         label: 'Edit Details',
         onClick: () => modalState.openEdit(project),
         icon: <Edit className="h-4 w-4 mr-2" />,
-        variant: 'outline' as const,
+        variant: 'outline',
       });
     }
 
@@ -348,7 +348,7 @@ const Projects = () => {
         label: 'View Details',
         onClick: () => modalState.openDetails(project),
         icon: <Eye className="h-4 w-4 mr-2" />,
-        variant: 'default' as const,
+        variant: 'default',
       });
     }
 
