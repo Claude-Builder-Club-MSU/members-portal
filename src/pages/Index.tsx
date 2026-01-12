@@ -403,7 +403,7 @@ const Index = () => {
               © 2025 Claude Builder Club. Spreading the joy of CS, one project at a time.
               <span className="mx-2">|</span>
               <a
-                href="https://github.com/Claude-Builder-Club-MSU/members-portal/issues"
+                href="https://github.com/Claude-Builder-Club-MSU/members-portal/issues/new/choose"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline text-primary hover:text-primary/70 transition-colors"
