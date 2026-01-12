@@ -113,7 +113,7 @@ const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className={`${isMobile ? 'max-w-[calc(100vw-2rem)]' : 'max-w-2xl'} rounded-xl`}>
+      <DialogContent className={`${isMobile ? 'max-w-[calc(90vw-2rem)]' : 'max-w-xl'} rounded-xl`}>
         <DialogHeader>
           <DialogTitle>Create New Term</DialogTitle>
           <DialogDescription>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,12 +23,14 @@ import {
 import Cropper from 'react-easy-crop';
 import type { Database } from '@/integrations/supabase/database.types';
 
-
-
 const Profile = () => {
-  const { user, profile, role, refreshProfile, loading: authLoading } = useAuth();
+  // Get data from contexts
+  const { user, profile, refreshProfile, loading: authLoading } = useAuth();
+  const { role, isEBoard, stats } = useProfile();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  // Form states
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState('');
   const [classYear, setClassYear] = useState('');
@@ -46,6 +49,7 @@ const Profile = () => {
   const [showCropModal, setShowCropModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Populate form when profile loads
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name);
@@ -237,6 +241,7 @@ const Profile = () => {
     const fileName = `${resumeName}_resume.${fileExt}`;
     const filePath = `${newFolderPath}/${fileName}`;
 
+    // Clean up old resume if name changed
     if (profile?.full_name && profile.full_name !== fullName) {
       const oldSanitizedName = profile.full_name
         .toLowerCase()
@@ -287,7 +292,7 @@ const Profile = () => {
         linkedin_username: linkedinUsername || null,
         github_username: githubUsername || null,
         position: position || null,
-        team: role === 'e-board' ? 'E-board' : (team || null),
+        team: isEBoard ? 'E-board' : (team || null), // ✅ Use isEBoard from ProfileContext
         resume_url: newResumeUrl,
       };
 
@@ -316,28 +321,10 @@ const Profile = () => {
     }
   };
 
-  const getRoleBadgeVariant = (roleValue: string) => {
-    switch (roleValue) {
-      case 'e-board':
-        return 'default';
-      case 'board':
-        return 'default';
-      case 'member':
-        return 'secondary';
-      default:
-        return 'outline';
-    }
-  };
-
-  const getRoleIcon = (roleValue: string) => {
-    switch (roleValue) {
-      case 'e-board':
-        return <Crown className="h-4 w-4" />;
-      case 'board':
-        return <Award className="h-4 w-4" />;
-      default:
-        return <Users className="h-4 w-4" />;
-    }
+  const getRoleBadgeVariant = (roleValue: string | null): "default" | "secondary" | "outline" => {
+    if (roleValue === 'e-board' || roleValue === 'board') return 'default';
+    if (roleValue === 'member') return 'secondary';
+    return 'outline';
   };
 
   const getInitials = (name: string) => {
@@ -349,12 +336,16 @@ const Profile = () => {
       .slice(0, 2);
   };
 
-  if (authLoading || !user) {
+  // Show loading state
+  if (authLoading || !user || !profile) {
     return (
       <div className={`min-h-full flex items-center justify-center ${isMobile ? 'p-4' : 'p-6'}`}>
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">Loading profile...</p>
+            <div className="text-center space-y-4">
+              <div className="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-muted-foreground">Loading profile...</p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -364,7 +355,7 @@ const Profile = () => {
   return (
     <div className={`${isMobile ? 'p-4' : 'p-6'} min-h-full flex items-center justify-center`}>
       <div className="w-full max-w-6xl mx-auto">
-        <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'} items-center`}>
+        <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3 justify-center'} items-center`}>
           {/* Left Column - Profile Overview */}
           <div className="lg:col-span-1">
             <Card className="flex flex-col">
@@ -408,9 +399,7 @@ const Profile = () => {
                   <div className="bg-card px-4 gap-2 flex flex-row">
                     {role && (
                       role === 'e-board' ? (
-                        <Badge
-                          className="text-xs capitalize px-4 py-1.5 shrink-0 whitespace-nowrap sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative"
-                        >
+                        <Badge className="text-xs capitalize px-4 py-1.5 shrink-0 whitespace-nowrap sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative">
                           <span className="sparkle-particle"></span>
                           <span className="sparkle-particle"></span>
                           <span className="sparkle-particle"></span>
@@ -426,13 +415,10 @@ const Profile = () => {
                       )
                     )}
                     <Badge variant="secondary" className="px-4 py-1.5 shrink-0 whitespace-nowrap bg-green-700 text-white font-semibold border-1 border-black">
-                      {profile.term_joined
-                        ? profile.term_joined
-                        : (() => {
-                          const date = user.created_at ? new Date(user.created_at) : new Date();
-                          return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-                        })()
-                      }
+                      {profile.term_joined || (() => {
+                        const date = user.created_at ? new Date(user.created_at) : new Date();
+                        return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+                      })()}
                     </Badge>
                   </div>
                 </div>
@@ -454,6 +440,27 @@ const Profile = () => {
                     <div className="text-xs text-muted-foreground mt-1">Class Year</div>
                   </div>
                 </div>
+
+                {/* Activity Stats */}
+                {stats && (
+                  <div className="pt-4 border-t space-y-2">
+                    <h4 className="text-sm font-semibold text-muted-foreground">Activity</h4>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <div className="text-lg font-bold">{stats.totalProjects}</div>
+                        <div className="text-xs text-muted-foreground">Projects</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold">{stats.totalClasses}</div>
+                        <div className="text-xs text-muted-foreground">Classes</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold">{stats.totalEventsAttended}</div>
+                        <div className="text-xs text-muted-foreground">Events</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -509,7 +516,7 @@ const Profile = () => {
                         </p>
                       </div>
 
-                      {role !== 'e-board' && (
+                      {!isEBoard && (
                         <div className="space-y-2">
                           <Label htmlFor="team">Team</Label>
                           <Select value={team} onValueChange={setTeam} disabled={!position}>
@@ -530,7 +537,7 @@ const Profile = () => {
                           </p>
                         </div>
                       )}
-                      {role === 'e-board' && (
+                      {isEBoard && (
                         <div className="space-y-2">
                           <Label>Team</Label>
                           <Input

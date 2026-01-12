@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import {
   Sidebar,
   SidebarContent,
@@ -41,75 +42,32 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: any;
+}
+
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { user, profile, role, signOut, loading } = useAuth();
+  const { user, profile, signOut } = useAuth();
+  const { role, isBoardOrAbove } = useProfile();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const getMenuItems = () => {
-    // Define each menu item up front for consistent order
-    const dashboard = { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard };
-    const events = { title: 'Events', url: '/dashboard/events', icon: Calendar };
-    const classes = { title: 'Classes', url: '/dashboard/classes', icon: BookOpen };
-    const projects = { title: 'Projects', url: '/dashboard/projects', icon: FolderKanban };
-    const applications = { title: 'Applications', url: '/dashboard/applications', icon: FileText };
-    const members = { title: 'Members', url: '/dashboard/members', icon: Users };
-    const prospects = { title: 'Prospects', url: '/dashboard/prospects', icon: UserPlus };
-
-    // Members get: Dashboard, Events, Classes, Projects, Applications
-    const memberItems = [dashboard, events, classes, projects, applications, members];
-
-    // E-board and Board additionally see Members and Prospects (after Applications)
-    if (role === 'e-board' || role === 'board') {
-      memberItems.push(prospects);
-    }
-
-    return memberItems;
-  };
-
-  const getRoleBadgeVariant = (roleValue: string): "default" | "secondary" | "outline" | "destructive" => {
-    switch (roleValue) {
-      case 'e-board':
-        return 'default';
-      case 'board':
-        return 'default';
-      case 'member':
-        return 'secondary';
-      default:
-        return 'outline';
-    }
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
-      </div>
-    );
-  }
+  // No loading check needed - ProtectedRoute handles this!
+  // By the time this component renders, both contexts are ready
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <SidebarContentComponent
+        <AppSidebar
           user={user}
           profile={profile}
           role={role}
+          isBoardOrAbove={isBoardOrAbove}
           signOut={signOut}
           navigate={navigate}
           isMobile={isMobile}
-          getMenuItems={getMenuItems}
-          getRoleBadgeVariant={getRoleBadgeVariant}
-          getInitials={getInitials}
         />
 
         <div className="flex-1 flex flex-col">
@@ -126,29 +84,60 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   );
 };
 
-interface SidebarContentComponentProps {
+// --- Navigation Configuration ---
+const getMenuItems = (isBoardOrAbove: boolean): MenuItem[] => {
+  const baseItems: MenuItem[] = [
+    { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+    { title: 'Events', url: '/dashboard/events', icon: Calendar },
+    { title: 'Classes', url: '/dashboard/classes', icon: BookOpen },
+    { title: 'Projects', url: '/dashboard/projects', icon: FolderKanban },
+    { title: 'Applications', url: '/dashboard/applications', icon: FileText },
+    { title: 'Members', url: '/dashboard/members', icon: Users },
+  ];
+
+  // Board and E-board get Prospects page
+  if (isBoardOrAbove) {
+    baseItems.push({ title: 'Prospects', url: '/dashboard/prospects', icon: UserPlus });
+  }
+
+  return baseItems;
+};
+
+const getRoleBadgeVariant = (roleValue: string | null): "default" | "secondary" | "outline" => {
+  if (roleValue === 'e-board' || roleValue === 'board') return 'default';
+  if (roleValue === 'member') return 'secondary';
+  return 'outline';
+};
+
+const getInitials = (name: string) => {
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+// --- Sidebar Component ---
+interface AppSidebarProps {
   user: any;
   profile: any;
   role: string | null;
+  isBoardOrAbove: boolean;
   signOut: () => void;
   navigate: (path: string) => void;
   isMobile: boolean;
-  getMenuItems: () => any[];
-  getRoleBadgeVariant: (role: string) => string;
-  getInitials: (name: string) => string;
 }
 
-const SidebarContentComponent = ({
+const AppSidebar = ({
   user,
   profile,
   role,
+  isBoardOrAbove,
   signOut,
   navigate,
   isMobile,
-  getMenuItems,
-  getRoleBadgeVariant,
-  getInitials,
-}: SidebarContentComponentProps) => {
+}: AppSidebarProps) => {
   const { setOpenMobile } = useSidebar();
 
   const handleNavClick = () => {
@@ -156,6 +145,8 @@ const SidebarContentComponent = ({
       setOpenMobile(false);
     }
   };
+
+  const menuItems = getMenuItems(isBoardOrAbove);
 
   return (
     <Sidebar>
@@ -186,7 +177,7 @@ const SidebarContentComponent = ({
         <SidebarGroup className="flex-1 flex flex-col justify-center">
           <SidebarGroupContent>
             <SidebarMenu className="px-3 space-y-1 gap-4">
-              {getMenuItems().map((item) => (
+              {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton>
                     <NavLink
@@ -225,29 +216,7 @@ const SidebarContentComponent = ({
                   </p>
                   <div className="flex items-center gap-4 mt-0.5">
                     {role && (
-                      role === 'e-board' ? (
-                        <Badge
-                          className="text-xs capitalize px-2 py-0 shrink-0 whitespace-nowrap sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative"
-                        >
-                          <span className="sparkle-particle"></span>
-                          <span className="sparkle-particle"></span>
-                          <span className="sparkle-particle"></span>
-                          <span className="relative z-10">{role.replace('-', ' ')}</span>
-                        </Badge>
-                      ) : role === 'board' ? (
-                        <Badge
-                          className="text-xs capitalize px-2 py-0 shrink-0 whitespace-nowrap bg-primary text-cream font-semibold border-2 border-primary/50"
-                        >
-                          {role.replace('-', ' ')}
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant={getRoleBadgeVariant(role || '') as "default" | "secondary" | "outline" | "destructive"}
-                          className="text-xs capitalize px-2 py-0"
-                        >
-                          {role.replace('-', ' ')}
-                        </Badge>
-                      )
+                      <RoleBadge role={role} />
                     )}
                     {profile && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -274,7 +243,10 @@ const SidebarContentComponent = ({
                 Profile Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut} className="text-destructive hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground">
+              <DropdownMenuItem
+                onClick={signOut}
+                className="text-destructive hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground"
+              >
                 <LogOut className="h-4 w-4 mr-1" />
                 Sign Out
               </DropdownMenuItem>
@@ -283,6 +255,37 @@ const SidebarContentComponent = ({
         </div>
       </SidebarContent>
     </Sidebar>
+  );
+};
+
+// --- Role Badge Component ---
+const RoleBadge = ({ role }: { role: string }) => {
+  if (role === 'e-board') {
+    return (
+      <Badge className="text-xs capitalize px-2 py-0 shrink-0 whitespace-nowrap sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative">
+        <span className="sparkle-particle"></span>
+        <span className="sparkle-particle"></span>
+        <span className="sparkle-particle"></span>
+        <span className="relative z-10">{role.replace('-', ' ')}</span>
+      </Badge>
+    );
+  }
+
+  if (role === 'board') {
+    return (
+      <Badge className="text-xs capitalize px-2 py-0 shrink-0 whitespace-nowrap bg-primary text-cream font-semibold border-2 border-primary/50">
+        {role.replace('-', ' ')}
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge
+      variant={getRoleBadgeVariant(role)}
+      className="text-xs capitalize px-2 py-0"
+    >
+      {role.replace('-', ' ')}
+    </Badge>
   );
 };
 

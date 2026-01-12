@@ -1,22 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Trophy, Mail, GraduationCap, ArrowBigUpDashIcon, Eye, Settings, Ban } from 'lucide-react';
-import type { Database } from '@/integrations/supabase/database.types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { PersonCard } from '@/components/PersonCard';
 import ProfileViewer from '@/components/modals/ProfileModal';
+import type { Database } from '@/integrations/supabase/database.types';
+import { useProfile } from '@/contexts/ProfileContext';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type AppRole = Database['public']['Enums']['app_role'];
@@ -27,7 +18,8 @@ interface ProspectWithRole extends Profile {
 
 const Prospects = () => {
   const { toast } = useToast();
-  const { role: userRole, user } = useAuth();
+  const { role: userRole } = useProfile();
+  const { user } = useAuth();
   const [prospects, setProspects] = useState<ProspectWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProspect, setSelectedProspect] = useState<ProspectWithRole | null>(null);
@@ -39,33 +31,21 @@ const Prospects = () => {
   }, []);
 
   const fetchProspects = async () => {
-    // Fetch all profiles
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
       .select('*');
 
-    if (profilesError) {
-      console.error('Error fetching profiles:', profilesError);
+    if (profilesError || !profilesData) {
       setLoading(false);
       return;
     }
 
-    if (!profilesData) {
-      setLoading(false);
-      return;
-    }
-
-    // Fetch all user roles
     const { data: rolesData } = await supabase
       .from('user_roles')
       .select('user_id, role');
 
-    // Create a map of user_id to role
-    const roleMap = new Map(
-      rolesData?.map(r => [r.user_id, r.role]) || []
-    );
+    const roleMap = new Map(rolesData?.map(r => [r.user_id, r.role]) || []);
 
-    // Combine profiles with roles, only include prospects
     let prospectsWithRoles: ProspectWithRole[] = profilesData
       .map(profile => ({
         ...profile,
@@ -73,8 +53,7 @@ const Prospects = () => {
       }))
       .filter(member => member.role === 'prospect');
 
-    // First group by term_joined, then sort within groups by oldest creation_date (ascending)
-    // We'll flatten the grouped and sorted results into a single list
+    // Group by term_joined, then sort within groups by oldest creation_date
     const groupsMap: Record<string, ProspectWithRole[]> = {};
     for (const prospect of prospectsWithRoles) {
       const term = prospect.term_joined ?? 'Unknown Term';
@@ -82,12 +61,11 @@ const Prospects = () => {
       groupsMap[term].push(prospect);
     }
 
-    const sortedTermGroups = Object.keys(groupsMap).sort(); // sort group keys
+    const sortedTermGroups = Object.keys(groupsMap).sort();
     const sortedProspects: ProspectWithRole[] = [];
 
     for (const term of sortedTermGroups) {
       const group = groupsMap[term].slice().sort((a, b) => {
-        // Sort by created_at, least recent (oldest) first
         return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
       });
       sortedProspects.push(...group);
@@ -120,7 +98,6 @@ const Prospects = () => {
 
   const handleBanProspect = async (prospectId: string, prospectName: string) => {
     try {
-      // First, get the prospect's email for the ban record
       const { data: prospect, error: fetchError } = await supabase
         .from('profiles')
         .select('email, full_name')
@@ -129,23 +106,17 @@ const Prospects = () => {
 
       if (fetchError) throw fetchError;
 
-      // Add to banned_users table
-      const { error: banError } = await supabase
-        .from('banned_users')
-        .insert({
-          user_id: prospectId,
-          email: prospect.email,
-          full_name: prospect.full_name,
-          banned_by: user?.id,
-          reason: 'Banned by e-board'
-        });
+      const { error: banError } = await supabase.from('banned_users').insert({
+        user_id: prospectId,
+        email: prospect.email,
+        full_name: prospect.full_name,
+        banned_by: user?.id,
+        reason: 'Banned by e-board',
+      });
 
       if (banError) throw banError;
 
-      const { error: deleteError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', prospectId);
+      const { error: deleteError } = await supabase.from('profiles').delete().eq('id', prospectId);
 
       if (deleteError) throw deleteError;
 
@@ -164,128 +135,12 @@ const Prospects = () => {
     }
   };
 
-
   const handleViewProfile = (prospect: ProspectWithRole) => {
     setSelectedProspect(prospect);
     setIsProfileModalOpen(true);
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   const canManageProspects = userRole === 'board' || userRole === 'e-board';
-
-  const renderProspectCard = (prospect: ProspectWithRole) => {
-    return (
-      <Card key={prospect.id} className="flex flex-col h-full w-full relative">
-        <CardHeader className="pb-0">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-3 flex-1 min-w-0">
-              <Avatar className="h-12 w-12 shrink-0">
-                <AvatarImage src={prospect.profile_picture_url || undefined} />
-                <AvatarFallback className="text-lg">
-                  {prospect.full_name ? getInitials(prospect.full_name) : prospect.email.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <CardTitle className="text-base truncate">
-                  {prospect.full_name || 'No name'}
-                </CardTitle>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                  <Mail className="h-3 w-3 shrink-0" />
-                  <p className="truncate">{prospect.email}</p>
-                </div>
-              </div>
-            </CardTitle>
-            <Badge variant="secondary" className="capitalize shrink-0 whitespace-nowrap">
-              {prospect.term_joined
-                ? prospect.term_joined
-                : (() => {
-                  const date = prospect.created_at ? new Date(prospect.created_at) : new Date();
-                  return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-                })()
-              }
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 space-y-3 mt-3">
-            <div className="flex items-center justify-between text-sm">
-              {prospect.class_year ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <GraduationCap className="h-4 w-4" />
-                  <span className="capitalize">{prospect.class_year}</span>
-                </div>
-              ) : (
-                <div className="text-muted-foreground">
-                  <GraduationCap className="h-4 w-4 inline mr-2" />
-                  No class year
-                </div>
-              )}
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Trophy className="h-4 w-4" />
-                <span className="font-medium">{prospect.points}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-row gap-2 mt-4">
-            <Button
-              variant='default'
-              size="sm"
-              className="w-full"
-              onClick={() => handleViewProfile(prospect)}
-            >
-              <Eye className="h-4 w-4" />
-              View Profile
-            </Button>
-            {canManageProspects && !isMobile && (
-              <DropdownMenu>
-                <DropdownMenuTrigger size='sm' asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Manage
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="center"
-                  className="w-40"
-                >
-                  <DropdownMenuItem
-                    onClick={() => handleGraduate(prospect.id, prospect.full_name || prospect.email)}
-                    variant='enable'
-                    className='rounded-t-md rounded-b-none bg-green-600/20 border-0 border-green-600 text-green-600 hover:bg-green-600 hover:text-cream hover:rounded-md transition-all duration-200'
-                  >
-                    <ArrowBigUpDashIcon className="h-4 w-4" />
-                    Graduate
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => handleBanProspect(prospect.id, prospect.full_name || prospect.email)}
-                    variant='destructive'
-                    className='border-0 rounded-b-md bg-destructive/20 rounded-t-none hover:rounded-md transition-all duration-200'
-                  >
-                    <Ban className="h-4 w-4" />
-                    Ban Prospect
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    )
-  };
 
   if (loading) {
     return (
@@ -320,11 +175,21 @@ const Prospects = () => {
         </Card>
       ) : (
         <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))] mt-6">
-          {prospects.map(renderProspectCard)}
+          {prospects.map(prospect => (
+            <PersonCard
+              key={prospect.id}
+              person={prospect}
+              onViewProfile={handleViewProfile}
+              onGraduate={handleGraduate}
+              onBan={handleBanProspect}
+              canManage={canManageProspects}
+              isMobile={isMobile}
+              type="prospect"
+            />
+          ))}
         </div>
       )}
 
-      {/* Profile Viewer */}
       <ProfileViewer
         open={isProfileModalOpen}
         onClose={() => {

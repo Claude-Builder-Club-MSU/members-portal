@@ -1,48 +1,59 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Plus, MapPin, Users, Edit, GraduationCap, Calendar, Eye, Crown } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
+import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useModalState, useItemStatus, useFilteredItems } from '@/hooks/use-modal';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { DetailModal } from '@/components/modals/DetailModal';
+import { EditModal } from '@/components/modals/EditModal';
+import { MembersListModal } from '@/components/modals/MembersListModal';
+import { ItemCard } from '@/components/ItemCard';
+import SemesterSelector from '@/components/SemesterSelector';
+import { Plus, MapPin, Users, Edit, GraduationCap, Calendar as CalendarIcon, Eye, Crown } from 'lucide-react';
 import { format } from 'date-fns';
-import { ClassModal } from '@/components/modals/ClassModal';
+import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/database.types';
+import type { MembershipInfo, ItemWithMembers } from '@/types/modal.types';
 
 type Class = Database['public']['Tables']['classes']['Row'] & {
   semesters: { code: string; name: string } | null;
 };
-type ClassEnrollment = Database['public']['Tables']['class_enrollments']['Row'];
-type Profile = Database['public']['Tables']['profiles']['Row'];
+type Semester = Database['public']['Tables']['semesters']['Row'];
 
-interface ClassWithMembers extends Class {
-  members: Array<{
-    enrollment: ClassEnrollment;
-    profile: Profile;
-  }>;
-  memberCount: number;
-  userEnrollment?: ClassEnrollment;
-}
+type ClassWithMembers = ItemWithMembers<Class>;
 
 const Classes = () => {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
+  const { role, isBoardOrAbove } = useProfile();
+  const { toast } = useToast();
   const isMobile = useIsMobile();
   const [classes, setClasses] = useState<ClassWithMembers[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<ClassWithMembers | null>(null);
-  const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [editingClass, setEditingClass] = useState<Class | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+
+  // Form state
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [location, setLocation] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
+
+  const modalState = useModalState<ClassWithMembers>();
 
   useEffect(() => {
     if (user && role) {
@@ -50,10 +61,30 @@ const Classes = () => {
     }
   }, [user, role]);
 
+  // Load form data when editing
+  useEffect(() => {
+    if (modalState.modalType === 'edit' && modalState.selectedItem) {
+      const cls = modalState.selectedItem;
+      setName(cls.name);
+      setDescription(cls.description || '');
+      setLocation(cls.location || '');
+      setSelectedSemester(cls.semester_id ? { id: cls.semester_id } as Semester : null);
+      setStartDate(cls.start_date ? new Date(cls.start_date) : undefined);
+      setEndDate(cls.end_date ? new Date(cls.end_date) : undefined);
+    } else if (isCreateModalOpen) {
+      // Reset form
+      setName('');
+      setDescription('');
+      setLocation('');
+      setSelectedSemester(null);
+      setStartDate(undefined);
+      setEndDate(undefined);
+    }
+  }, [modalState.modalType, modalState.selectedItem, isCreateModalOpen]);
+
   const fetchClasses = async () => {
     if (!user) return;
 
-    // Fetch all classes with semester info
     const { data: classesData, error: classesError } = await supabase
       .from('classes')
       .select(`
@@ -65,23 +96,15 @@ const Classes = () => {
       `)
       .order('start_date', { ascending: false });
 
-    if (classesError) {
-      console.error('Error fetching classes:', classesError);
+    if (classesError || !classesData) {
       setLoading(false);
       return;
     }
 
-    if (!classesData) {
-      setLoading(false);
-      return;
-    }
-
-    // Fetch all class enrollments
     const { data: enrollmentsData } = await supabase
       .from('class_enrollments')
       .select('*');
 
-    // Fetch all profiles for enrolled users
     const enrolledUserIds = [...new Set(enrollmentsData?.map(e => e.user_id) || [])];
     const { data: profilesData } = await supabase
       .from('profiles')
@@ -90,23 +113,24 @@ const Classes = () => {
 
     const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
-    // Combine data
     const classesWithMembers: ClassWithMembers[] = (classesData as Class[]).map(cls => {
       const classEnrollments = enrollmentsData?.filter(e => e.class_id === cls.id) || [];
-      const members = classEnrollments
+      const members: MembershipInfo[] = classEnrollments
         .map(enrollment => ({
-          enrollment,
+          id: enrollment.id,
+          user_id: enrollment.user_id,
+          role: enrollment.role,
           profile: profilesMap.get(enrollment.user_id)!,
         }))
         .filter(m => m.profile);
 
-      const userEnrollment = classEnrollments.find(e => e.user_id === user.id);
+      const userEnrollment = members.find(m => m.user_id === user.id);
 
       return {
         ...cls,
         members,
         memberCount: members.length,
-        userEnrollment,
+        userMembership: userEnrollment,
       };
     });
 
@@ -114,171 +138,155 @@ const Classes = () => {
     setLoading(false);
   };
 
-  const getClassStatus = (cls: ClassWithMembers) => {
-    const now = new Date();
-    const startDate = new Date(cls.start_date);
-    const endDate = new Date(cls.end_date);
+  const { available, inProgress, completed } = useFilteredItems(
+    classes,
+    (cls, status) => {
+      if (status.state === 'available') return true;
+      return isBoardOrAbove || !!cls.userMembership;
+    }
+  );
 
-    if (startDate > now) return { label: 'Available', variant: 'enable', state: 'available' };
-    if (endDate < now) return { label: 'Completed', variant: 'destructive', state: 'completed' };
-    return { label: 'In Progress', variant: 'ghost', state: 'in_progress' };
+  const handleSubmit = async () => {
+    if (!user) return;
+    setSaveLoading(true);
+
+    try {
+      const classData = {
+        name,
+        description: description || null,
+        location: location || null,
+        semester_id: selectedSemester?.id || null,
+        start_date: startDate?.toISOString() || null,
+        end_date: endDate?.toISOString() || null,
+      };
+
+      if (modalState.selectedItem) {
+        const { error } = await supabase
+          .from('classes')
+          .update(classData)
+          .eq('id', modalState.selectedItem.id);
+        if (error) throw error;
+        toast({ title: 'Success', description: 'Class updated!' });
+      } else {
+        const { error } = await supabase
+          .from('classes')
+          .insert({ ...classData, created_by: user.id });
+        if (error) throw error;
+        toast({ title: 'Success', description: 'Class created!' });
+      }
+
+      await fetchClasses();
+      modalState.close();
+      setIsCreateModalOpen(false);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
-  const handleViewDetails = (cls: ClassWithMembers) => {
-    setSelectedClass(cls);
-    setIsDetailsModalOpen(true);
+  const handleDelete = async () => {
+    if (!modalState.selectedItem) return;
+
+    const { error } = await supabase
+      .from('classes')
+      .delete()
+      .eq('id', modalState.selectedItem.id);
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      throw error;
+    }
+
+    toast({ title: 'Success', description: 'Class deleted!' });
+    await fetchClasses();
+    modalState.close();
   };
-
-  const handleEditClass = (cls: Class) => {
-    setEditingClass(cls);
-    setIsModalOpen(true);
-  };
-
-  const handleViewMembers = (cls: ClassWithMembers) => {
-    setSelectedClass(cls);
-    setIsMembersModalOpen(true);
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const canManageClasses = role === 'board' || role === 'e-board';
-  const canSeeAll = role === 'board' || role === 'e-board';
-
-  // Filter and group classes
-  const availableClasses = classes.filter(c => {
-    const status = getClassStatus(c);
-    return status.state === 'available';
-  });
-
-  const inProgressClasses = classes.filter(c => {
-    const status = getClassStatus(c);
-    if (status.state !== 'in_progress') return false;
-    return canSeeAll || c.userEnrollment;
-  });
-
-  const completedClasses = classes.filter(c => {
-    const status = getClassStatus(c);
-    if (status.state !== 'completed') return false;
-    return canSeeAll || c.userEnrollment;
-  });
-
 
   const renderClassCard = (cls: ClassWithMembers) => {
-    const isEnrolled = !!cls.userEnrollment;
-    const isTeacher = cls.userEnrollment?.role === 'teacher';
-    const teacher = cls.members.find(m => m.enrollment.role === 'teacher');
-    const status = getClassStatus(cls);
+    const isEnrolled = !!cls.userMembership;
+    const isTeacher = cls.userMembership?.role === 'teacher';
+    const teacher = cls.members.find(m => m.role === 'teacher');
+    const status = useItemStatus(cls);
+
+    if (!status) return null;
+
+    const badges = [];
+    if (isTeacher) {
+      badges.push(
+        <Badge key="teacher" variant="secondary" className="shrink-0 whitespace-nowrap">
+          Teacher
+        </Badge>
+      );
+    }
+    badges.push(
+      <Badge key="status" variant={status.variant}>
+        {status.label}
+      </Badge>
+    );
+
+    const metadata = [];
+
+    if (cls.semesters) {
+      metadata.push({
+        icon: <CalendarIcon className="h-4 w-4" />,
+        text: `${cls.semesters.code} - ${cls.semesters.name}`,
+      });
+    }
+
+    if (cls.location) {
+      metadata.push({
+        icon: <MapPin className="h-4 w-4" />,
+        text: cls.location,
+      });
+    }
+
+    if (teacher) {
+      metadata.push({
+        icon: <Crown className="h-4 w-4 text-yellow-500" />,
+        text: `Teacher: ${teacher.profile.full_name || teacher.profile.email}`,
+      });
+    }
+
+    metadata.push({
+      icon: <Users className="h-4 w-4 group-hover:text-orange-600 transition-colors duration-400" />,
+      text: `${cls.memberCount} ${cls.memberCount === 1 ? 'team member' : 'team members'}`,
+      interactive: true,
+      onClick: () => modalState.openMembers(cls),
+    });
+
+    const actions = [];
+
+    if (isBoardOrAbove) {
+      actions.push({
+        label: 'Edit Details',
+        onClick: () => modalState.openEdit(cls),
+        icon: <Edit className="h-4 w-4 mr-2" />,
+        variant: 'outline' as const,
+      });
+    } else {
+      actions.push({
+        label: 'View Details',
+        onClick: () => modalState.openDetails(cls),
+        icon: <Eye className="h-4 w-4 mr-2" />,
+        variant: 'default' as const,
+      });
+    }
 
     return (
-      <Card key={cls.id} className="flex flex-col h-full w-full relative">
-        <CardHeader className="pb-0">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex-1">{cls.name}</CardTitle>
-            <div className="flex flex-row gap-3 items-center">
-              {isTeacher && (
-                <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
-                  Teacher
-                </Badge>
-              )}
-              <Badge variant={status.variant as any}>
-                {status.label}
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col flex-1 min-h-0">
-          <div className="space-y-3 text-sm text-muted-foreground">
-            {/* Semester Info */}
-            {cls.semesters && (
-              <div className="flex items-center gap-2 pt-2">
-                <Calendar className="h-4 w-4" />
-                {cls.semesters.code} - {cls.semesters.name}
-              </div>
-            )}
-
-            {cls.location && (
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                {cls.location}
-              </div>
-            )}
-
-            {/* Teacher Info */}
-            {teacher && (
-              <div className="flex items-center gap-2">
-                <Crown className="h-4 w-4 text-yellow-500" />
-                <span className="text-muted-foreground">Teacher:</span>
-                {/* 3. Fixed the syntax error here (added 'teacher' before .profile) */}
-                <span className="font-medium">{teacher.profile.full_name || teacher.profile.email}</span>
-              </div>
-            )}
-
-            {/* Class Members Preview */}
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2 cursor-pointer group w-fit">
-                <Users className="h-4 w-4 group-hover:text-orange-600 transition-colors duration-400" />
-                <span
-                  className="underline decoration-transparent group-hover:decoration-orange-600 group-hover:text-orange-600 transition-all duration-400"
-                  onClick={() => handleViewMembers(cls)}
-                >
-                  {cls.memberCount} {cls.memberCount === 1 ? 'team member' : 'team members'}
-                </span>
-              </div>
-              {cls.members.length > 0 && (
-                <div className="flex -space-x-2 mb-6">
-                  {cls.members.slice(0, 5).map(({ enrollment, profile }) => (
-                    <Avatar key={enrollment.id} className="h-8 w-8 border-2 border-background">
-                      <AvatarImage src={profile.profile_picture_url || undefined} />
-                      <AvatarFallback className="text-xs">
-                        {profile.full_name ? getInitials(profile.full_name) : profile.email.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  ))}
-                  {cls.members.length > 5 && (
-                    <div className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-xs">
-                      +{cls.members.length - 5}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          {cls.description && (
-            <div className="text-sm text-muted-foreground flex-1 space-y-3 break-words pt-3 whitespace-pre-line">
-              {cls.description}
-            </div>
-          )}
-
-          <div className="space-y-2 mt-4">
-            {canManageClasses ? (
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => handleEditClass(cls)}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Details
-              </Button>
-            ) : (
-              <Button
-                variant="default"
-                className="w-full"
-                onClick={() => handleViewDetails(cls)}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                View Details
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <ItemCard
+        key={cls.id}
+        title={cls.name}
+        badges={badges}
+        metadata={metadata}
+        description={cls.description || undefined}
+        members={{
+          data: cls.members,
+          onViewAll: () => modalState.openMembers(cls),
+          maxDisplay: 5,
+        }}
+        actions={actions}
+      />
     );
   };
 
@@ -289,11 +297,8 @@ const Classes = () => {
           <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Classes</h1>
           <p className="text-muted-foreground">Club classes</p>
         </div>
-        {canManageClasses && (
-          <Button onClick={() => {
-            setEditingClass(null);
-            setIsModalOpen(true);
-          }}>
+        {isBoardOrAbove && (
+          <Button onClick={() => setIsCreateModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Create Class
           </Button>
@@ -306,171 +311,211 @@ const Classes = () => {
             <p className="text-center text-muted-foreground">Loading classes...</p>
           </CardContent>
         </Card>
-      ) : availableClasses.length === 0 && inProgressClasses.length === 0 && completedClasses.length === 0 ? (
-        < Card >
+      ) : available.length === 0 && inProgress.length === 0 && completed.length === 0 ? (
+        <Card className="mt-6">
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              No classes at this time.
-            </p>
+            <p className="text-center text-muted-foreground">No classes at this time.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="mt-6">
-          {/* In Progress Classes */}
-          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
-            {inProgressClasses.map(renderClassCard)}
-          </div>
+        <div className="mt-6 space-y-6">
+          {inProgress.length > 0 && (
+            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+              {inProgress.map(renderClassCard)}
+            </div>
+          )}
 
-          {/* Available Classes */}
-          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
-            {availableClasses.map(renderClassCard)}
-          </div>
+          {available.length > 0 && (
+            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+              {available.map(renderClassCard)}
+            </div>
+          )}
 
-          {/* Completed Classes */}
-          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
-            {completedClasses.map(renderClassCard)}
-          </div>
+          {completed.length > 0 && (
+            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+              {completed.map(renderClassCard)}
+            </div>
+          )}
         </div>
       )}
 
-      <ClassModal
-        open={isModalOpen}
+      {/* EDIT MODAL */}
+      <EditModal
+        open={isCreateModalOpen || modalState.modalType === 'edit'}
         onClose={() => {
-          setIsModalOpen(false);
-          setEditingClass(null);
+          setIsCreateModalOpen(false);
+          modalState.close();
         }}
-        onSuccess={fetchClasses}
-        existingClass={editingClass}
-      />
+        title={modalState.selectedItem ? 'Edit Class' : 'Create New Class'}
+        description={modalState.selectedItem ? 'Update class details' : 'Add a new class'}
+        onSubmit={handleSubmit}
+        onDelete={modalState.selectedItem ? handleDelete : undefined}
+        loading={saveLoading}
+        deleteItemName={modalState.selectedItem?.name}
+        submitLabel={modalState.selectedItem ? 'Update Class' : 'Create Class'}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="name">Class Name *</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            placeholder="Intro to Machine Learning"
+          />
+        </div>
 
-      {/* Class Details Modal */}
-      <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
-        <DialogContent
-          className={`max-w-lg ${isMobile ? 'mx-4 max-w-[90vw] overflow-y-auto rounded-xl m-0' : ''}`}>
-          <DialogHeader>
-            <DialogTitle>{selectedClass?.name}</DialogTitle>
-            {selectedClass?.location && (
-              <DialogDescription>
-                Location: {selectedClass.location}
-              </DialogDescription>
-            )}
-          </DialogHeader>
-          {selectedClass && (
-            <div className="space-y-6">
-              {/* Description */}
-              {selectedClass.description && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-sm">Description</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedClass.description}
-                  </p>
-                </div>
-              )}
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            placeholder="Class description..."
+          />
+        </div>
 
-              {/* Class Info Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Term */}
-                {selectedClass.semesters && (
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-sm">Term</h3>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      {selectedClass.semesters.code} - {selectedClass.semesters.name}
-                    </div>
-                  </div>
-                )}
-
-                {/* Member Count */}
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-sm">Class Size</h3>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    {selectedClass.memberCount} {selectedClass.memberCount === 1 ? 'member' : 'members'}
-                  </div>
-                </div>
-
-                {/* Dates */}
-                <div className="space-y-2 col-span-2">
-                  <h3 className="font-semibold text-sm">Dates</h3>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    {selectedClass.start_date
-                      ? `Start: ${new Date(selectedClass.start_date).toLocaleDateString()}`
-                      : null}
-                    {selectedClass.end_date
-                      ? ` | End: ${new Date(selectedClass.end_date).toLocaleDateString()}`
-                      : null}
-                  </div>
-                </div>
-              </div>
-
-              {/* Teacher */}
-              {selectedClass.members?.some(({ enrollment }) => enrollment.role === "teacher") && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-sm">Teacher</h3>
-                  {selectedClass.members
-                    ?.filter(({ enrollment }) => enrollment.role === "teacher")
-                    .map(({ enrollment, profile }) => (
-                      <div key={enrollment.id} className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={profile.profile_picture_url || undefined} />
-                          <AvatarFallback>
-                            {profile.full_name
-                              ? getInitials(profile.full_name)
-                              : profile.email.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-semibold">{profile.full_name || "No name"}</span>
-                        <span className="text-xs text-muted-foreground">{profile.email}</span>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Class Members Modal */}
-      <Dialog open={isMembersModalOpen} onOpenChange={setIsMembersModalOpen}>
-        <DialogContent
-          className={`max-w-lg ${isMobile ? 'mx-4 max-w-[90vw] overflow-y-auto rounded-xl m-0' : ''}`}>
-          <DialogHeader>
-            <DialogTitle>{selectedClass?.name} - Class Members</DialogTitle>
-            <DialogDescription>
-              {selectedClass?.memberCount} {selectedClass?.memberCount === 1 ? 'member' : 'members'} in this class
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {selectedClass?.members.map(({ enrollment, profile }) => (
-              <div
-                key={enrollment.id}
-                className="flex items-center gap-3 p-3 rounded-lg border bg-card"
-              >
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={profile.profile_picture_url || undefined} />
-                  <AvatarFallback>
-                    {profile.full_name ? getInitials(profile.full_name) : profile.email.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">
-                    {profile.full_name || 'No name'}
-                  </p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {profile.email}
-                  </p>
-                </div>
-                <Badge variant={enrollment.role === 'teacher' ? 'default' : 'secondary'} className="capitalize">
-                  {enrollment.role === 'teacher' && <GraduationCap className="h-3 w-3 mr-1" />}
-                  {enrollment.role}
-                </Badge>
-              </div>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="STEM 3202"
+            />
           </div>
-        </DialogContent>
-      </Dialog>
-    </div >
+
+          <SemesterSelector
+            value={selectedSemester?.id || ''}
+            onSelect={setSelectedSemester}
+            required={false}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Start Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="secondary"
+                  className={cn(
+                    'w-full justify-start text-left font-normal',
+                    !startDate && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, 'PPP') : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <Label>End Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="secondary"
+                  className={cn(
+                    'w-full justify-start text-left font-normal',
+                    !endDate && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, 'PPP') : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      </EditModal>
+
+      {/* DETAIL MODAL */}
+      {modalState.selectedItem && modalState.modalType === 'details' && (
+        <DetailModal
+          open={modalState.isOpen}
+          onClose={modalState.close}
+          title={modalState.selectedItem.name}
+          subtitle={modalState.selectedItem.location ? `Location: ${modalState.selectedItem.location}` : undefined}
+          sections={[
+            ...(modalState.selectedItem.description
+              ? [
+                {
+                  title: 'Description',
+                  content: modalState.selectedItem.description,
+                },
+              ]
+              : []),
+            ...(modalState.selectedItem.semesters
+              ? [
+                {
+                  title: 'Term',
+                  icon: <CalendarIcon className="h-4 w-4" />,
+                  content: `${modalState.selectedItem.semesters.code} - ${modalState.selectedItem.semesters.name}`,
+                },
+              ]
+              : []),
+            {
+              title: 'Class Size',
+              icon: <Users className="h-4 w-4" />,
+              content: `${modalState.selectedItem.memberCount} ${modalState.selectedItem.memberCount === 1 ? 'member' : 'members'
+                }`,
+            },
+            {
+              title: 'Dates',
+              icon: <CalendarIcon className="h-4 w-4" />,
+              content: `${modalState.selectedItem.start_date
+                  ? `Start: ${new Date(modalState.selectedItem.start_date).toLocaleDateString()}`
+                  : ''
+                }${modalState.selectedItem.end_date
+                  ? ` | End: ${new Date(modalState.selectedItem.end_date).toLocaleDateString()}`
+                  : ''
+                }`,
+            },
+            ...(modalState.selectedItem.members.some(m => m.role === 'teacher')
+              ? [
+                {
+                  title: 'Teacher',
+                  content: (
+                    <div className="flex items-center gap-2">
+                      {modalState.selectedItem.members
+                        .filter(m => m.role === 'teacher')
+                        .map(m => (
+                          <div key={m.id} className="flex items-center gap-2">
+                            <span className="font-semibold">{m.profile.full_name || 'No name'}</span>
+                            <span className="text-xs text-muted-foreground">{m.profile.email}</span>
+                          </div>
+                        ))}
+                    </div>
+                  ),
+                },
+              ]
+              : []),
+          ]}
+        />
+      )}
+
+      {/* MEMBERS MODAL */}
+      {modalState.selectedItem && modalState.modalType === 'members' && (
+        <MembersListModal
+          open={modalState.isOpen}
+          onClose={modalState.close}
+          title={`${modalState.selectedItem.name} - Class Members`}
+          members={modalState.selectedItem.members}
+          showRole={true}
+          roleIcon={(role) => (role === 'teacher' ? <GraduationCap className="h-3 w-3 mr-1" /> : null)}
+        />
+      )}
+    </div>
   );
 };
 
