@@ -258,20 +258,16 @@ const ApplicationViewerPage = () => {
         }
     };
 
-    const formatApplicationType = (type: string) => {
-        return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-    };
-
     const getStatusBadge = (status: string) => {
         const variants = {
-            accepted: { variant: 'default', className: 'bg-green-500', text: 'Accepted' },
-            rejected: { variant: 'destructive', className: '', text: 'Rejected' },
-            pending: { variant: 'secondary', className: '', text: 'Pending' },
+            accepted: { variant: 'enable', text: 'Accepted' },
+            rejected: { variant: 'destructive', text: 'Rejected' },
+            pending: { variant: 'secondary', text: 'Pending' },
         };
         const config = variants[status as keyof typeof variants] || variants.pending;
 
         return (
-            <Badge variant={config.variant as any} className={`text-base px-4 py-1 ${config.className || ''}`}>
+            <Badge variant={config.variant as any} className="text-sm px-3 py-1">
                 {config.text}
             </Badge>
         );
@@ -574,11 +570,8 @@ const ApplicationViewerPage = () => {
                         </Button>
 
                         <div>
-                            <h1 className="text-4xl font-bold mb-2">{application.full_name}</h1>
-                            <div className="flex items-center gap-3 flex-wrap">
-                                <Badge variant="outline" className="text-base px-3 py-1">
-                                    {formatApplicationType(application.application_type)}
-                                </Badge>
+                            <div className="flex items-center gap-6 flex-wrap">
+                                <h1 className="text-4xl font-bold">{application.full_name}</h1>
                                 {getStatusBadge(application.status)}
                             </div>
                         </div>

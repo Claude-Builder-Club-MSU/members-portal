@@ -186,7 +186,7 @@ async function fetchMemberDashboard(userRole: string): Promise<DashboardData> {
 }
 
 export default function Dashboard() {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const { role, isEBoard, isBoardOrAbove, stats, projects, classes } = useProfile();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
