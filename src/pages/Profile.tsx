@@ -428,13 +428,13 @@ const Profile = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-4 bg-gradient-to-br from-yellow-500/10 to-primary/10 rounded-lg border text-center">
                     <Trophy className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mx-auto mb-2" />
-                    <div className="text-2xl font-bold">{profile.points}</div>
+                    <div className="text-xl font-bold">{profile.points}</div>
                     <div className="text-xs text-muted-foreground mt-1">Points</div>
                   </div>
 
                   <div className="p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-lg border text-center">
                     <Award className="h-5 w-5 text-blue-600 dark:text-blue-500 mx-auto mb-2" />
-                    <div className="text-sm font-bold capitalize truncate">
+                    <div className="text-xl font-bold capitalize truncate">
                       {classYear || 'Not set'}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">Class Year</div>

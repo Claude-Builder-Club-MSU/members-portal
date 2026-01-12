@@ -250,7 +250,7 @@ const Classes = () => {
 
     metadata.push({
       icon: <Users className="h-4 w-4 group-hover:text-orange-600 transition-colors duration-400" />,
-      text: `${cls.memberCount} ${cls.memberCount === 1 ? 'team member' : 'team members'}`,
+      text: `${cls.memberCount} ${cls.memberCount === 1 ? 'member' : 'members'}`,
       interactive: true,
       onClick: () => modalState.openMembers(cls),
     });
