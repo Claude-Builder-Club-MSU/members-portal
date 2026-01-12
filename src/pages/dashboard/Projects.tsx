@@ -534,7 +534,7 @@ const Projects = () => {
                         />
                         <div className="flex flex-col">
                           <span>{lead.full_name || 'No name'}</span>
-                          <span className="text-xs text-muted-foreground">{lead.email}</span>
+                          <span className="text-xs">{lead.email}</span>
                         </div>
                       </CommandItem>
                     ))}
