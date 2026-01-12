@@ -263,7 +263,12 @@ const Events = () => {
         .maybeSingle();
 
       if (existingQR?.qr_code_url) {
-        window.open(existingQR.qr_code_url, '_blank');
+        if (isMobile) {
+          // On mobile, navigate to the URL instead of opening in new tab
+          window.location.href = existingQR.qr_code_url;
+        } else {
+          window.open(existingQR.qr_code_url, '_blank');
+        }
         setGeneratingQR(null);
         return;
       }
@@ -305,7 +310,12 @@ const Events = () => {
       if (qrError) throw qrError;
 
       toast({ title: 'Success', description: 'QR code generated successfully!' });
-      window.open(publicUrl, '_blank');
+      if (isMobile) {
+        // On mobile, navigate to the URL instead of opening in new tab
+        window.location.href = publicUrl;
+      } else {
+        window.open(publicUrl, '_blank');
+      }
     } catch (error: any) {
       toast({
         title: 'Error',

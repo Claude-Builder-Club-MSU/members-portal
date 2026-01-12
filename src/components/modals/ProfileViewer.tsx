@@ -190,7 +190,7 @@ const ProfileViewer = ({ open = false, onClose, member, embedded = false, classN
   // Otherwise, return as modal
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg w-[95vw] mx-auto rounded-lg">
         <DialogHeader>
           <DialogTitle>Member Profile</DialogTitle>
           <DialogDescription>View member details</DialogDescription>
