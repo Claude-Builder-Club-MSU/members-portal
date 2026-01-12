@@ -30,8 +30,10 @@ interface PersonCardProps {
     onBan?: (personId: string, personName: string) => void;
     onGraduate?: (personId: string, personName: string) => void;
     canManage: boolean;
+    canChangeRoles?: boolean;
     isMobile: boolean;
     currentUserId?: string;
+    currentUserRole?: AppRole;
     type: 'member' | 'prospect';
 }
 
@@ -65,11 +67,22 @@ export const PersonCard = ({
     onBan,
     onGraduate,
     canManage,
+    canChangeRoles = false,
     isMobile,
     currentUserId,
+    currentUserRole,
     type,
 }: PersonCardProps) => {
-    const showManageButton = canManage && !isMobile && currentUserId !== person.id;
+    // Board cannot manage themselves, board members, or e-board members
+    const canManageThisPerson = 
+        canManage && 
+        currentUserId !== person.id &&
+        !(currentUserRole === 'board' && (person.role === 'board' || person.role === 'e-board'));
+    
+    const showManageButton = canManageThisPerson && !isMobile;
+    
+    // Board cannot promote to e-board
+    const canPromoteToEBoard = currentUserRole !== 'board';
 
     return (
         <Card className="flex flex-col h-full w-full relative">
@@ -161,8 +174,8 @@ export const PersonCard = ({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="center" className="w-40">
-                                {/* Member Management */}
-                                {type === 'member' && onRoleChange && (
+                                {/* Member Management - Only show role change for e-board */}
+                                {type === 'member' && onRoleChange && canChangeRoles && (
                                     <>
                                         <DropdownMenuSub>
                                             <DropdownMenuSubTrigger variant="ghost">
@@ -186,7 +199,7 @@ export const PersonCard = ({
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     onClick={() => onRoleChange(person.id, 'e-board')}
-                                                    disabled={person.role === 'e-board'}
+                                                    disabled={person.role === 'e-board' || !canPromoteToEBoard}
                                                 >
                                                     <Crown className="h-4 w-4" />
                                                     E-Board
