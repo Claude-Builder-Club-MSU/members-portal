@@ -174,8 +174,17 @@ export const ApplicationCreateModal = ({
     const safeUserName = fullName.replace(/\s+/g, '-');
     const fileExt = file.name.split('.').pop();
     const fileName = `${type}.${fileExt}`;
-    // Build folder path: {userName}_{userId}/resume.pdf
-    const filePath = `${safeUserName}_${user!.id}/${fileName}`;
+
+    // Build folder path: {userName}_{thing_id}/resume.pdf
+    let filePath;
+    if (applicationType === 'class' && selectedClassId) {
+      filePath = `${safeUserName}_${selectedClassId}/${fileName}`;
+    } else if (applicationType === 'project' && selectedProjectId) {
+      filePath = `${safeUserName}_${selectedProjectId}/${fileName}`;
+    } else {
+      // fallback to user id for board or unspecified
+      filePath = `${safeUserName}_${user!.id}/${fileName}`;
+    }
 
     const { error: uploadError } = await supabase.storage.from('applications').upload(filePath, file);
 
