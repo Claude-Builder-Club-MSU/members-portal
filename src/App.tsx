@@ -48,7 +48,23 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   // Check if new user needs to complete profile
   if (!user.last_sign_in_at && window.location.pathname !== "/profile") {
+    // Preserve the original redirect URL if it exists, so we can redirect back after profile completion
+    const existingRedirect = sessionStorage.getItem('redirectAfterLogin');
+    if (!existingRedirect) {
+      sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search);
+    }
     return <Navigate to="/profile" replace />;
+  }
+
+  // Successfully reached protected route - clear redirect URL if we're on the intended destination
+  // Use a more flexible comparison to handle potential pathname differences
+  const storedRedirect = sessionStorage.getItem('redirectAfterLogin');
+  if (storedRedirect) {
+    const currentPath = window.location.pathname + window.location.search;
+    // Check if current path matches stored redirect (exact match or pathname matches)
+    if (currentPath === storedRedirect || window.location.pathname === storedRedirect.split('?')[0]) {
+      sessionStorage.removeItem('redirectAfterLogin');
+    }
   }
 
   return <>{children}</>;
@@ -149,7 +165,7 @@ const App = () => (
                 }
               />
 
-              {/* Check-in Route */}
+              {/* Check-in Route - Requires authentication to track attendance */}
               <Route
                 path="/checkin/:token"
                 element={

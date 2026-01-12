@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +30,7 @@ const Profile = () => {
   const { role, isEBoard, stats } = useProfile();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   // Form states
   const [loading, setLoading] = useState(false);
@@ -310,6 +312,13 @@ const Profile = () => {
 
       await refreshProfile();
       setResumeFile(null);
+
+      // Check if there's a redirect URL stored (e.g., from check-in flow)
+      const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+      if (redirectUrl) {
+        sessionStorage.removeItem('redirectAfterLogin');
+        navigate(redirectUrl, { replace: true });
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
