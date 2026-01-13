@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PersonCard } from '@/components/PersonCard';
 import ProfileViewer from '@/components/modals/ProfileViewer';
 import type { Database } from '@/integrations/supabase/database.types';
 import { useProfile } from '@/contexts/ProfileContext';
+import { Search } from 'lucide-react';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type AppRole = Database['public']['Enums']['app_role'];
@@ -24,6 +26,7 @@ const Prospects = () => {
   const [loading, setLoading] = useState(true);
   const [selectedProspect, setSelectedProspect] = useState<ProspectWithRole | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -74,6 +77,24 @@ const Prospects = () => {
     setProspects(sortedProspects);
     setLoading(false);
   };
+
+  // Filter and sort prospects
+  const processedProspects = useMemo(() => {
+    let filteredProspects = prospects;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filteredProspects = prospects.filter(prospect =>
+        prospect.full_name?.toLowerCase().includes(query) ||
+        prospect.email?.toLowerCase().includes(query) ||
+        prospect.term_joined?.toLowerCase().includes(query) ||
+        prospect.class_year?.toLowerCase().includes(query)
+      );
+    }
+
+    return filteredProspects;
+  }, [prospects, searchQuery]);
 
   const handleGraduate = async (prospectId: string, prospectName: string) => {
     const { error } = await supabase
@@ -151,11 +172,23 @@ const Prospects = () => {
 
   return (
     <div className="p-6">
-      <div>
-        <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Prospects</h1>
-        <p className="text-muted-foreground">
-          {prospects.length} {prospects.length === 1 ? 'prospect' : 'prospects'}
-        </p>
+      <div className="flex justify-between items-start gap-4">
+        <div className="flex-1">
+          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Prospects</h1>
+          <p className="text-muted-foreground">
+            {prospects.length} {prospects.length === 1 ? 'prospect' : 'prospects'}
+          </p>
+        </div>
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search prospects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
       </div>
 
       {prospects.length === 0 ? (
@@ -164,9 +197,17 @@ const Prospects = () => {
             <p className="text-center text-muted-foreground">No prospects at this time.</p>
           </CardContent>
         </Card>
+      ) : processedProspects.length === 0 ? (
+        <Card className="mt-6">
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              No prospects match your search criteria.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))] mt-6">
-          {prospects.map(prospect => (
+          {processedProspects.map(prospect => (
             <PersonCard
               key={prospect.id}
               person={prospect}

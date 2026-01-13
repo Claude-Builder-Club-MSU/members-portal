@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PersonCard } from '@/components/PersonCard';
 import ProfileViewer from '@/components/modals/ProfileViewer';
 import type { Database } from '@/integrations/supabase/database.types';
 import { useProfile } from '@/contexts/ProfileContext';
+import { Search } from 'lucide-react';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type AppRole = Database['public']['Enums']['app_role'];
@@ -24,6 +26,7 @@ const Members = () => {
   const [loading, setLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState<MemberWithRole | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -140,46 +143,37 @@ const Members = () => {
   const canManageRoles = userRole === 'e-board';
   const canManageActions = userRole === 'board' || userRole === 'e-board';
 
-  // Group members by team
-  const groupedMembers = members.reduce((acc, member) => {
-    let teamName = member.role === 'e-board' ? 'E-board' : member.team || 'General Members';
+  // Sort and filter members
+  const processedMembers = useMemo(() => {
+    let filteredMembers = members;
 
-    let teamGroup = acc.find(g => g.team === teamName);
-
-    if (!teamGroup) {
-      teamGroup = { team: teamName, members: [], priority: 0 };
-      if (teamName === 'E-board') teamGroup.priority = 1;
-      else if (member.team) teamGroup.priority = 2;
-      else teamGroup.priority = 3;
-
-      acc.push(teamGroup);
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filteredMembers = members.filter(member =>
+        member.full_name?.toLowerCase().includes(query) ||
+        member.email?.toLowerCase().includes(query) ||
+        member.position?.toLowerCase().includes(query) ||
+        member.role?.toLowerCase().includes(query)
+      );
     }
 
-    teamGroup.members.push(member);
-    return acc;
-  }, [] as Array<{ team: string; members: MemberWithRole[]; priority: number }>);
+    // Sort members by role, then by name/email
+    const rolePriority = (role: string | null) => {
+      if (role === 'e-board') return 1;
+      if (role === 'board') return 2;
+      if (role === 'member') return 3;
+      return 4;
+    };
 
-  groupedMembers.sort((a, b) => {
-    if (a.priority !== b.priority) return a.priority - b.priority;
-    return a.team.localeCompare(b.team);
-  });
+    return [...filteredMembers].sort((a, b) => {
+      const roleDiff = rolePriority(a.role) - rolePriority(b.role);
+      if (roleDiff !== 0) return roleDiff;
 
-  groupedMembers.forEach(group => {
-    group.members.sort((a, b) => {
-      if (group.team === 'E-board') {
-        return (a.full_name || a.email).localeCompare(b.full_name || b.email);
-      }
-
-      const aIsLead =
-        a.position?.toLowerCase().includes('director') || a.position?.toLowerCase().includes('lead');
-      const bIsLead =
-        b.position?.toLowerCase().includes('director') || b.position?.toLowerCase().includes('lead');
-
-      if (aIsLead && !bIsLead) return -1;
-      if (!aIsLead && bIsLead) return 1;
+      // Otherwise alphabetical
       return (a.full_name || a.email).localeCompare(b.full_name || b.email);
     });
-  });
+  }, [members, searchQuery]);
 
   if (loading) {
     return (
@@ -199,51 +193,59 @@ const Members = () => {
 
   return (
     <div className="p-6">
-      <div>
-        <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Members</h1>
-        <p className="text-muted-foreground">
-          {members.length} club {members.length === 1 ? 'member' : 'members'}
-        </p>
+      <div className="flex justify-between items-start gap-4">
+        <div className="flex-1">
+          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Members</h1>
+          <p className="text-muted-foreground">
+            {members.length} club {members.length === 1 ? 'member' : 'members'}
+          </p>
+        </div>
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search members..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
       </div>
 
-      {groupedMembers.map(group => (
-        <div key={group.team} className="mb-6">
-          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))] mt-6">
-            {group.members.map(member => (
-              <PersonCard
-                key={member.id}
-                person={member}
-                onViewProfile={handleViewProfile}
-                onRoleChange={canManageRoles ? handleRoleChange : undefined}
-                onKick={canManageActions ? handleKickMember : undefined}
-                onBan={canManageActions ? handleBanMember : undefined}
-                canManage={canManageActions}
-                canChangeRoles={canManageRoles}
-                isMobile={isMobile}
-                currentUserId={user?.id}
-                currentUserRole={userRole}
-                type="member"
-              />
-            ))}
-          </div>
-          {group !== groupedMembers[groupedMembers.length - 1] && (
-            <div className="w-full flex items-center my-8">
-              <div
-                className="flex-1 border-t-2 rounded-md border-primary"
-                style={{ borderRadius: '9999px', borderTopLeftRadius: '9999px', borderTopRightRadius: '9999px' }}
-              />
-            </div>
-          )}
-        </div>
-      ))}
+      <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,400px))] mt-6">
+        {processedMembers.map(member => (
+          <PersonCard
+            key={member.id}
+            person={member}
+            onViewProfile={handleViewProfile}
+            onRoleChange={canManageRoles ? handleRoleChange : undefined}
+            onKick={canManageActions ? handleKickMember : undefined}
+            onBan={canManageActions ? handleBanMember : undefined}
+            canManage={canManageActions}
+            canChangeRoles={canManageRoles}
+            isMobile={isMobile}
+            currentUserId={user?.id}
+            currentUserRole={userRole}
+            type="member"
+          />
+        ))}
+      </div>
 
-      {members.length === 0 && (
+      {members.length === 0 ? (
         <Card className="mt-6">
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">No members found.</p>
           </CardContent>
         </Card>
-      )}
+      ) : processedMembers.length === 0 ? (
+        <Card className="mt-6">
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              No members match your search criteria.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <ProfileViewer
         open={isProfileModalOpen}
