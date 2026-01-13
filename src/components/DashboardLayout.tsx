@@ -37,6 +37,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -71,8 +72,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         />
 
         <div className="flex-1 flex flex-col">
-          <header className="h-[5vh] border-b border-border flex items-center px-4 bg-background">
+          <header className="h-[5vh] border-b border-border flex items-center justify-between px-4 bg-background">
             <SidebarTrigger />
+            <ThemeToggle />
           </header>
 
           <main className="flex-1 overflow-auto bg-muted/10">
@@ -155,7 +157,7 @@ const AppSidebar = ({
         <div className="p-2 border-b border-sidebar-border flex flex-col gap-3 justify-center min-h-[95px]">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-3 w-full text-left hover:bg-sidebar-primary rounded-md pl-5 px-3 py-3 transition-colors cursor-pointer"
+            className="flex items-center gap-3 w-full text-left hover:bg-sidebar-primary rounded-md ml-0 px-3 py-3 transition-colors cursor-pointer"
           >
             <div className="relative w-12 h-12 flex-shrink-0">
               <img
