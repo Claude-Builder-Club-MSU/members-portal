@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,7 +46,6 @@ const Classes = () => {
   const { role, isBoardOrAbove, refreshClasses } = useProfile();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const queryClient = useQueryClient();
   const [classes, setClasses] = useState<ClassWithMembers[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -178,6 +176,26 @@ const Classes = () => {
 
   const handleSubmit = async () => {
     if (!user) return;
+
+    // Validate required fields
+    if (!name.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please enter a class name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!selectedSemester) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please select a term',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSaveLoading(true);
 
     try {
@@ -414,12 +432,11 @@ const Classes = () => {
         submitLabel={modalState.selectedItem ? 'Update Class' : 'Create Class'}
       >
         <div className="space-y-2">
-          <Label htmlFor="name">Class Name *</Label>
+          <Label htmlFor="name" required>Class Name</Label>
           <Input
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            required
             placeholder="Intro to Machine Learning"
           />
         </div>
@@ -449,7 +466,7 @@ const Classes = () => {
           <SemesterSelector
             value={selectedSemester?.id || ''}
             onSelect={setSelectedSemester}
-            required={false}
+            required
           />
         </div>
 

@@ -80,8 +80,7 @@ const Projects = () => {
       setDescription(project.description || '');
       setClientName(project.client_name || '');
       // Extract repository name from full URL
-      const repoUrl = project.repository_url;
-      const repoName = repoUrl.split('/').pop() || '';
+      const repoName = project.repository_name
       setRepositoryName(repoName);
       setSelectedSemester(project.semester_id ? { id: project.semester_id } as Semester : null);
       const lead = project.members.find(m => m.role === 'lead');
@@ -186,16 +185,43 @@ const Projects = () => {
 
   const handleSubmit = async () => {
     if (!user) return;
+
+    // Validate required fields
+    if (!name.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please enter a project name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!repositoryName.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please enter a GitHub repository name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!selectedSemester) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please select a term',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSaveLoading(true);
 
     try {
-      const fullRepositoryUrl = `https://github.com/Claude-Builder-Club-MSU/${repositoryName}`;
-
       const projectData = {
         name,
         description: description || null,
         client_name: clientName || null,
-        repository_url: fullRepositoryUrl,
+        repository_name: repositoryName,
         semester_id: selectedSemester?.id || null,
       };
 
@@ -338,7 +364,7 @@ const Projects = () => {
 
     actions.push({
       label: 'View on GitHub',
-      onClick: () => window.open(project.repository_url, '_blank'),
+      onClick: () => window.open(`https://github.com/Claude-Builder-Club-MSU/${project.repository_name}`, '_blank'),
       icon: <Github className="h-4 w-4 mr-2" />,
       variant: isEBoard ? 'default' : 'outline',
     });
@@ -434,12 +460,11 @@ const Projects = () => {
         submitLabel={modalState.selectedItem ? 'Update Project' : 'Create Project'}
       >
         <div className="space-y-2">
-          <Label htmlFor="name">Project Name *</Label>
+          <Label htmlFor="name" required>Project Name</Label>
           <Input
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            required
             placeholder="AI Chatbot"
           />
         </div>
@@ -469,12 +494,12 @@ const Projects = () => {
           <SemesterSelector
             value={selectedSemester?.id || ''}
             onSelect={setSelectedSemester}
-            required={false}
+            required
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="repositoryName">GitHub Repository Name *</Label>
+          <Label htmlFor="repositoryName" required>GitHub Repository Name</Label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               {isMobile ? (
@@ -617,10 +642,15 @@ const Projects = () => {
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => window.open(modalState.selectedItem!.repository_url, '_blank')}
+                  onClick={() =>
+                    window.open(
+                      `https://github.com/Claude-Builder-Club-MSU/${modalState.selectedItem!.repository_name}`,
+                      '_blank'
+                    )
+                  }
                 >
                   <Github className="h-4 w-4 mr-2" />
-                  {modalState.selectedItem.repository_url}
+                  {`Claude-Builder-Club-MSU/${modalState.selectedItem.repository_name}`}
                 </Button>
               ),
             },

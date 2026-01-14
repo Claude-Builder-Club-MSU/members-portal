@@ -52,7 +52,45 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate required fields
+    if (!email.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please enter your email address',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!password.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please enter your password',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isLogin && !fullName.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please enter your full name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!validateEmail(email)) {
+      return;
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      toast({
+        title: 'Invalid Password',
+        description: 'Password must be at least 6 characters long',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -155,19 +193,18 @@ const Auth = () => {
           <form onSubmit={handleSubmit} className={`space-y-4 ${isMobile ? 'space-y-3' : 'space-y-4'}`}>
             {!isLogin && (
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="fullName" required>Full Name</Label>
                 <Input
                   id="fullName"
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  required
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email (@msu.edu)</Label>
+              <Label htmlFor="email" required>Email (@msu.edu)</Label>
               <Input
                 id="email"
                 type="email"
@@ -177,12 +214,11 @@ const Auth = () => {
                   setBanError(null); // Clear ban error when user types
                 }}
                 placeholder="your.name@msu.edu"
-                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" required>Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -191,7 +227,6 @@ const Auth = () => {
                   setPassword(e.target.value);
                   setBanError(null); // Clear ban error when user types
                 }}
-                required
                 minLength={6}
               />
             </div>

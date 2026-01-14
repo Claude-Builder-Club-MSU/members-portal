@@ -263,6 +263,107 @@ export const ApplicationCreateModal = ({
 
   const handleSubmit = async () => {
     if (!user) return;
+
+    // Validate required fields
+    if (!applicationType) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please select an application type',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!fullName.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please enter your full name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!classYear) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please select your class year',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (applicationType === 'board' && !selectedBoardPosition) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please select a board position',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (applicationType === 'board' && !whyPosition.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please explain why you want this position',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (applicationType === 'class' && !selectedClassId) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please select a class',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (applicationType === 'class' && !selectedClassRole) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please select your class role',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (applicationType === 'project' && !selectedProjectId) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please select a project',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (applicationType === 'project' && !selectedProjectRole) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please select your project role',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (applicationType === 'project' && !projectDetail.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please explain why you want to join this project',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (applicationType === 'project' && !problemSolved.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please describe what problem you want to solve',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -361,17 +462,16 @@ export const ApplicationCreateModal = ({
       <>
         {/* Common Fields */}
         <div className="space-y-2">
-          <Label htmlFor="fullName">Full Name *</Label>
+          <Label htmlFor="fullName" required>Full Name</Label>
           <Input
             id="fullName"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            required
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="classYear">Class Year *</Label>
+          <Label htmlFor="classYear" required>Class Year</Label>
           <Select value={classYear} onValueChange={setClassYear}>
             <SelectTrigger>
               <SelectValue placeholder="Select year" />
@@ -389,7 +489,7 @@ export const ApplicationCreateModal = ({
         {applicationType === 'board' && (
           <>
             <div className="space-y-2">
-              <Label htmlFor="boardPosition">Position *</Label>
+              <Label htmlFor="boardPosition" required>Position</Label>
               <Select value={selectedBoardPosition} onValueChange={setSelectedBoardPosition}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select position" />
@@ -405,13 +505,12 @@ export const ApplicationCreateModal = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="whyPosition">Why this position? *</Label>
+              <Label htmlFor="whyPosition" required>Why this position?</Label>
               <Textarea
                 id="whyPosition"
                 value={whyPosition}
                 onChange={(e) => setWhyPosition(e.target.value)}
                 rows={4}
-                required
               />
             </div>
 
@@ -430,7 +529,7 @@ export const ApplicationCreateModal = ({
         {applicationType === 'class' && (
           <>
             <div className="space-y-2">
-              <Label htmlFor="class">Select Class *</Label>
+              <Label htmlFor="class" required>Select Class</Label>
               <Select value={selectedClassId} onValueChange={setSelectedClassId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select class" />
@@ -447,7 +546,7 @@ export const ApplicationCreateModal = ({
             </div>
 
             <div className="space-y-2">
-              <Label>Class Role *</Label>
+              <Label required>Class Role</Label>
               <RadioGroup value={selectedClassRole} onValueChange={(value) => setSelectedClassRole(value as 'student' | 'teacher')}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="student" id="class-student" />
@@ -466,7 +565,7 @@ export const ApplicationCreateModal = ({
         {applicationType === 'project' && (
           <>
             <div className="space-y-2">
-              <Label htmlFor="project">Select Project *</Label>
+              <Label htmlFor="project" required>Select Project</Label>
               <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select project" />
@@ -483,7 +582,7 @@ export const ApplicationCreateModal = ({
             </div>
 
             <div className="space-y-2">
-              <Label>Project Role *</Label>
+              <Label required>Project Role</Label>
               <RadioGroup value={selectedProjectRole} onValueChange={(value) => setSelectedProjectRole(value as 'member' | 'lead')}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="member" id="project-member" />
@@ -497,24 +596,22 @@ export const ApplicationCreateModal = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="projectDetail">Why this project? *</Label>
+              <Label htmlFor="projectDetail" required>Why this project?</Label>
               <Textarea
                 id="projectDetail"
                 value={projectDetail}
                 onChange={(e) => setProjectDetail(e.target.value)}
                 rows={4}
-                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="problemSolved">What problem do you want to solve? *</Label>
+              <Label htmlFor="problemSolved" required>What problem do you want to solve?</Label>
               <Textarea
                 id="problemSolved"
                 value={problemSolved}
                 onChange={(e) => setProblemSolved(e.target.value)}
                 rows={3}
-                required
               />
             </div>
           </>
@@ -586,7 +683,7 @@ export const ApplicationCreateModal = ({
 
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className={`space-y-4 ${isMobile ? 'w-[80vw]' : ''}`}>
           <div className="space-y-2">
-            <Label htmlFor="applicationType">Application Type *</Label>
+            <Label htmlFor="applicationType" required>Application Type</Label>
             <Select
               value={applicationType}
               onValueChange={(value) => handleApplicationTypeChange(value as ApplicationType)}

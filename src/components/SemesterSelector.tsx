@@ -21,7 +21,7 @@ interface SemesterSelectorProps {
   required?: boolean;
 }
 
-const SemesterSelector = ({ value, onSelect, required = true }: SemesterSelectorProps) => {
+const SemesterSelector = ({ value, onSelect, required = false }: SemesterSelectorProps) => {
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -78,7 +78,7 @@ const SemesterSelector = ({ value, onSelect, required = true }: SemesterSelector
   if (loading) {
     return (
       <div className="space-y-2">
-        <Label>Term {required && <span className="text-destructive">*</span>}</Label>
+        <Label required={required}>Term</Label>
         <Select disabled>
           <SelectTrigger>
             <SelectValue placeholder="Loading terms..." />
@@ -91,7 +91,7 @@ const SemesterSelector = ({ value, onSelect, required = true }: SemesterSelector
   return (
     <>
       <div className="space-y-2">
-        <Label>Term {required && <span className="text-destructive">*</span>}</Label>
+        <Label required={required}>Term</Label>
         <Select
           // 1. KEY FIX: This forces a re-render when data loads or value changes
           // effectively "waking up" the component to display the correct label.

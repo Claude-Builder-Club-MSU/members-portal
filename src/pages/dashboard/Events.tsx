@@ -129,7 +129,63 @@ const Events = () => {
   };
 
   const handleSubmit = async () => {
-    if (!user || !date || !eventTime) return;
+    if (!user) return;
+
+    // Validate required fields
+    if (!name.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please enter an event name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!date) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please select a date',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!eventTime) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please select a time',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!location.trim()) {
+      toast({
+        title: 'Required Field Missing',
+        description: 'Please enter a location',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (points < 0) {
+      toast({
+        title: 'Invalid Value',
+        description: 'Points cannot be negative',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (rsvpRequired && maxAttendance < 1) {
+      toast({
+        title: 'Invalid Value',
+        description: 'Max attendance must be at least 1 when RSVP is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSaveLoading(true);
 
     try {
@@ -619,12 +675,11 @@ const Events = () => {
         submitLabel={modalState.selectedItem ? 'Update Event' : 'Create Event'}
       >
         <div className="space-y-2">
-          <Label htmlFor="name">Event Name *</Label>
+          <Label htmlFor="name" required>Event Name</Label>
           <Input
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            required
             placeholder="Workshop: Intro to AI"
           />
         </div>
@@ -642,7 +697,7 @@ const Events = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Date *</Label>
+            <Label required>Date</Label>
             <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -671,7 +726,7 @@ const Events = () => {
           </div>
 
           <div className="space-y-2">
-            <Label>Time *</Label>
+            <Label required>Time</Label>
             <Popover open={timePickerOpen} onOpenChange={setTimePickerOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -731,38 +786,35 @@ const Events = () => {
         </div>
 
         <div className={`grid grid-cols-1 ${rsvpRequired ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
-          <div className="space-y-2">
-            <Label htmlFor="location">Location *</Label>
+        <div className="space-y-2">
+          <Label htmlFor="location" required>Location</Label>
             <Input
               id="location"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              required
               placeholder="STEM 3202"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="points">Points *</Label>
+        <div className="space-y-2">
+          <Label htmlFor="points" required>Points</Label>
             <Input
               id="points"
               type="number"
               value={points}
               onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
-              required
               min={0}
             />
           </div>
 
           {rsvpRequired && (
             <div className="space-y-2">
-              <Label htmlFor="maxAttendance">Max Attendance *</Label>
+              <Label htmlFor="maxAttendance" required>Max Attendance</Label>
               <Input
                 id="maxAttendance"
                 type="number"
                 value={maxAttendance}
                 onChange={(e) => setMaxAttendance(parseInt(e.target.value) || 50)}
-                required
                 min={1}
               />
             </div>

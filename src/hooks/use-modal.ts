@@ -33,27 +33,16 @@ export const useItemStatus = (item: any) => {
     if (!item) return null;
 
     const now = new Date();
-
-    // Try to get dates from semester first, then fall back to direct properties
-    const start = item.semesters
-        ? new Date(item.semesters.start_date)
-        : item.start_date
-            ? new Date(item.start_date)
-            : null;
-
-    const end = item.semesters
-        ? new Date(item.semesters.end_date)
-        : item.end_date
-            ? new Date(item.end_date)
-            : null;
+    const start = new Date(item.semesters.start_date);
+    const end = new Date(item.semesters.end_date);
 
     if (!start || !end) {
-      // If no dates available, consider it available (for items without semesters)
-      return {
-        label: 'Available',
-        variant: 'default' as const,
-        state: 'available' as const,
-      };
+        // If no dates available, consider it available (for items without semesters)
+        return {
+            label: 'Available',
+            variant: 'default' as const,
+            state: 'available' as const,
+        };
     }
 
     if (start > now) {
@@ -65,6 +54,7 @@ export const useItemStatus = (item: any) => {
     }
 
     if (end < now) {
+        console.log("ended");
         return {
             label: 'Completed',
             variant: 'destructive' as const,

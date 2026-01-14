@@ -351,12 +351,12 @@ const ApplicationViewerPage = () => {
                     </div>
                 </div>
             );
-        } else if (type === 'project' && item.repository_url) {
+        } else if (type === 'project' && item.repository_name) {
             gridItems.push(
                 <div key="repo" className="space-y-2">
                     <h4 className="font-semibold text-sm">Repository</h4>
                     <a
-                        href={item.repository_url}
+                        href={`https://github.com/Claude-Builder-Club-MSU/${item.repository_name}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-sm text-primary hover:underline"

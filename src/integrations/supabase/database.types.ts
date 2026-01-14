@@ -239,22 +239,7 @@ export type Database = {
           user_id?: string
           created_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "event_checkins_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "event_checkins_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: [],
       }
       event_qr_codes: {
         Row: {
@@ -432,9 +417,8 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
-          lead_id: string | null
           name: string
-          repository_url: string
+          repository_name: string
           semester_id: string | null
           updated_at: string
         }
@@ -444,9 +428,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
-          lead_id?: string | null
           name: string
-          repository_url: string
+          repository_name: string
           semester_id?: string | null
           updated_at?: string
         }
@@ -456,9 +439,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
-          lead_id?: string | null
           name?: string
-          repository_url?: string
+          repository_name?: string
           semester_id?: string | null
           updated_at?: string
         }

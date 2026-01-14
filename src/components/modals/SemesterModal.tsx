@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/database.types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -28,12 +30,15 @@ interface SemesterModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: (semester: Semester) => void;
+  required?: boolean;
 }
 
-const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
+const SemesterModal = ({ open, onClose, onSuccess, required = true }: SemesterModalProps) => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
+  const [startCalendarOpen, setStartCalendarOpen] = useState(false);
+  const [endCalendarOpen, setEndCalendarOpen] = useState(false);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -43,9 +48,51 @@ const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setLoading(true);
 
     try {
+      // Validate required fields
+      if (!formData.code.trim()) {
+        toast({
+          title: 'Required Field Missing',
+          description: 'Please enter a semester code',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.name.trim()) {
+        toast({
+          title: 'Required Field Missing',
+          description: 'Please enter a semester name',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.start_date) {
+        toast({
+          title: 'Required Field Missing',
+          description: 'Please select a start date',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.end_date) {
+        toast({
+          title: 'Required Field Missing',
+          description: 'Please select an end date',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
       // Validate dates
       const startDate = new Date(formData.start_date);
       const endDate = new Date(formData.end_date);
@@ -107,6 +154,8 @@ const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
         start_date: '',
         end_date: '',
       });
+      setStartCalendarOpen(false);
+      setEndCalendarOpen(false);
       onClose();
     }
   };
@@ -123,8 +172,8 @@ const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="code">
-              Code <span className="text-destructive">*</span>
+            <Label htmlFor="code" required>
+              Code
             </Label>
             <Input
               id="code"
@@ -142,8 +191,8 @@ const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="name">
-              Name <span className="text-destructive">*</span>
+            <Label htmlFor="name" required>
+              Name
             </Label>
             <Input
               id="name"
@@ -156,34 +205,32 @@ const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>
-                Start Date <span className="text-destructive">*</span>
+              <Label required>
+                Start Date
               </Label>
-              <Popover>
+              <Popover open={startCalendarOpen} onOpenChange={setStartCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button
-                    variant='secondary'
-                    className={
-                      'w-full justify-start text-left font-normal' +
-                      (!formData.start_date ? ' text-muted-foreground' : '')
-                    }
+                    variant="secondary"
+                    className={cn(
+                      'w-full justify-start text-left font-normal',
+                      !formData.start_date && 'text-muted-foreground'
+                    )}
                   >
-                    {!isMobile && <CalendarIcon className="mr-2 h-4 w-4" />}
+                    <CalendarIcon className="mr-2 h-4 w-4" />
                     {formData.start_date
-                      ? new Date(formData.start_date).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })
-                      : <span className="w-full flex justify-center">{isMobile ? "Start date" : "Pick a start date"}</span>}
+                      ? format(new Date(formData.start_date), 'PPP')
+                      : <span>Pick a start date</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align={isMobile ? "start" : "center"}>
+                <PopoverContent className="w-auto p-0" align="center">
                   <Calendar
                     mode="single"
-                    selected={formData.start_date ? new Date(formData.start_date) : new Date()}
-                    onSelect={date =>
-                      setFormData({ ...formData, start_date: new Date(date).toISOString() })}
+                    selected={formData.start_date ? new Date(formData.start_date) : undefined}
+                    onSelect={(selectedDate) => {
+                      setFormData({ ...formData, start_date: selectedDate ? new Date(selectedDate).toISOString() : '' });
+                      setStartCalendarOpen(false);
+                    }}
                     initialFocus
                   />
                 </PopoverContent>
@@ -191,34 +238,32 @@ const SemesterModal = ({ open, onClose, onSuccess }: SemesterModalProps) => {
             </div>
 
             <div className="space-y-2">
-              <Label>
-                End Date <span className="text-destructive">*</span>
+              <Label required>
+                End Date
               </Label>
-              <Popover>
+              <Popover open={endCalendarOpen} onOpenChange={setEndCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button
-                    variant='secondary'
-                    className={
-                      'w-full justify-start text-left font-normal' +
-                      (!formData.end_date ? ' text-muted-foreground' : '')
-                    }
+                    variant="secondary"
+                    className={cn(
+                      'w-full justify-start text-left font-normal',
+                      !formData.end_date && 'text-muted-foreground'
+                    )}
                   >
-                    {!isMobile && <CalendarIcon className="mr-2 h-4 w-4" />}
+                    <CalendarIcon className="mr-2 h-4 w-4" />
                     {formData.end_date
-                      ? new Date(formData.end_date).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })
-                      : <span className="w-full flex justify-center">{isMobile ? "End date" : "Pick an end date"}</span>}
+                      ? format(new Date(formData.end_date), 'PPP')
+                      : <span>Pick an end date</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align={isMobile ? "end" : "center"}>
+                <PopoverContent className="w-auto p-0" align="center">
                   <Calendar
                     mode="single"
-                    selected={formData.end_date ? new Date(formData.end_date) : new Date()}
-                    onSelect={date =>
-                      setFormData({ ...formData, end_date: new Date(date).toISOString() })}
+                    selected={formData.end_date ? new Date(formData.end_date) : undefined}
+                    onSelect={(selectedDate) => {
+                      setFormData({ ...formData, end_date: selectedDate ? new Date(selectedDate).toISOString() : '' });
+                      setEndCalendarOpen(false);
+                    }}
                     initialFocus
                   />
                 </PopoverContent>

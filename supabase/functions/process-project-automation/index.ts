@@ -11,14 +11,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface ProjectMember {
-  user_id: string
-  is_lead: boolean
-  profiles: {
-    github_username: string | null
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -27,20 +19,17 @@ serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Get all projects whose start_date has been reached and don't have a repository_url yet
+    // Get all projects whose start_date has been reached
     const { data: projects, error: fetchError } = await supabase
       .from('projects')
       .select(`
         id,
         name,
-        semester_code,
-        repository_url,
-        project_lead_id,
-        start_date
+        semester_id,
+        semesters!inner(code, start_date)
+        repository_name,
       `)
       .lte('start_date', new Date().toISOString().split('T')[0]) // start_date <= today
-      .eq('status', 'accepted')
-      .is('repository_url', null) // Only projects without a repo yet
 
     if (fetchError) throw fetchError
 
@@ -56,7 +45,7 @@ serve(async (req) => {
     for (const project of projects) {
       try {
         // Check if team already exists in GitHub
-        const teamSlug = `${project.name}-${project.semester_code}`.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+        const teamSlug = `${project.name}-${project.semesters.code}`.toLowerCase().replace(/[^a-z0-9-]/g, '-')
 
         const checkTeamResponse = await fetch(
           `https://api.github.com/orgs/${GITHUB_ORG}/teams/${teamSlug}`,
@@ -75,15 +64,10 @@ serve(async (req) => {
           .from('project_members')
           .select(`
             user_id,
-            is_lead,
+            role,
             profiles!inner(github_username)
           `)
           .eq('project_id', project.id)
-          .eq('status', 'accepted')
-          .not('profiles.github_username', 'is', null) as {
-            data: ProjectMember[] | null,
-            error: any
-          }
 
         if (membersError) throw membersError
 
@@ -97,7 +81,7 @@ serve(async (req) => {
         }
 
         // Find team lead
-        const teamLead = members.find(m => m.is_lead)
+        const teamLead = members.find(m => m.role === 'lead')
         if (!teamLead || !teamLead.profiles.github_username) {
           results.push({
             project: project.name,
@@ -107,11 +91,14 @@ serve(async (req) => {
           continue
         }
 
+        // Remove the team lead from members array so they aren't added twice
+        const teamMembers = members.filter(m => m.user_id !== teamLead.user_id);
+
         let team
 
         if (!teamExists) {
           // 1. Create GitHub Team
-          const teamName = `${project.name} (${project.semester_code})`
+          const teamName = `${project.name} (${project.semesters.code})`
 
           const createTeamResponse = await fetch(
             `https://api.github.com/orgs/${GITHUB_ORG}/teams`,
@@ -124,7 +111,7 @@ serve(async (req) => {
               },
               body: JSON.stringify({
                 name: teamName,
-                description: `Project team for ${project.name} - ${project.semester_code}`,
+                description: `Project team for ${project.name} - ${project.semesters.code}`,
                 privacy: 'closed',
               })
             }
@@ -141,9 +128,8 @@ serve(async (req) => {
         }
 
         // 2. Add team members
-        for (const member of members) {
+        for (const member of teamMembers) {
           const username = member.profiles.github_username!
-          const role = member.is_lead ? 'maintainer' : 'member'
 
           const addMemberResponse = await fetch(
             `https://api.github.com/orgs/${GITHUB_ORG}/teams/${team.slug}/memberships/${username}`,
@@ -154,7 +140,6 @@ serve(async (req) => {
                 'Accept': 'application/vnd.github.v3+json',
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({ role })
             }
           )
 
@@ -163,8 +148,28 @@ serve(async (req) => {
           }
         }
 
-        // 3. Create GitHub Repository
-        const repoName = `${project.name.toLowerCase().replace(/\s+/g, '-')}-${project.semester_code.toLowerCase()}`
+        // Add the team lead as a maintainer of the team
+        const teamLeadUsername = teamLead.profiles.github_username!
+
+        // Add or update membership for team lead as maintainer
+        const addTeamLeadResponse = await fetch(
+          `https://api.github.com/orgs/${GITHUB_ORG}/teams/${team.slug}/memberships/${teamLeadUsername}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Authorization': `token ${GITHUB_ORG_PAT}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              role: 'maintainer'
+            })
+          }
+        );
+
+        if (!addTeamLeadResponse.ok && addTeamLeadResponse.status !== 404) {
+          console.error(`Failed to add team lead ${teamLeadUsername} as maintainer to team ${team.name}`);
+        }
 
         const createRepoResponse = await fetch(
           `https://api.github.com/orgs/${GITHUB_ORG}/repos`,
@@ -176,8 +181,8 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              name: repoName,
-              description: `${project.name} - ${project.semester_code}`,
+              name: project.repository_name,
+              description: `${project.name} - ${project.semesters.code}`,
               private: true,
               auto_init: true,
               has_issues: true,
@@ -199,7 +204,7 @@ serve(async (req) => {
 
         // 4. Give team access to repository
         const addTeamToRepoResponse = await fetch(
-          `https://api.github.com/orgs/${GITHUB_ORG}/teams/${team.slug}/repos/${GITHUB_ORG}/${repoName}`,
+          `https://api.github.com/orgs/${GITHUB_ORG}/teams/${team.slug}/repos/${GITHUB_ORG}/${project.repository_name}`,
           {
             method: 'PUT',
             headers: {
@@ -220,7 +225,7 @@ serve(async (req) => {
 
         // 5. Protect main branch
         const protectBranchResponse = await fetch(
-          `https://api.github.com/repos/${GITHUB_ORG}/${repoName}/branches/main/protection`,
+          `https://api.github.com/repos/${GITHUB_ORG}/${project.repository_name}/branches/main/protection`,
           {
             method: 'PUT',
             headers: {
@@ -253,22 +258,6 @@ serve(async (req) => {
         if (!protectBranchResponse.ok) {
           console.error('Failed to protect main branch, but continuing...')
         }
-
-        // 6. Update project in database with repository URL
-        await supabase
-          .from('projects')
-          .update({
-            repository_url: repoName,
-          })
-          .eq('id', project.id)
-
-        results.push({
-          project: project.name,
-          team: team.name,
-          repo: repoName,
-          created: !repoAlreadyExists && !teamExists,
-          success: true
-        })
 
       } catch (error) {
         console.error(`Error processing project ${project.name}:`, error)
