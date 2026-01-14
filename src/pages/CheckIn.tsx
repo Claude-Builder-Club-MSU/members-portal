@@ -95,15 +95,29 @@ const Checkin = () => {
                     <CardDescription>{result?.message}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {result?.success && result.points_awarded && (
-                        <div className="bg-orange-50 dark:bg-orange-950 rounded-lg p-4 text-center">
+                    {result?.success && result.points_awarded !== undefined && (
+                        <div className={`rounded-lg p-4 text-center ${
+                            result.points_awarded >= 0
+                                ? 'bg-orange-50 dark:bg-orange-950'
+                                : 'bg-red-50 dark:bg-red-950'
+                        }`}>
                             <div className="flex items-center justify-center gap-2 mb-2">
-                                <Trophy className="h-6 w-6 text-orange-600" />
-                                <span className="text-3xl font-bold text-orange-600">
-                                    +{result.points_awarded}
+                                <Trophy className={`h-6 w-6 ${
+                                    result.points_awarded >= 0
+                                        ? 'text-orange-600'
+                                        : 'text-red-600'
+                                }`} />
+                                <span className={`text-3xl font-bold ${
+                                    result.points_awarded >= 0
+                                        ? 'text-orange-600'
+                                        : 'text-red-600'
+                                }`}>
+                                    {result.points_awarded >= 0 ? '+' : ''}{result.points_awarded}
                                 </span>
                             </div>
-                            <p className="text-sm text-muted-foreground">Points Awarded</p>
+                            <p className="text-sm text-muted-foreground">
+                                {result.points_awarded >= 0 ? 'Points Awarded' : 'Points Deducted'}
+                            </p>
                             {result.event_name && (
                                 <p className="text-sm font-medium mt-2">{result.event_name}</p>
                             )}
