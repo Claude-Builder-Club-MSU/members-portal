@@ -1,4 +1,3 @@
-import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,9 +22,9 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Database } from '@/integrations/supabase/database.types';
+import { useAuth } from '@/contexts/AuthContext';
 
-// --- Types ---
-type Event = Database['public']['Tables']['events']['Row'];
+// Dashboard uses types from ProfileContext and separate queries
 
 type Project = Database['public']['Tables']['projects']['Row'] & {
   semesters: { code: string; name: string; start_date: string; end_date: string } | null;
@@ -44,12 +43,6 @@ type AdminStats = {
   eBoard: number;
 };
 
-type DashboardData = {
-  events: Event[];
-  projects?: Project[];
-  classes?: Class[];
-  adminStats?: AdminStats;
-};
 
 // --- Helper Functions ---
 const getProjectStatus = (project: Project) => {
@@ -72,147 +65,64 @@ const getClassStatus = (cls: Class) => {
   return { label: 'Active', color: 'bg-blue-500' };
 };
 
-// --- Data Fetching Functions ---
-
-// E-Board sees: all roles stats + all events + all projects/classes
-async function fetchEBoardDashboard(): Promise<DashboardData> {
-  const [eventsRes, rolesRes, projectsRes, classesRes] = await Promise.all([
-    supabase
-      .from('events')
-      .select('*')
-      .gte('event_date', new Date().toISOString())
-      .order('event_date', { ascending: true })
-      .limit(10),
-    supabase.from('user_roles').select('role'),
-    supabase
-      .from('projects')
-      .select(`*, semesters (code, name, start_date, end_date), project_members(count)`)
-      .limit(6),
-    supabase
-      .from('classes')
-      .select(`*, semesters (code, name, start_date, end_date), class_enrollments(count)`)
-      .limit(6)
-  ]);
-
-  if (eventsRes.error) throw eventsRes.error;
-  if (rolesRes.error) throw rolesRes.error;
-  if (projectsRes.error) throw projectsRes.error;
-  if (classesRes.error) throw classesRes.error;
-
-  // Sort projects and classes by semester start date (most recent first)
-  const sortedProjects = ((projectsRes.data as Project[]) || []).sort((a, b) => {
-    const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
-    const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
-    return bStart.getTime() - aStart.getTime();
-  });
-
-  const sortedClasses = ((classesRes.data as Class[]) || []).sort((a, b) => {
-    const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
-    const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
-    return bStart.getTime() - aStart.getTime();
-  });
-
-  return {
-    events: eventsRes.data || [],
-    projects: sortedProjects,
-    classes: sortedClasses,
-    adminStats: {
-      members: rolesRes.data?.filter(r => r.role !== 'prospect').length || 0,
-      prospects: rolesRes.data?.filter(r => r.role === 'prospect').length || 0,
-      board: rolesRes.data?.filter(r => r.role === 'board').length || 0,
-      eBoard: rolesRes.data?.filter(r => r.role === 'e-board').length || 0,
-    }
-  };
-}
-
-// Board sees: all events + all projects/classes (stats from ProfileContext)
-async function fetchBoardDashboard(): Promise<DashboardData> {
-  const [eventsRes, projectsRes, classesRes] = await Promise.all([
-    supabase
-      .from('events')
-      .select('*')
-      .gte('event_date', new Date().toISOString())
-      .order('event_date', { ascending: true })
-      .limit(10),
-    supabase
-      .from('projects')
-      .select(`*, semesters (code, name, start_date, end_date), project_members(count)`)
-      .limit(6),
-    supabase
-      .from('classes')
-      .select(`*, semesters (code, name, start_date, end_date), class_enrollments(count)`)
-      .limit(6)
-  ]);
-
-  if (eventsRes.error) throw eventsRes.error;
-  if (projectsRes.error) throw projectsRes.error;
-  if (classesRes.error) throw classesRes.error;
-
-  // Sort projects and classes by semester start date (most recent first)
-  const sortedProjects = ((projectsRes.data as Project[]) || []).sort((a, b) => {
-    const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
-    const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
-    return bStart.getTime() - aStart.getTime();
-  });
-
-  const sortedClasses = ((classesRes.data as Class[]) || []).sort((a, b) => {
-    const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
-    const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
-    return bStart.getTime() - aStart.getTime();
-  });
-
-  return {
-    events: eventsRes.data || [],
-    projects: sortedProjects,
-    classes: sortedClasses,
-  };
-}
-
-// Members see: role-filtered events + their projects/classes (from ProfileContext)
-async function fetchMemberDashboard(userRole: string): Promise<DashboardData> {
-  const { data: events, error } = await supabase
-    .from('events')
-    .select('*')
-    .contains('allowed_roles', [userRole])
-    .gte('event_date', new Date().toISOString())
-    .order('event_date', { ascending: true })
-    .limit(5);
-
-  if (error) throw error;
-
-  return {
-    events: events || [],
-  };
-}
+// Dashboard data is now sourced from ProfileContext and separate admin queries
 
 export default function Dashboard() {
+  const { role, loading, isEBoard, isBoardOrAbove, userProjects, userClasses, userEvents } = useProfile();
   const { profile } = useAuth();
-  const { role, isEBoard, isBoardOrAbove, stats, projects, classes } = useProfile();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
-  // Fetch dashboard-specific data (events + admin views)
-  const { data: dashboardData, isLoading } = useQuery<DashboardData>({
-    queryKey: ['dashboard-data', role],
+  // Fetch admin stats for E-Board
+  const { data: adminStats, isLoading: adminStatsLoading } = useQuery<AdminStats>({
+    queryKey: ['admin-stats'],
     queryFn: async () => {
-      if (!role) throw new Error('No role');
+      const { data: rolesRes } = await supabase.from('user_roles').select('role');
 
-      if (role === 'e-board') {
-        return fetchEBoardDashboard();
-      } else if (role === 'board') {
-        return fetchBoardDashboard();
-      } else {
-        return fetchMemberDashboard(role);
-      }
+      return {
+        members: rolesRes?.filter(r => r.role !== 'prospect').length || 0,
+        prospects: rolesRes?.filter(r => r.role === 'prospect').length || 0,
+        board: rolesRes?.filter(r => r.role === 'board').length || 0,
+        eBoard: rolesRes?.filter(r => r.role === 'e-board').length || 0,
+      };
     },
-    enabled: !!role,
-    staleTime: 1000 * 60 * 2, // 2 minutes
-    gcTime: 1000 * 60 * 5,
-    // Provide default empty structure to prevent undefined errors
-    placeholderData: {
-      events: [],
-    },
+    enabled: isEBoard,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10,
   });
+
+  // Fetch all projects and classes for board members
+  const { data: allProjects, isLoading: allProjectsLoading } = useQuery({
+    queryKey: ['all-projects'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`*, semesters (code, name, start_date, end_date), project_members(count)`)
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+    enabled: isBoardOrAbove,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+  });
+
+  const { data: allClasses, isLoading: allClassesLoading } = useQuery({
+    queryKey: ['all-classes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('classes')
+        .select(`*, semesters (code, name, start_date, end_date), class_enrollments(count)`)
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+    enabled: isBoardOrAbove,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+  });
+
+  const isLoading = loading || (isEBoard && adminStatsLoading) || (isBoardOrAbove && (allProjectsLoading || allClassesLoading));
 
   // --- Sub-Components ---
 
@@ -280,8 +190,7 @@ export default function Dashboard() {
 
   const StatsGrid = () => {
     // E-Board shows admin stats
-    if (isEBoard && dashboardData?.adminStats) {
-      const adminStats = dashboardData.adminStats;
+    if (isEBoard && adminStats) {
 
       return (
         <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
@@ -335,16 +244,16 @@ export default function Dashboard() {
           icon={FolderKanban}
           color="text-blue-600 dark:text-blue-500"
           bg="bg-blue-500/10"
-          value={stats?.totalProjects || 0}
-          label={stats?.totalProjects === 1 ? "Active Project" : "Active Projects"}
+          value={userProjects.projects.length || 0}
+          label={userProjects.projects.length === 1 ? "Active Project" : "Active Projects"}
           link="/dashboard/projects"
         />
         <StatItem
           icon={BookOpen}
           color="text-purple-600 dark:text-purple-500"
           bg="bg-purple-500/10"
-          value={stats?.totalClasses || 0}
-          label={stats?.totalClasses === 1 ? "Enrolled Class" : "Enrolled Classes"}
+          value={userClasses.classes.length || 0}
+          label={userClasses.classes.length === 1 ? "Enrolled Class" : "Enrolled Classes"}
           link="/dashboard/classes"
         />
         <StatItem
@@ -359,7 +268,15 @@ export default function Dashboard() {
   };
 
   const EventsCard = () => {
-    const events = dashboardData?.events || [];
+    // Show only attending events for members, all events for admins
+    const allEvents = userEvents
+      ? (isBoardOrAbove
+        ? ((userEvents.attending ?? []).concat(userEvents.notAttending ?? []))
+          .slice()
+          .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
+          .slice(0, 5)
+        : (userEvents.attending ?? []).slice(0, 5))
+      : [];
 
     return (
       <Card className="hover:shadow-lg transition-shadow h-full flex flex-col min-w-[300px]">
@@ -371,7 +288,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <CardTitle className="text-xl">Upcoming Events</CardTitle>
-                <CardDescription>{`${events.length} event${events.length !== 1 ? 's' : ''}`}</CardDescription>
+                <CardDescription>{`${allEvents.length} event${allEvents.length !== 1 ? 's' : ''}`}</CardDescription>
               </div>
             </div>
             <Button
@@ -387,14 +304,14 @@ export default function Dashboard() {
         <CardContent className={`flex-1 flex flex-col overflow-y-auto max-h-[600px] ${isMobile ? 'p-4 justify-center' : 'p-2'}`}>
           {isLoading ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading...</div>
-          ) : events.length === 0 ? (
+          ) : allEvents.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
               <Calendar className="h-8 w-8 text-primary opacity-30 mb-2" />
               <p className="text-sm">No upcoming events</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {events.map((event) => (
+              {allEvents.map((event) => (
                 <Card key={event.id} className="w-full border bg-card hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => navigate('/dashboard/events')}>
                   <CardHeader className="p-3 pb-0">
                     <div className="flex items-center justify-between gap-2">
@@ -436,13 +353,13 @@ export default function Dashboard() {
 
     if (isBoardOrAbove) {
       items = isProject
-        ? (dashboardData?.projects || [])
-        : (dashboardData?.classes || []);
-      title = `Active ${type}`;
+        ? (allProjects || [])
+        : (allClasses || []);
+      title = `All ${type}`;
     } else {
       items = isProject
-        ? (projects?.projects || [])
-        : (classes?.classes || []);
+        ? (userProjects?.projects || [])
+        : (userClasses?.classes || []);
       title = `Your ${type}`;
     }
 

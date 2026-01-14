@@ -44,7 +44,7 @@ type ClassWithMembers = ItemWithMembers<Class>;
 
 const Classes = () => {
   const { user } = useAuth();
-  const { role, isBoardOrAbove } = useProfile();
+  const { role, isBoardOrAbove, refreshClasses } = useProfile();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
@@ -145,12 +145,12 @@ const Classes = () => {
         userMembership: userEnrollment,
       };
     })
-    .sort((a, b) => {
-      // Sort by semester start date (most recent first)
-      const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
-      const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
-      return bStart.getTime() - aStart.getTime();
-    });
+      .sort((a, b) => {
+        // Sort by semester start date (most recent first)
+        const aStart = a.semesters?.start_date ? new Date(a.semesters.start_date) : new Date(0);
+        const bStart = b.semesters?.start_date ? new Date(b.semesters.start_date) : new Date(0);
+        return bStart.getTime() - aStart.getTime();
+      });
 
     setClasses(classesWithMembers);
     setLoading(false);
@@ -231,9 +231,7 @@ const Classes = () => {
       }
 
       await fetchClasses();
-
-      // Invalidate dashboard queries to refresh status
-      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+      await refreshClasses();
 
       modalState.close();
       setIsCreateModalOpen(false);
@@ -259,6 +257,7 @@ const Classes = () => {
 
     toast({ title: 'Success', description: 'Class deleted!' });
     await fetchClasses();
+    await refreshClasses();
     modalState.close();
   };
 
@@ -271,10 +270,11 @@ const Classes = () => {
     if (!status) return null;
 
     const badges = [];
-    if (isTeacher) {
+
+    if (isEnrolled) {
       badges.push(
-        <Badge key="teacher" variant="secondary" className="shrink-0 whitespace-nowrap">
-          Teacher
+        <Badge key="enrolled" variant="secondary" className="shrink-0 whitespace-nowrap">
+          {isTeacher ? 'Teacher' : 'Enrolled'}
         </Badge>
       );
     }
@@ -465,8 +465,8 @@ const Classes = () => {
               >
                 {selectedTeacher
                   ? availableTeachers.find((teacher) => teacher.id === selectedTeacher)?.full_name ||
-                    availableTeachers.find((teacher) => teacher.id === selectedTeacher)?.email ||
-                    'Select teacher...'
+                  availableTeachers.find((teacher) => teacher.id === selectedTeacher)?.email ||
+                  'Select teacher...'
                   : 'Select teacher...'}
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
@@ -543,8 +543,8 @@ const Classes = () => {
                   title: 'Dates',
                   icon: <CalendarIcon className="h-4 w-4" />,
                   content: `${modalState.selectedItem.semesters.start_date
-                      ? `Start: ${new Date(modalState.selectedItem.semesters.start_date).toLocaleDateString()}`
-                      : ''
+                    ? `Start: ${new Date(modalState.selectedItem.semesters.start_date).toLocaleDateString()}`
+                    : ''
                     }${modalState.selectedItem.semesters.end_date
                       ? ` | End: ${new Date(modalState.selectedItem.semesters.end_date).toLocaleDateString()}`
                       : ''

@@ -579,7 +579,9 @@ export const ApplicationCreateModal = ({
       >
         <DialogHeader>
           <DialogTitle>New Application</DialogTitle>
-          <DialogDescription>Submit your application to Claude Builder Club</DialogDescription>
+          <DialogDescription>
+            You can only apply to each class or project once. Submit your application to Claude Builder Club below.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className={`space-y-4 ${isMobile ? 'w-[80vw]' : ''}`}>

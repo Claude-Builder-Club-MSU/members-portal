@@ -21,14 +21,13 @@ import {
 import { DetailModal } from '@/components/modals/DetailModal';
 import { EditModal } from '@/components/modals/EditModal';
 import { ItemCard } from '@/components/ItemCard';
-import { Plus, Calendar as CalendarIcon, MapPin, Users, Trophy, Eye, Edit, QrCode, Clock } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, MapPin, Users, Trophy, Eye, Edit, QrCode, Clock, Repeat } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import QRCodeLib from 'qrcode';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type Event = Database['public']['Tables']['events']['Row'];
-type EventAttendance = Database['public']['Tables']['event_attendance']['Row'];
 type AppRole = Database['public']['Enums']['app_role'];
 
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
@@ -44,13 +43,12 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 
 const Events = () => {
   const { user } = useAuth();
-  const { role, isBoardOrAbove } = useProfile();
+  const { role, isBoardOrAbove, userEvents, eventsLoading, refreshEvents } = useProfile();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [attendanceMap, setAttendanceMap] = useState<Map<string, EventAttendance>>(new Map());
-  const [attendanceCounts, setAttendanceCounts] = useState<Map<string, number>>(new Map());
-  const [loading, setLoading] = useState(true);
+  const events = ((userEvents?.attending ?? []).concat(userEvents?.notAttending ?? []))
+    .slice()
+    .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [generatingQR, setGeneratingQR] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -79,11 +77,7 @@ const Events = () => {
 
   const modalState = useModalState<Event>();
 
-  useEffect(() => {
-    if (user && role) {
-      fetchEvents();
-    }
-  }, [user, role]);
+  // Events are now loaded via ProfileContext
 
   // Load form data when editing
   useEffect(() => {
@@ -107,7 +101,7 @@ const Events = () => {
       setRecurrenceEndDate(undefined);
       setRecurrenceOccurrences(5);
     } else if (isCreateModalOpen) {
-      // Reset form
+      // Reset form for creating new event
       setName('');
       setDescription('');
       setLocation('');
@@ -127,44 +121,6 @@ const Events = () => {
     }
   }, [modalState.modalType, modalState.selectedItem, isCreateModalOpen]);
 
-  const fetchEvents = async () => {
-    if (!user || !role) return;
-
-    const { data: eventsData, error: eventsError } = await supabase
-      .from('events')
-      .select('*')
-      .contains('allowed_roles', [role])
-      .gte('event_date', new Date().toISOString())
-      .order('event_date', { ascending: true });
-
-    if (eventsError || !eventsData) {
-      setLoading(false);
-      return;
-    }
-
-    const { data: attendanceData } = await supabase
-      .from('event_attendance')
-      .select('*')
-      .eq('user_id', user.id);
-
-    const newAttendanceMap = new Map(attendanceData?.map(a => [a.event_id, a]) || []);
-
-    const counts = new Map<string, number>();
-    await Promise.all(
-      eventsData.map(async (event) => {
-        const { count } = await supabase
-          .from('event_attendance')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', event.id);
-        counts.set(event.id, count || 0);
-      })
-    );
-
-    setEvents(eventsData);
-    setAttendanceMap(newAttendanceMap);
-    setAttendanceCounts(counts);
-    setLoading(false);
-  };
 
   const getAllowedRoles = (): AppRole[] => {
     if (rsvpRequired) return ['member', 'board', 'e-board'];
@@ -185,7 +141,6 @@ const Events = () => {
         name,
         description: description || null,
         location: location || null,
-        event_date: eventDateTime.toISOString(),
         points,
         max_attendance: maxAttendance,
         rsvp_required: rsvpRequired,
@@ -276,7 +231,7 @@ const Events = () => {
         }
       }
 
-      await fetchEvents();
+      await refreshEvents();
       modalState.close();
       setIsCreateModalOpen(false);
     } catch (error: any) {
@@ -300,7 +255,7 @@ const Events = () => {
     }
 
     toast({ title: 'Success', description: 'Event deleted!' });
-    await fetchEvents();
+    await refreshEvents();
     modalState.close();
   };
 
@@ -312,12 +267,11 @@ const Events = () => {
       .insert({
         user_id: user.id,
         event_id: eventId,
-        attended: false,
       });
 
     if (error) return;
 
-    await fetchEvents();
+    await refreshEvents();
     toast({ title: 'Success', description: 'Your RSVP is confirmed.' });
   };
 
@@ -332,7 +286,7 @@ const Events = () => {
 
     if (error) return;
 
-    await fetchEvents();
+    await refreshEvents();
     toast({ title: 'Success', description: 'Your RSVP has been cancelled.' });
   };
 
@@ -459,7 +413,7 @@ const Events = () => {
   };
 
   const isEventFull = (event: Event) => {
-    const count = attendanceCounts.get(event.id) || 0;
+    const count = 0; // TODO: Implement attendance count tracking
     return event.rsvp_required && count >= event.max_attendance;
   };
 
@@ -470,12 +424,11 @@ const Events = () => {
     return 'Internal Meeting';
   };
 
-  const renderEventCard = (event: Event) => {
+  const renderEventCard = (event: Event, isPrivate: boolean = false) => {
     const isFull = isEventFull(event);
-    const userAttendance = attendanceMap.get(event.id);
-    const hasRSVPed = !!userAttendance;
-    const hasAttended = userAttendance?.attended || false;
-    const attendanceCount = attendanceCounts.get(event.id) || 0;
+    const hasRSVPed = isPrivate;
+    const hasAttended = false; // We'll implement attendance tracking later
+    const attendanceCount = 0; // We'll implement attendance counts later
     const calendarLinks = generateCalendarLinks(event);
 
     const badges = [
@@ -625,21 +578,28 @@ const Events = () => {
         )}
       </div>
 
-      {loading ? (
+      {eventsLoading ? (
         <Card className="mt-6">
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">Loading events...</p>
           </CardContent>
         </Card>
-      ) : events.length === 0 ? (
+      ) : (events.length === 0) ? (
         <Card className="mt-6">
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">No upcoming events at this time.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))] mt-6">
-          {events.map(renderEventCard)}
+        <div className="space-y-8 mt-6">
+          {/* Event Cards */}
+          {events.length > 0 && (
+            <div>
+              <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(350px,500px))]">
+                {events.map((event) => renderEventCard(event, true))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -895,7 +855,7 @@ const Events = () => {
                       />
                       <span className="text-sm text-muted-foreground">
                         {recurrenceFrequency === 'daily' ? 'day(s)' :
-                         recurrenceFrequency === 'weekly' ? 'week(s)' : 'month(s)'}
+                          recurrenceFrequency === 'weekly' ? 'week(s)' : 'month(s)'}
                       </span>
                     </div>
                   </div>
@@ -1035,8 +995,7 @@ const Events = () => {
                 {
                   title: 'Attendance',
                   icon: <Users className="h-4 w-4" />,
-                  content: `${attendanceCounts.get(modalState.selectedItem.id) || 0} / ${modalState.selectedItem.max_attendance
-                    } RSVPs`,
+                  content: `0 / ${modalState.selectedItem.max_attendance} RSVPs (counting coming soon)`,
                 },
               ]
               : []),

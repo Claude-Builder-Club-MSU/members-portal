@@ -27,7 +27,7 @@ import type { Database } from '@/integrations/supabase/database.types';
 const Profile = () => {
   // Get data from contexts
   const { user, profile, refreshProfile, loading: authLoading } = useAuth();
-  const { role, isBoardOrAbove, stats } = useProfile();
+  const { role, isBoardOrAbove } = useProfile();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -514,27 +514,6 @@ const Profile = () => {
                     <div className="text-xs text-muted-foreground mt-1">Class Year</div>
                   </div>
                 </div>
-
-                {/* Activity Stats */}
-                {stats && (
-                  <div className="pt-4 border-t space-y-2">
-                    <h4 className="text-sm font-semibold text-muted-foreground">Activity</h4>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div>
-                        <div className="text-lg font-bold">{stats.totalProjects}</div>
-                        <div className="text-xs text-muted-foreground">Projects</div>
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold">{stats.totalClasses}</div>
-                        <div className="text-xs text-muted-foreground">Classes</div>
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold">{stats.totalEventsAttended}</div>
-                        <div className="text-xs text-muted-foreground">Events</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>

@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/database.types';
@@ -14,16 +14,14 @@ type Class = Database['public']['Tables']['classes']['Row'] & {
 };
 type ClassEnrollment = Database['public']['Tables']['class_enrollments']['Row'];
 type Application = Database['public']['Tables']['applications']['Row'];
-type EventAttendance = Database['public']['Tables']['event_attendance']['Row'];
-type EventCheckin = Database['public']['Tables']['event_checkins']['Row'];
-type UserRole = Database['public']['Enums']['app_role'];
+type Event = Database['public']['Tables']['events']['Row'];
+type AppRole = Database['public']['Enums']['app_role'];
 
 interface UserProjects {
     projects: Project[];
     memberships: ProjectMember[];
     leadProjects: Project[];
     memberProjects: Project[];
-    count: number;
 }
 
 interface UserClasses {
@@ -31,7 +29,6 @@ interface UserClasses {
     enrollments: ClassEnrollment[];
     teachingClasses: Class[];
     studentClasses: Class[];
-    count: number;
 }
 
 interface UserApplications {
@@ -39,18 +36,11 @@ interface UserApplications {
     pending: Application[];
     accepted: Application[];
     rejected: Application[];
-    counts: {
-        pending: number;
-        accepted: number;
-        rejected: number;
-    };
 }
 
 interface UserEvents {
-    checkins: EventCheckin[];
-    rsvps: EventAttendance[];
-    checkinCount: number;
-    rsvpCount: number;
+    attending: Event[];
+    notAttending: Event[];
 }
 
 interface UserStats {
@@ -63,7 +53,7 @@ interface UserStats {
 
 interface ProfileContextType {
     // Role & Permissions
-    role: UserRole | null;
+    role: AppRole | null;
     roleLoading: boolean;
     isEBoard: boolean;
     isBoard: boolean;
@@ -75,23 +65,20 @@ interface ProfileContextType {
     canManageEvents: boolean;
 
     // Projects
-    projects: UserProjects | undefined;
+    userProjects: UserProjects | undefined;
     projectsLoading: boolean;
 
     // Classes
-    classes: UserClasses | undefined;
+    userClasses: UserClasses | undefined;
     classesLoading: boolean;
 
     // Applications
-    applications: UserApplications | undefined;
+    userApplications: UserApplications | undefined;
     applicationsLoading: boolean;
 
     // Events
-    events: UserEvents | undefined;
+    userEvents: UserEvents | undefined;
     eventsLoading: boolean;
-
-    // Aggregated stats (counts only, no points)
-    stats: UserStats | undefined;
 
     // Refresh functions
     refreshProjects: () => Promise<void>;
@@ -115,7 +102,7 @@ export const useProfile = () => {
 };
 
 // Data fetching functions
-async function fetchUserRole(userId: string): Promise<UserRole> {
+async function fetchUserRole(userId: string): Promise<AppRole> {
     const { data, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -144,8 +131,7 @@ async function fetchUserProjects(userId: string): Promise<UserProjects> {
             projects: [],
             memberships: [],
             leadProjects: [],
-            memberProjects: [],
-            count: 0,
+            memberProjects: []
         };
     }
 
@@ -190,8 +176,7 @@ async function fetchUserProjects(userId: string): Promise<UserProjects> {
         projects: projects || [],
         memberships: memberships || [],
         leadProjects,
-        memberProjects,
-        count: projects?.length || 0,
+        memberProjects
     };
 }
 
@@ -210,7 +195,6 @@ async function fetchUserClasses(userId: string): Promise<UserClasses> {
             enrollments: [],
             teachingClasses: [],
             studentClasses: [],
-            count: 0,
         };
     }
 
@@ -256,7 +240,6 @@ async function fetchUserClasses(userId: string): Promise<UserClasses> {
         enrollments: enrollments || [],
         teachingClasses,
         studentClasses,
-        count: classes?.length || 0,
     };
 }
 
@@ -277,40 +260,72 @@ async function fetchUserApplications(userId: string): Promise<UserApplications> 
         applications: applications || [],
         pending,
         accepted,
-        rejected,
-        counts: {
-            pending: pending.length,
-            accepted: accepted.length,
-            rejected: rejected.length,
-        },
+        rejected
     };
 }
 
-async function fetchUserEvents(userId: string): Promise<UserEvents> {
-    // Fetch check-ins (verified attendance via QR code)
-    const checkinsPromise = supabase
-        .from('event_checkins')
-        .select('*')
-        .eq('user_id', userId)
-        .order('checked_in_at', { ascending: false });
-
-    // Fetch RSVPs (planned attendance)
-    const rsvpsPromise = supabase
+async function fetchUserEvents(userId: string, role: AppRole): Promise<UserEvents> {
+    // 1. Get all events the user has RSVPd for
+    const { data: attendanceRecords, error: attendanceError } = await supabase
         .from('event_attendance')
+        .select('event_id')
+        .eq('user_id', userId);
+
+    if (attendanceError) throw attendanceError;
+    const attendedEventIds = (attendanceRecords || []).map(e => e.event_id);
+
+    // 2. Get all events relevant to the user and their role
+    const { data: allEvents, error: allEventsError } = await supabase
+        .from('events')
         .select('*')
-        .eq('user_id', userId)
-        .order('rsvped_at', { ascending: false });
+        .contains('allowed_roles', [role])
+        .order('event_date', { ascending: false });
 
-    const [checkinsRes, rsvpsRes] = await Promise.all([checkinsPromise, rsvpsPromise]);
+    if (allEventsError) throw allEventsError;
 
-    if (checkinsRes.error) throw checkinsRes.error;
-    if (rsvpsRes.error) throw rsvpsRes.error;
+    // Utility to get RSVP count for a set of events
+    let rsvpCounts: Record<string, number> = {};
+    if (allEvents && allEvents.length > 0) {
+        const eventIds = allEvents.filter(e => e.rsvp_required).map(e => e.id);
+        if (eventIds.length > 0) {
+            const { data: rsvpCountsData, error: rsvpCountsError } = await supabase
+                .from('event_attendance')
+                .select('event_id', { count: 'exact', head: false })
+                .in('event_id', eventIds);
+            if (rsvpCountsError) throw rsvpCountsError;
+            // rsvpCountsData will be an array of rows, so we need to count the number of rows per event_id
+            rsvpCounts = (rsvpCountsData || []).reduce((acc: Record<string, number>, row: any) => {
+                acc[row.event_id] = (acc[row.event_id] || 0) + 1;
+                return acc;
+            }, {});
+        }
+    }
+
+    // 3. Split events into attending and notAttending
+    const attending: Event[] = [];
+    const notAttending: Event[] = [];
+
+    (allEvents || []).forEach(event => {
+        const isRSVPd = attendedEventIds.includes(event.id);
+        if (!event.rsvp_required) {
+            // Public event, included in attending if user's role is allowed
+            attending.push(event);
+        } else if (isRSVPd) {
+            // User has RSVPd
+            attending.push(event);
+        } else {
+            // RSVP event, user has NOT RSVPd, check if event is full
+            const rsvpCount = rsvpCounts[event.id] || 0;
+
+            if (rsvpCount < event.max_attendance) {
+                notAttending.push(event);
+            }
+        }
+    });
 
     return {
-        checkins: checkinsRes.data || [],
-        rsvps: rsvpsRes.data || [],
-        checkinCount: checkinsRes.data?.length || 0,
-        rsvpCount: rsvpsRes.data?.length || 0,
+        attending,
+        notAttending
     };
 }
 
@@ -332,7 +347,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
     // Fetch user's projects
     const {
-        data: projects,
+        data: userProjects,
         isLoading: projectsLoading,
         refetch: refetchProjects,
     } = useQuery({
@@ -345,7 +360,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
     // Fetch user's classes
     const {
-        data: classes,
+        data: userClasses,
         isLoading: classesLoading,
         refetch: refetchClasses,
     } = useQuery({
@@ -358,7 +373,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
     // Fetch user's applications
     const {
-        data: applications,
+        data: userApplications,
         isLoading: applicationsLoading,
         refetch: refetchApplications,
     } = useQuery({
@@ -371,14 +386,14 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
     // Fetch user's event attendance
     const {
-        data: events,
-        isLoading: eventsLoading,
+        data: userEvents,
+        isLoading: eventsQueryLoading,
         refetch: refetchEvents,
     } = useQuery({
-        queryKey: ['user-events', user?.id],
-        queryFn: () => fetchUserEvents(user!.id),
-        enabled: !!user,
-        staleTime: 1000 * 60 * 5, // 5 minutes (events change less frequently)
+        queryKey: ['user-events', user?.id, role],
+        queryFn: () => fetchUserEvents(user!.id, role!),
+        enabled: !!user && !!role,
+        staleTime: 1000 * 60 * 5,
         gcTime: 1000 * 60 * 10,
     });
 
@@ -454,26 +469,9 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
             )
             .subscribe();
 
-        // Subscribe to event check-in changes
-        const checkinsChannel = supabase
-            .channel(`user_checkins_${user.id}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'event_checkins',
-                    filter: `user_id=eq.${user.id}`,
-                },
-                () => {
-                    refetchEvents();
-                }
-            )
-            .subscribe();
-
-        // Subscribe to RSVP changes
-        const rsvpsChannel = supabase
-            .channel(`user_rsvps_${user.id}`)
+        // Subscribe to event record changes (both RSVPs and check-ins)
+        const eventRecordsChannel = supabase
+            .channel(`user_event_records_${user.id}`)
             .on(
                 'postgres_changes',
                 {
@@ -493,19 +491,9 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
             projectsChannel.unsubscribe();
             classesChannel.unsubscribe();
             applicationsChannel.unsubscribe();
-            checkinsChannel.unsubscribe();
-            rsvpsChannel.unsubscribe();
+            eventRecordsChannel.unsubscribe();
         };
     }, [user?.id, refetchRole, refetchProjects, refetchClasses, refetchApplications, refetchEvents]);
-
-    // Computed stats (counts only, no points!)
-    const stats: UserStats | undefined = user ? {
-        totalProjects: projects?.count || 0,
-        totalClasses: classes?.count || 0,
-        totalEventsAttended: events?.checkinCount || 0,
-        totalRSVPs: events?.rsvpCount || 0,
-        pendingApplications: applications?.counts.pending || 0,
-    } : undefined;
 
     // Computed permission helpers
     const isEBoard = role === 'e-board';
@@ -543,8 +531,6 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
         ]);
     };
 
-    const loading = roleLoading || projectsLoading || classesLoading || applicationsLoading || eventsLoading;
-
     return (
         <ProfileContext.Provider
             value={{
@@ -558,21 +544,20 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
                 canManageProjects,
                 canManageClasses,
                 canManageEvents,
-                projects,
+                userProjects,
                 projectsLoading,
-                classes,
+                userClasses,
                 classesLoading,
-                applications,
+                userApplications,
                 applicationsLoading,
-                events,
-                eventsLoading,
-                stats,
+                userEvents,
+                eventsLoading: roleLoading || eventsQueryLoading || (user && !role),
                 refreshProjects,
                 refreshClasses,
                 refreshApplications,
                 refreshEvents,
                 refreshAll,
-                loading,
+                loading: roleLoading || projectsLoading || classesLoading || applicationsLoading || eventsQueryLoading
             }}
         >
             {children}

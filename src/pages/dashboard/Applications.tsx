@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Eye, Calendar, Briefcase, BookOpen, FileCode, ChevronDown, ChevronRight } from 'lucide-react';
@@ -18,7 +17,6 @@ type Application = Database['public']['Tables']['applications']['Row'];
 const Applications = () => {
   const { user } = useAuth();
   const { role, isBoardOrAbove } = useProfile();
-  const { toast } = useToast();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [applications, setApplications] = useState<Application[]>([]);
