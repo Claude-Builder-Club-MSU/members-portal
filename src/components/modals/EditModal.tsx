@@ -69,46 +69,48 @@ export const EditModal = ({
         <>
             <Dialog open={open} onOpenChange={onClose}>
                 <DialogContent
-                    className={`${isMobile ? 'max-w-[calc(100vw-2rem)] max-h-[90vh]' : 'max-w-2xl'
-                        } overflow-y-auto rounded-xl`}
+                    className={`${isMobile ? 'max-w-[calc(100vw-2rem)] max-h-[90vh]' : 'max-w-2xl max-h-[90vh]'
+                        } overflow-y-auto rounded-xl flex flex-col`}
                 >
-                    <DialogHeader>
+                    <DialogHeader className="flex-shrink-0">
                         <DialogTitle>{title}</DialogTitle>
                         {description && <DialogDescription>{description}</DialogDescription>}
                     </DialogHeader>
 
-                    <form onSubmit={handleSubmit} className={`space-y-4 ${isMobile ? 'w-[80vw]' : ''}`}>
-                        {children}
+                    <div className="flex-1 overflow-y-auto">
+                        <form id="edit-modal-form" onSubmit={handleSubmit} className={`space-y-4 p-1 ${isMobile ? 'w-[80vw]' : ''}`}>
+                            {children}
+                        </form>
+                    </div>
 
-                        <div className="flex gap-2 pt-4 flex-col w-full sm:flex-row">
-                            {onDelete && (
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    onClick={() => setShowDeleteConfirm(true)}
-                                    disabled={loading || deleteLoading}
-                                    className="w-full sm:flex-1"
-                                >
-                                    <Trash2 className="h-4 w-4 mr-0" />
-                                    Delete
-                                </Button>
-                            )}
+                    <div className="flex gap-2 pt-4 flex-col w-full sm:flex-row flex-shrink-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                        {onDelete && (
                             <Button
                                 type="button"
-                                variant="outline"
-                                onClick={onClose}
+                                variant="destructive"
+                                onClick={() => setShowDeleteConfirm(true)}
                                 disabled={loading || deleteLoading}
                                 className="w-full sm:flex-1"
                             >
-                                <X className="h-4 w-4 mr-0" />
-                                Cancel
+                                <Trash2 className="h-4 w-4 mr-0" />
+                                Delete
                             </Button>
-                            <Button type="submit" disabled={loading || deleteLoading} className="w-full sm:flex-1">
-                                <Save className="h-4 w-4 mr-0" />
-                                {loading ? 'Saving...' : submitLabel || 'Save'}
-                            </Button>
-                        </div>
-                    </form>
+                        )}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={onClose}
+                            disabled={loading || deleteLoading}
+                            className="w-full sm:flex-1"
+                        >
+                            <X className="h-4 w-4 mr-0" />
+                            Cancel
+                        </Button>
+                        <Button type="submit" form="edit-modal-form" disabled={loading || deleteLoading} className="w-full sm:flex-1">
+                            <Save className="h-4 w-4 mr-0" />
+                            {loading ? 'Saving...' : submitLabel || 'Save'}
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
 

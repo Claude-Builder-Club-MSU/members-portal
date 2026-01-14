@@ -19,6 +19,7 @@ import Prospects from "./pages/dashboard/Prospects";
 import Checkin from "./pages/CheckIn";
 import ApplicationViewerPage from "@/pages/ApplicationViewer";
 import { ProfileProvider, useProfile } from "./contexts/ProfileContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 const queryClient = new QueryClient();
 
@@ -72,126 +73,128 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <ProfileProvider>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
+    <ThemeProvider defaultTheme='light' storageKey="claude-builder-theme">
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <ProfileProvider>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
 
-              {/* Protected Dashboard Routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Dashboard />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/applications"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Applications />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/events"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Events />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/classes"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Classes />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/projects"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Projects />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/members"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Members />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Profile />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/prospects"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Prospects />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
+                {/* Protected Dashboard Routes */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Dashboard />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/applications"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Applications />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/events"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Events />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/classes"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Classes />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/projects"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Projects />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/members"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Members />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Profile />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/prospects"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Prospects />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Check-in Route - Requires authentication to track attendance */}
-              <Route
-                path="/checkin/:token"
-                element={
-                  <ProtectedRoute>
-                    <Checkin />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Check-in Route - Requires authentication to track attendance */}
+                <Route
+                  path="/checkin/:token"
+                  element={
+                    <ProtectedRoute>
+                      <Checkin />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Protected route application viewer */}
-              <Route
-                path="/applications/:id"
-                element={
-                  <ProtectedRoute>
-                    <ApplicationViewerPage />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Protected route application viewer */}
+                <Route
+                  path="/applications/:id"
+                  element={
+                    <ProtectedRoute>
+                      <ApplicationViewerPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* 404 - Must be last */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </ProfileProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+                {/* 404 - Must be last */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </ProfileProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

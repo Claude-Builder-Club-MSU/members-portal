@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
@@ -211,63 +213,31 @@ export type Database = {
       }
       event_attendance: {
         Row: {
-          attended: boolean
-          attended_at: string | null
+          checked_in_at: string | null
+          event_id: string
+          id: string
+          points_awarded: number | null
+          rsvped_at: string | null
+          user_id: string
           created_at: string
-          event_id: string
-          id: string
-          rsvped_at: string
-          user_id: string
         }
         Insert: {
-          attended?: boolean
-          attended_at?: string | null
-          created_at?: string
+          checked_in_at?: string | null
           event_id: string
           id?: string
-          rsvped_at?: string
+          points_awarded?: number | null
+          rsvped_at?: string | null
           user_id: string
+          created_at?: string
         }
         Update: {
-          attended?: boolean
-          attended_at?: string | null
+          checked_in_at?: string | null
+          event_id?: string
+          id?: string
+          points_awarded?: number | null
+          rsvped_at?: string | null
+          user_id?: string
           created_at?: string
-          event_id?: string
-          id?: string
-          rsvped_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "event_attendance_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      event_checkins: {
-        Row: {
-          id: string
-          event_id: string
-          user_id: string
-          checked_in_at: string
-          points_awarded: number
-        }
-        Insert: {
-          id?: string
-          event_id: string
-          user_id: string
-          checked_in_at?: string
-          points_awarded: number
-        }
-        Update: {
-          id?: string
-          event_id?: string
-          user_id?: string
-          checked_in_at?: string
-          points_awarded?: number
         }
         Relationships: [
           {
@@ -288,28 +258,28 @@ export type Database = {
       }
       event_qr_codes: {
         Row: {
-          id: string
-          event_id: string
-          token: string
-          points: number
           created_at: string
+          event_id: string
+          id: string
+          points: number
           qr_code_url: string | null
+          token: string
         }
         Insert: {
-          id?: string
-          event_id: string
-          token: string
-          points: number
           created_at?: string
+          event_id: string
+          id?: string
+          points: number
           qr_code_url?: string | null
+          token: string
         }
         Update: {
-          id?: string
-          event_id?: string
-          token?: string
-          points?: number
           created_at?: string
+          event_id?: string
+          id?: string
+          points?: number
           qr_code_url?: string | null
+          token?: string
         }
         Relationships: [
           {
@@ -377,13 +347,12 @@ export type Database = {
           full_name: string
           github_username: string | null
           id: string
-          is_banned: boolean
+          is_banned: boolean | null
           linkedin_username: string | null
           points: number
           position: string | null
           profile_picture_url: string | null
           resume_url: string | null
-          team: string | null
           term_joined: string | null
           updated_at: string
         }
@@ -394,13 +363,12 @@ export type Database = {
           full_name: string
           github_username?: string | null
           id: string
-          is_banned?: boolean
+          is_banned?: boolean | null
           linkedin_username?: string | null
           points?: number
           position?: string | null
           profile_picture_url?: string | null
           resume_url?: string | null
-          team?: string | null
           term_joined?: string | null
           updated_at?: string
         }
@@ -411,13 +379,12 @@ export type Database = {
           full_name?: string
           github_username?: string | null
           id?: string
-          is_banned?: boolean
+          is_banned?: boolean | null
           linkedin_username?: string | null
           points?: number
           position?: string | null
           profile_picture_url?: string | null
           resume_url?: string | null
-          team?: string | null
           term_joined?: string | null
           updated_at?: string
         }
@@ -455,46 +422,16 @@ export type Database = {
           },
         ]
       }
-      semesters: {
-        Row: {
-          code: string
-          created_at: string
-          end_date: string
-          id: string
-          name: string
-          start_date: string
-          updated_at: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          end_date: string
-          id?: string
-          name: string
-          start_date: string
-          updated_at?: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          end_date?: string
-          id?: string
-          name?: string
-          start_date?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       projects: {
         Row: {
           client_name: string | null
           created_at: string
           created_by: string | null
           description: string | null
-          repository_url: string
           id: string
           lead_id: string | null
           name: string
+          repository_url: string
           semester_id: string | null
           updated_at: string
         }
@@ -503,10 +440,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
-          repository_url: string
           id?: string
           lead_id?: string | null
           name: string
+          repository_url: string
           semester_id?: string | null
           updated_at?: string
         }
@@ -515,10 +452,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
-          repository_url?: string
           id?: string
           lead_id?: string | null
           name?: string
+          repository_url?: string
           semester_id?: string | null
           updated_at?: string
         }
@@ -531,6 +468,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      semesters: {
+        Row: {
+          code: string
+          created_at: string | null
+          end_date: string
+          id: string
+          name: string
+          start_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          end_date: string
+          id?: string
+          name: string
+          start_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          name?: string
+          start_date?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -558,68 +525,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      checkin_user_for_event: {
-        Args: {
-          p_token: string
-        }
-        Returns: Json
-      }
-      cleanup_old_applications: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      delete_application_files: {
-        Args: { application_id: string }
-        Returns: undefined
-      }
-      delete_storage_object: {
-        Args: {
-          bucket_name: string
-          file_path: string
-        }
-        Returns: undefined
-      }
-      delete_user_by_id: {
-        Args: {
-          target_user_id: string
-        }
-        Returns: Json
-      }
-      ban_user_by_id: {
-        Args: {
-          target_user_id: string
-        }
-        Returns: Json
-      }
-      generate_qr_token: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_profile: {
-        Args: { _user_id: string }
-        Returns: {
-          class_year: string
-          email: string
-          full_name: string
-          id: string
-          linkedin_username: string
-          points: number
-          profile_picture_url: string
-          resume_url: string
-          role: Database["public"]["Enums"]["app_role"]
-        }[]
-      }
-      get_user_role: {
-        Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      ban_user_by_id: { Args: { target_user_id: string }; Returns: Json }
+      checkin_user_for_event: { Args: { p_token: string }; Returns: Json }
+      delete_user_by_id: { Args: { target_user_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "prospect" | "member" | "board" | "e-board"

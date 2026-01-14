@@ -76,7 +76,6 @@ export const ApplicationCreateModal = ({
   const [classYear, setClassYear] = useState('');
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
-  const [whyJoin, setWhyJoin] = useState('');
   const [whyPosition, setWhyPosition] = useState('');
   const [relevantExperience, setRelevantExperience] = useState('');
   const [otherCommitments, setOtherCommitments] = useState('');
@@ -224,19 +223,21 @@ export const ApplicationCreateModal = ({
     const fileName = `${type}.${fileExt}`;
 
     // Build folder path: {userName}_{thing_id}/resume.pdf
-    let filePath;
+    let filePath: string | undefined;
     if (applicationType === 'class' && selectedClassId) {
       filePath = `${safeUserName}_${selectedClassId}/${fileName}`;
     } else if (applicationType === 'project' && selectedProjectId) {
       filePath = `${safeUserName}_${selectedProjectId}/${fileName}`;
     } else {
-      // fallback to user id for board or unspecified
-      filePath = `${safeUserName}_${user!.id}/${fileName}`;
+      throw new Error('Could not resolve file path for upload');
     }
 
     const { error: uploadError } = await supabase.storage.from('applications').upload(filePath, file);
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('File upload error:', uploadError);
+      throw new Error(`Failed to upload ${type}: ${uploadError.message}`);
+    }
 
     return filePath;
   };
@@ -247,7 +248,6 @@ export const ApplicationCreateModal = ({
     setClassYear(profile?.class_year || '');
     setResumeFile(null);
     setTranscriptFile(null);
-    setWhyJoin('');
     setWhyPosition('');
     setRelevantExperience('');
     setOtherCommitments('');
@@ -460,16 +460,6 @@ export const ApplicationCreateModal = ({
               </RadioGroup>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="whyJoin">Why do you want to join this class? *</Label>
-              <Textarea
-                id="whyJoin"
-                value={whyJoin}
-                onChange={(e) => setWhyJoin(e.target.value)}
-                rows={4}
-                required
-              />
-            </div>
           </>
         )}
 
@@ -589,7 +579,9 @@ export const ApplicationCreateModal = ({
       >
         <DialogHeader>
           <DialogTitle>New Application</DialogTitle>
-          <DialogDescription>Submit your application to Claude Builder Club</DialogDescription>
+          <DialogDescription>
+            You can only apply to each class or project once. Submit your application to Claude Builder Club below.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className={`space-y-4 ${isMobile ? 'w-[80vw]' : ''}`}>

@@ -394,16 +394,17 @@ const ApplicationViewerPage = () => {
                 { key: 'other_commitments', title: 'Other Commitments' },
             ],
             class: [
-                { key: 'previous_experience', title: 'Previous Experience' },
-                { key: 'relevant_experience', title: 'What will you bring?' },
+                { key: 'relevant_experience', title: 'Relevant Experience' },
+                { key: 'other_commitments', title: 'Other Commitments' },
             ],
         };
 
         const typeFields = fields[application.application_type as keyof typeof fields] || [];
 
         return typeFields.map(
-            ({ key, title }) =>
-                application[key as keyof Application] && (
+            ({ key, title }) => {
+                const value = application[key as keyof Application] as string;
+                return (
                     <motion.div
                         key={key}
                         initial={{ opacity: 0, y: 20 }}
@@ -412,10 +413,11 @@ const ApplicationViewerPage = () => {
                     >
                         <h3 className="font-semibold text-base">{title}</h3>
                         <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                            {application[key as keyof Application] as string}
+                            {value || 'Not provided'}
                         </p>
                     </motion.div>
-                )
+                );
+            }
         );
     };
 

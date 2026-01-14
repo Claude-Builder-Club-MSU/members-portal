@@ -125,18 +125,12 @@ const ProfileViewer = ({ open = false, onClose, member, embedded = false, classN
           </div>
         </div>
 
-        {(member.position || member.team) && (
+        {member.position && (
           <div className="flex justify-between gap-4">
             {member.position && (
               <div className="space-y-2 flex-1">
                 <p className="text-sm font-medium text-muted-foreground">Position</p>
                 <p className="text-sm">{member.position}</p>
-              </div>
-            )}
-            {member.team && (
-              <div className="space-y-2 flex-1">
-                <p className="text-sm font-medium text-muted-foreground">Team</p>
-                <p className="text-sm">{member.team}</p>
               </div>
             )}
           </div>

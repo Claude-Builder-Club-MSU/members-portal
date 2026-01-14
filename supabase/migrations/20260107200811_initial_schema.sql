@@ -122,7 +122,6 @@ CREATE TABLE applications (
   status application_status NOT NULL DEFAULT 'pending',
 
   -- Common fields
-  why_join TEXT,
   relevant_experience TEXT,
   other_commitments TEXT,
   resume_url TEXT,
