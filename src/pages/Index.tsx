@@ -359,7 +359,7 @@ const Index = () => {
                 Join a community where innovation meets opportunity, and passion drives progress.
               </p>
 
-              <div className={`flex flex-col items-center justify-center gap-6 pt-8 ${isMobile ? 'sm:flex-col' : 'sm:flex-row'}`}>
+              <div className={`flex items-center justify-center gap-6 pt-8 ${isMobile ? 'flex-col' : 'flex-row'}`}>
                 <Button
                   size="lg"
                   onClick={() => window.open('https://www.instagram.com/claudemsu', '_blank')}
