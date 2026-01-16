@@ -202,18 +202,20 @@ const Members = () => {
 
   return (
     <div className="p-6 w-full h-full overflow-y-auto">
-      <div className="flex justify-between items-start gap-4">
+      <div className="flex justify-between items-center gap-4">
         <div className="flex-1">
           <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Members</h1>
           <p className="text-muted-foreground">
-            {members.length} club {members.length === 1 ? 'member' : 'members'}
+            {isMobile
+              ? `${members.length} ${members.length === 1 ? 'member' : 'members'}`
+              : `${members.length} club ${members.length === 1 ? 'member' : 'members'}`}
           </p>
         </div>
-        <div className="relative w-64">
+        <div className={`relative ${isMobile ? "w-40" : "w-64"}`}>
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Search members..."
+            placeholder={isMobile ? "Search" : "Search members..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"

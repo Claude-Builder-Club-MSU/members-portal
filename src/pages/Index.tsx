@@ -154,17 +154,17 @@ const Index = () => {
                     <CardContent className={`relative ${isMobile ? 'p-6 space-y-4' : 'p-8 space-y-6'}`}>
                       {isMobile ? (
                         <div className="flex items-center gap-4">
-                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg`}>
-                            <Code className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg">
+                            <Code className="h-6 w-6 text-white" />
                           </div>
-                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Innovative Projects</h3>
+                          <h3 className="text-2xl text-black font-bold">Innovative Projects</h3>
                         </div>
                       ) : (
                         <>
-                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg`}>
-                            <Code className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg">
+                            <Code className="h-8 w-8 text-white" />
                           </div>
-                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Innovative Projects</h3>
+                          <h3 className="text-3xl text-black font-bold">Innovative Projects</h3>
                         </>
                       )}
                       <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-600 leading-relaxed`}>
@@ -183,17 +183,17 @@ const Index = () => {
                     <CardContent className={`relative ${isMobile ? 'p-6 space-y-4' : 'p-8 space-y-6'}`}>
                       {isMobile ? (
                         <div className="flex items-center gap-4">
-                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg`}>
-                            <GraduationCap className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <GraduationCap className="h-6 w-6 text-white" />
                           </div>
-                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Education Pipeline</h3>
+                          <h3 className="text-2xl text-black font-bold">Education Pipeline</h3>
                         </div>
                       ) : (
                         <>
-                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg`}>
-                            <GraduationCap className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <GraduationCap className="h-8 w-8 text-white" />
                           </div>
-                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Education Pipeline</h3>
+                          <h3 className="text-3xl text-black font-bold">Education Pipeline</h3>
                         </>
                       )}
                       <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-600 leading-relaxed`}>
@@ -212,19 +212,17 @@ const Index = () => {
                     <CardContent className={`relative ${isMobile ? 'p-6 space-y-4' : 'p-8 space-y-6'}`}>
                       {isMobile ? (
                         <div className="flex items-center gap-4">
-                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg`}>
-                            <Sparkles className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <Sparkles className="h-6 w-6 text-white" />
                           </div>
-                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>
-                            {isMobile ? 'AI Support' : 'AI Development Support'}
-                          </h3>
+                          <h3 className="text-2xl text-black font-bold">AI Support</h3>
                         </div>
                       ) : (
                         <>
-                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg`}>
-                            <Sparkles className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <Sparkles className="h-8 w-8 text-white" />
                           </div>
-                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>AI Development Support</h3>
+                          <h3 className="text-3xl text-black font-bold">AI Development Support</h3>
                         </>
                       )}
                       <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-600 leading-relaxed`}>
@@ -243,17 +241,17 @@ const Index = () => {
                     <CardContent className={`relative ${isMobile ? 'p-6 space-y-4' : 'p-8 space-y-6'}`}>
                       {isMobile ? (
                         <div className="flex items-center gap-4">
-                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg`}>
-                            <Trophy className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <Trophy className="h-6 w-6 text-white" />
                           </div>
-                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>The Devvys</h3>
+                          <h3 className="text-2xl text-black font-bold">The Devvys</h3>
                         </div>
                       ) : (
                         <>
-                          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg`}>
-                            <Trophy className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <Trophy className="h-8 w-8 text-white" />
                           </div>
-                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>The Devvys</h3>
+                          <h3 className="text-3xl text-black font-bold">The Devvys</h3>
                         </>
                       )}
                       <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-600 leading-relaxed`}>
@@ -271,7 +269,7 @@ const Index = () => {
         </section>
 
         {/* Vision Section */}
-        <section className="relative py-32 bg-gradient-to-br from-orange-50/20 via-cream to-orange-50/20">
+        <section className="relative py-32 pt-0 bg-gradient-to-br from-orange-50/20 via-cream to-orange-50/20">
           <div className="container mx-auto px-4">
             <motion.div
               initial="hidden"
@@ -284,7 +282,7 @@ const Index = () => {
                 <div className={`inline-flex items-center justify-center bg-gradient-to-br from-primary to-primary/80 rounded-full mb-8 shadow-2xl ${isMobile ? 'w-16 h-16' : 'w-20 h-20'}`}>
                   <Rocket className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
                 </div>
-                <h2 className={`${isMobile ? 'text-4xl' : 'text-5xl md:text-6xl'} font-black mb-8`}>Our Vision</h2>
+                <h2 className={`${isMobile ? 'text-4xl' : 'text-5xl md:text-6xl'} text-black font-black mb-8`}>Our Vision</h2>
                 <div className="space-y-8 text-left">
                   <div className={`bg-white border-2 border-gray-200 rounded-2xl shadow-lg ${isMobile ? 'p-6' : 'p-8'}`}>
                     <div className={`flex items-start gap-6 ${isMobile ? 'gap-4' : 'gap-6'}`}>
@@ -292,7 +290,7 @@ const Index = () => {
                         <Rocket className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-primary`} />
                       </div>
                       <div>
-                        <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-3`}>Send Students to the World</h3>
+                        <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} text-black font-bold mb-3`}>Send Students to the World</h3>
                         <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-600 leading-relaxed`}>
                           We're building a fund to send hand-picked students to premier hackathons and tech conferences
                           across the country. Experience MLH events, attend cutting-edge AI conferences, and represent
@@ -308,7 +306,7 @@ const Index = () => {
                         <Users className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-blue-600`} />
                       </div>
                       <div>
-                        <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-3`}>Host Internal Hackathons</h3>
+                        <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} text-black font-bold mb-3`}>Host Internal Hackathons</h3>
                         <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-600 leading-relaxed`}>
                           Create a culture of rapid prototyping and innovation right here at MSU. Our internal hackathons
                           bring together the brightest minds to solve real problems, experiment with new technologies,
@@ -393,11 +391,11 @@ const Index = () => {
         </section>
 
         {/* Footer */}
-        <footer className="relative bg-background border-t py-12">
+        <footer className="relative bg-cream py-12">
           <div className="container mx-auto px-4 text-center">
             <div className="flex items-center justify-center gap-3 mb-4">
               <img src="/claude-logo-transparent.png" alt="Claude Logo" className="h-8 w-8" />
-              <span className="text-lg font-bold">Claude Builder Club @ MSU</span>
+              <span className="text-lg text-black font-bold">Claude Builder Club @ MSU</span>
             </div>
             <p className="text-sm text-muted-foreground">
               © 2025 Claude Builder Club. Spreading the joy of CS, one project at a time.

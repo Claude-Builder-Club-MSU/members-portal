@@ -32,12 +32,14 @@ import {
   Settings,
   Trophy,
   UserPlus,
-  ChevronUp
+  ChevronUp,
+  TabletSmartphone
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { useState, useEffect } from 'react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -55,12 +57,43 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  // No loading check needed - ProtectedRoute handles this!
-  // By the time this component renders, both contexts are ready
+  // Responsive layout: Remove forced landscape lock, but warn on landscape on small screens
+  const [showRotate, setShowRotate] = useState(false);
 
+  useEffect(() => {
+    // Only check for portrait on mobile screens
+    if (typeof window !== "undefined") {
+      const handler = () => {
+        // Mobile landscape: screen is small (mobile) and orientation is landscape
+        const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+        setShowRotate(isMobile && isLandscape);
+      };
+      window.addEventListener("orientationchange", handler);
+      window.addEventListener("resize", handler);
+      handler(); // initial
+      return () => {
+        window.removeEventListener("orientationchange", handler);
+        window.removeEventListener("resize", handler);
+      };
+    }
+  }, [isMobile]);
+
+  if (showRotate) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen min-w-screen bg-sidebar-primary text-sidebar-primary-foreground p-8 z-50">
+        <TabletSmartphone size={60} className="mb-2 text-yellow-400" />
+        <h2 className="text-xl font-bold mb-1">Rotate your device</h2>
+        <p className="text-sm text-muted-foreground max-w-xs text-center">
+          For best experience, please use portrait orientation.
+        </p>
+      </div>
+    );
+  }
+
+  // Responsive main layout (works on mobile & desktop!)
   return (
     <SidebarProvider>
-      <div className={`flex w-full ${isMobile ? 'min-h-screen' : ''}`}>
+      <div className={`flex w-full min-h-screen`}>
         <AppSidebar
           user={user}
           profile={profile}
@@ -70,14 +103,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           navigate={navigate}
           isMobile={isMobile}
         />
-
         <div className="flex w-screen flex-col">
           <header className="h-[5vh] border-b border-border flex items-center justify-between px-4 bg-background">
             <SidebarTrigger />
             <ThemeToggle />
           </header>
-
-          <main className={`flex w-full overflow-y-scroll overflow-auto bg-muted/10 ${isMobile ? 'h-full' : 'h-[95vh]'}`}>
+          <main
+            className={`flex w-full overflow-y-scroll overflow-auto bg-muted/10 ${isMobile ? "flex-1" : "h-[95vh]"
+              }`}
+          >
             {children}
           </main>
         </div>

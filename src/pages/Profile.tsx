@@ -347,6 +347,8 @@ const Profile = () => {
     e.preventDefault();
     setLoading(true);
 
+
+
     try {
       let newResumeUrl = profile?.resume_url || null;
 
@@ -361,6 +363,7 @@ const Profile = () => {
         github_username: githubUsername || null,
         position: position || null,
         resume_url: newResumeUrl,
+        updated_at: new Date().toISOString(),
       };
 
       const { error } = await supabase
@@ -427,244 +430,243 @@ const Profile = () => {
   }
 
   return (
-    <div className="p-6 w-full h-full overflow-y-auto">
-      <div className="w-full max-w-6xl mx-auto h-full">
-        <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3 justify-center'} items-center h-full`}>
-          {/* Left Column - Profile Overview */}
-          <div className="lg:col-span-1">
-            <Card className="flex flex-col">
-              <CardHeader className="text-center pb-6">
-                <div className="flex justify-center mb-4">
-                  <div className="relative">
-                    <Avatar className={`${isMobile ? 'h-24 w-24' : 'h-32 w-32'} border-4 border-background shadow-lg`}>
-                      <AvatarImage src={profile.profile_picture_url || undefined} />
-                      <AvatarFallback className="text-3xl">
-                        {fullName ? getInitials(fullName) : user.email?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <label
-                      htmlFor="avatar-upload"
-                      className={`absolute bottom-0 right-0 bg-primary rounded-full cursor-pointer hover:bg-primary/90 transition-colors shadow-lg ${isMobile ? 'p-2' : 'p-2.5'}`}
-                    >
-                      <Camera className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-primary-foreground`} />
-                      <input
-                        ref={fileInputRef}
-                        id="avatar-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageSelect}
-                      />
-                    </label>
-                  </div>
-                </div>
-                <CardTitle className="text-2xl">{fullName || 'No name set'}</CardTitle>
-                <CardDescription className="flex items-center justify-center gap-1.5 mt-1">
-                  <Mail className="h-3.5 w-3.5" />
-                  {user.email}
-                </CardDescription>
-              </CardHeader>
-
-              <div className="relative py-6">
-                <div className="absolute inset-0 flex items-center px-6">
-                  <div className="w-full border-t-2"></div>
-                </div>
-                <div className="relative flex justify-center">
-                  <div className="bg-card px-4 gap-2 flex flex-row">
-                    {role && (
-                      role === 'e-board' ? (
-                        <Badge className="text-xs capitalize px-4 py-1.5 shrink-0 whitespace-nowrap sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative">
-                          <span className="sparkle-particle"></span>
-                          <span className="sparkle-particle"></span>
-                          <span className="sparkle-particle"></span>
-                          <span className="relative z-10">{role.replace('-', ' ')}</span>
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant={getRoleBadgeVariant(role)}
-                          className="text-xs capitalize px-4 py-1.5"
-                        >
-                          {role.replace('-', ' ')}
-                        </Badge>
-                      )
-                    )}
-                    <Badge variant="secondary" className="px-4 py-1.5 shrink-0 whitespace-nowrap bg-green-700 text-white font-semibold border-1 border-black">
-                      {profile.term_joined || (() => {
-                        const date = user.created_at ? new Date(user.created_at) : new Date();
-                        return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-                      })()}
-                    </Badge>
-                  </div>
+    <div
+      className="flex flex-col h-full w-full p-4 gap-4 overflow-y-auto justify-center">
+      <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'} h-full lg:justify-start justify-center items-center`}>
+        {/* Left Column - Profile Overview */}
+        <div className="lg:col-span-1">
+          <Card className="flex flex-col">
+            <CardHeader className="text-center pb-6">
+              <div className="flex justify-center mb-4">
+                <div className="relative">
+                  <Avatar className={`${isMobile ? 'h-24 w-24' : 'h-32 w-32'} border-4 border-background shadow-lg`}>
+                    <AvatarImage src={profile.profile_picture_url || undefined} />
+                    <AvatarFallback className="text-3xl">
+                      {fullName ? getInitials(fullName) : user.email?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <label
+                    htmlFor="avatar-upload"
+                    className={`absolute bottom-0 right-0 bg-primary rounded-full cursor-pointer hover:bg-primary/90 transition-colors shadow-lg ${isMobile ? 'p-2' : 'p-2.5'}`}
+                  >
+                    <Camera className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-primary-foreground`} />
+                    <input
+                      ref={fileInputRef}
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageSelect}
+                    />
+                  </label>
                 </div>
               </div>
+              <CardTitle className="text-2xl">{fullName || 'No name set'}</CardTitle>
+              <CardDescription className="flex items-center justify-center gap-1.5 mt-1">
+                <Mail className="h-3.5 w-3.5" />
+                {user.email}
+              </CardDescription>
+            </CardHeader>
 
-              <CardContent className="space-y-6 flex-1 flex flex-col justify-between">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-4 bg-gradient-to-br from-yellow-500/10 to-primary/10 rounded-lg border text-center">
-                    <Trophy className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mx-auto mb-2" />
-                    <div className="text-xl font-bold">{profile.points}</div>
-                    <div className="text-xs text-muted-foreground mt-1">Points</div>
+            <div className="relative py-6">
+              <div className="absolute inset-0 flex items-center px-6">
+                <div className="w-full border-t-2"></div>
+              </div>
+              <div className="relative flex justify-center">
+                <div className="bg-card px-4 gap-2 flex flex-row">
+                  {role && (
+                    role === 'e-board' ? (
+                      <Badge className="text-xs capitalize px-4 py-1.5 shrink-0 whitespace-nowrap sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative">
+                        <span className="sparkle-particle"></span>
+                        <span className="sparkle-particle"></span>
+                        <span className="sparkle-particle"></span>
+                        <span className="relative z-10">{role.replace('-', ' ')}</span>
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant={getRoleBadgeVariant(role)}
+                        className="text-xs capitalize px-4 py-1.5"
+                      >
+                        {role.replace('-', ' ')}
+                      </Badge>
+                    )
+                  )}
+                  <Badge variant="secondary" className="px-4 py-1.5 shrink-0 whitespace-nowrap bg-green-700 text-white font-semibold border-1 border-black">
+                    {profile.term_joined || (() => {
+                      const date = user.created_at ? new Date(user.created_at) : new Date();
+                      return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+                    })()}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            <CardContent className="space-y-6 flex-1 flex flex-col justify-between">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-4 bg-gradient-to-br from-yellow-500/10 to-primary/10 rounded-lg border text-center">
+                  <Trophy className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mx-auto mb-2" />
+                  <div className="text-xl font-bold">{profile.points}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Points</div>
+                </div>
+
+                <div className="p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-lg border text-center">
+                  <Award className="h-5 w-5 text-blue-600 dark:text-blue-500 mx-auto mb-2" />
+                  <div className="text-xl font-bold capitalize truncate">
+                    {classYear || 'Not set'}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">Class Year</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Edit Form */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Edit Profile</CardTitle>
+              <CardDescription>Update your personal information</CardDescription>
+            </CardHeader>
+            <CardContent className={isMobile ? 'p-4' : ''}>
+              <form onSubmit={handleSubmit} className={`space-y-6 ${isMobile ? 'space-y-4' : 'space-y-6'}`}>
+                <div className={`grid gap-6 ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2'}`}>
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name *</Label>
+                    <Input
+                      id="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                    />
                   </div>
 
-                  <div className="p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-lg border text-center">
-                    <Award className="h-5 w-5 text-blue-600 dark:text-blue-500 mx-auto mb-2" />
-                    <div className="text-xl font-bold capitalize truncate">
-                      {classYear || 'Not set'}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">Class Year</div>
+                  <div className="space-y-2">
+                    <Label htmlFor="classYear">Class Year</Label>
+                    <Select value={classYear} onValueChange={setClassYear}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="freshman">Freshman</SelectItem>
+                        <SelectItem value="sophomore">Sophomore</SelectItem>
+                        <SelectItem value="junior">Junior</SelectItem>
+                        <SelectItem value="senior">Senior</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Right Column - Edit Form */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Edit Profile</CardTitle>
-                <CardDescription>Update your personal information</CardDescription>
-              </CardHeader>
-              <CardContent className={isMobile ? 'p-4' : ''}>
-                <form onSubmit={handleSubmit} className={`space-y-6 ${isMobile ? 'space-y-4' : 'space-y-6'}`}>
-                  <div className={`grid gap-6 ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2'}`}>
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name *</Label>
-                      <Input
-                        id="fullName"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="classYear">Class Year</Label>
-                      <Select value={classYear} onValueChange={setClassYear}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="freshman">Freshman</SelectItem>
-                          <SelectItem value="sophomore">Sophomore</SelectItem>
-                          <SelectItem value="junior">Junior</SelectItem>
-                          <SelectItem value="senior">Senior</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {isBoardOrAbove && (
-                    <div className="space-y-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="position">Position</Label>
-                        <Input
-                          id="position"
-                          placeholder="e.g., Marketing Director"
-                          value={position}
-                          onChange={(e) => setPosition(e.target.value)}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Your role or title in the club
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
+                {isBoardOrAbove && (
                   <div className="space-y-2">
-                    <Label htmlFor="linkedinUsername">
-                      <div className="flex items-center gap-2">
-                        <Linkedin className="h-4 w-4" />
-                        LinkedIn Username
-                      </div>
-                    </Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        linkedin.com/in/
-                      </span>
+                    <div className="space-y-2">
+                      <Label htmlFor="position">Position</Label>
                       <Input
-                        id="linkedinUsername"
-                        value={linkedinUsername}
-                        onChange={(e) => setLinkedinUsername(e.target.value)}
-                        placeholder="yourprofile"
-                        className="pl-[130px]"
+                        id="position"
+                        placeholder="e.g., Marketing Director"
+                        value={position}
+                        onChange={(e) => setPosition(e.target.value)}
                       />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="githubUsername">
-                      <div className="flex items-center gap-2">
-                        <Github className="h-4 w-4" />
-                        GitHub Username
-                      </div>
-                    </Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        github.com/
-                      </span>
-                      <Input
-                        id="githubUsername"
-                        value={githubUsername}
-                        onChange={(e) => setGithubUsername(e.target.value)}
-                        placeholder="yourusername"
-                        className="pl-[105px]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="resume">Resume (PDF, DOC, or DOCX)</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="resume"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-                        className={profile?.resume_url ? "flex-[4]" : "w-full"}
-                      />
-                      {profile?.resume_url && (
-                        <>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => window.open(profile.resume_url, '_blank')}
-                            className="flex items-center gap-2 px-3"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                            {isMobile ? null : "Resume"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={deleteResume}
-                            disabled={loading}
-                            className="px-3"
-                            title="Delete resume"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                    {resumeFile && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <FileText className="h-3 w-3" />
-                        Selected: {resumeFile.name}
+                      <p className="text-xs text-muted-foreground">
+                        Your role or title in the club
                       </p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Uploading a new resume will replace your current one
-                    </p>
+                    </div>
                   </div>
+                )}
 
-                  <Button type="submit" disabled={loading} className="w-full" size="lg">
-                    {loading ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
+                <div className="space-y-2">
+                  <Label htmlFor="linkedinUsername">
+                    <div className="flex items-center gap-2">
+                      <Linkedin className="h-4 w-4" />
+                      LinkedIn Username
+                    </div>
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      linkedin.com/in/
+                    </span>
+                    <Input
+                      id="linkedinUsername"
+                      value={linkedinUsername}
+                      onChange={(e) => setLinkedinUsername(e.target.value)}
+                      placeholder="yourprofile"
+                      className="pl-[130px]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="githubUsername">
+                    <div className="flex items-center gap-2">
+                      <Github className="h-4 w-4" />
+                      GitHub Username
+                    </div>
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      github.com/
+                    </span>
+                    <Input
+                      id="githubUsername"
+                      value={githubUsername}
+                      onChange={(e) => setGithubUsername(e.target.value)}
+                      placeholder="yourusername"
+                      className="pl-[105px]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="resume">Resume (PDF, DOC, or DOCX)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="resume"
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                      className={profile?.resume_url ? "flex-[4]" : "w-full"}
+                    />
+                    {profile?.resume_url && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => window.open(profile.resume_url, '_blank')}
+                          className="flex items-center gap-2 px-3"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          {isMobile ? null : "Resume"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          onClick={deleteResume}
+                          disabled={loading}
+                          className="px-3"
+                          title="Delete resume"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  {resumeFile && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <FileText className="h-3 w-3" />
+                      Selected: {resumeFile.name}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Uploading a new resume will replace your current one
+                  </p>
+                </div>
+
+                <Button type="submit" disabled={loading} className="w-full" size="lg">
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
