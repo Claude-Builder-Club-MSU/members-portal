@@ -109,7 +109,7 @@ const Index = () => {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 1.5 }}
+                transition={{ delay: 1 }}
                 className={`${isMobile ? 'pt-6' : 'pt-12'}`}
               >
                 <div className="inline-flex flex-col items-center gap-2 text-muted-foreground">
