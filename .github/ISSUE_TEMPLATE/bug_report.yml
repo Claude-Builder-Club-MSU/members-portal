@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report this bug! Please fill out the information below to help the CBC team fix it.
+        Thanks for taking the time to report this bug! Please fill out the information below to help the Claude MSU team fix it.
 
   - type: textarea
     id: description

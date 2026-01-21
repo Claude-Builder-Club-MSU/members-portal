@@ -35,7 +35,7 @@ A comprehensive web application for managing the Claude Builder Club at Michigan
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd cbc-msu-members-portal
+   cd members-portal
    ```
 
 2. **Install dependencies**
