@@ -17,11 +17,9 @@ import {
     Calendar,
     GraduationCap,
     FileText,
-    Trash2,
     Info,
     Briefcase,
     BookOpen,
-    PartyPopper,
     BookUser,
     Github,
     MapPin,
@@ -33,7 +31,8 @@ import ProfileViewer from '@/components/modals/ProfileViewer';
 import { DetailModal } from '@/components/modals/DetailModal';
 import type { Database } from '@/integrations/supabase/database.types';
 import type { DetailSection } from '@/types/modal.types';
-import { useProfile } from '@/contexts/ProfileContext';
+import { Class, Project, useProfile } from '@/contexts/ProfileContext';
+import { InterfaceVariant } from '@/lib/utils';
 
 type Application = Database['public']['Tables']['applications']['Row'];
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -54,8 +53,8 @@ const ApplicationViewerPage = () => {
     // State
     const [application, setApplication] = useState<Application | null>(null);
     const [applicantProfile, setApplicantProfile] = useState<MemberWithRole | null>(null);
-    const [classData, setClassData] = useState<any | null>(null);
-    const [projectData, setProjectData] = useState<any | null>(null);
+    const [classData, setClassData] = useState<Class | null>(null);
+    const [projectData, setProjectData] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);
 
     // Success/Rejection screen states
@@ -115,51 +114,23 @@ const ApplicationViewerPage = () => {
             if (appData.class_id) {
                 const { data: classInfo } = await supabase
                     .from('classes')
-                    .select(`
-            *,
-            semesters (
-              code,
-              name
-            )
-          `)
+                    .select(`*, semesters (code, name, start_date, end_date), class_enrollments(count)`)
                     .eq('id', appData.class_id)
                     .single();
 
-                if (classInfo) {
-                    // Get enrollment count
-                    const { count } = await supabase
-                        .from('class_enrollments')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('class_id', appData.class_id);
-
-                    setClassData({ ...classInfo, memberCount: count || 0 });
-                }
+                setClassData(classInfo);
             }
 
             if (appData.project_id) {
                 const { data: projectInfo } = await supabase
                     .from('projects')
-                    .select(`
-            *,
-            semesters (
-              code,
-              name
-            )
-          `)
+                    .select(`*, semesters (code, name, start_date, end_date), project_members(count)`)
                     .eq('id', appData.project_id)
                     .single();
 
-                if (projectInfo) {
-                    // Get team member count
-                    const { count } = await supabase
-                        .from('project_members')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('project_id', appData.project_id);
-
-                    setProjectData({ ...projectInfo, memberCount: count || 0 });
-                }
+                setProjectData(projectInfo);
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error fetching application:', error);
             toast({
                 title: 'Error',
@@ -196,7 +167,7 @@ const ApplicationViewerPage = () => {
             setTimeout(() => {
                 navigate('/dashboard/applications');
             }, 3000);
-        } catch (error: any) {
+        } catch (error) {
             toast({
                 title: 'Error',
                 description: error.message,
@@ -229,7 +200,7 @@ const ApplicationViewerPage = () => {
             setTimeout(() => {
                 navigate('/dashboard/applications');
             }, 3000);
-        } catch (error: any) {
+        } catch (error) {
             toast({
                 title: 'Error',
                 description: error.message,
@@ -249,7 +220,7 @@ const ApplicationViewerPage = () => {
             if (!data?.signedUrl) throw new Error('Failed to generate signed URL');
 
             window.open(data.signedUrl, '_blank');
-        } catch (error: any) {
+        } catch (error) {
             toast({
                 title: 'Error',
                 description: 'Failed to open document.',
@@ -267,7 +238,7 @@ const ApplicationViewerPage = () => {
         const config = variants[status as keyof typeof variants] || variants.pending;
 
         return (
-            <Badge variant={config.variant as any} className="text-sm px-3 py-1">
+            <Badge variant={config.variant as InterfaceVariant} className="text-sm px-3 py-1">
                 {config.text}
             </Badge>
         );
@@ -302,8 +273,10 @@ const ApplicationViewerPage = () => {
             } (${format(deletionDate, 'MMM d, yyyy')}).`;
     };
 
-    const buildDetailSections = (item: any, type: 'class' | 'project'): DetailSection[] => {
+    const buildDetailSections = (item: Project | Class): DetailSection[] => {
         const sections: DetailSection[] = [];
+        const isProject = 'project_members' in item;
+        const hasStarted = item.semesters.start_date ? new Date(item.semesters.start_date) <= new Date() : false;
 
         // Description
         if (item.description) {
@@ -332,16 +305,19 @@ const ApplicationViewerPage = () => {
         // Size
         gridItems.push(
             <div key="size" className="space-y-2">
-                <h4 className="font-semibold text-sm">{type === 'class' ? 'Class Size' : 'Team Size'}</h4>
+                <h4 className="font-semibold text-sm">{isProject ? 'Team Size' : 'Class Size'}</h4>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Users className="h-4 w-4" />
-                    {item.memberCount || 0} {item.memberCount === 1 ? (type === 'class' ? 'student' : 'member') : type === 'class' ? 'students' : 'members'}
+                    {isProject
+                        ? `${item.project_members[0].count} ${item.project_members[0].count === 1 ? 'member' : 'members'}`
+                        : `${item.class_enrollments[0].count} ${item.class_enrollments[0].count === 1 ? 'student' : 'students'}`
+                    }
                 </div>
             </div>
         );
 
         // Location (classes) or Repository (projects)
-        if (type === 'class' && item.location) {
+        if ('location' in item && item.location) {
             gridItems.push(
                 <div key="location" className="space-y-2">
                     <h4 className="font-semibold text-sm">Location</h4>
@@ -351,28 +327,23 @@ const ApplicationViewerPage = () => {
                     </div>
                 </div>
             );
-        } else if (type === 'project' && item.repository_name) {
-            // Check if project has started
-            const projectHasStarted = item.semesters?.start_date
-                ? new Date(item.semesters.start_date) <= new Date()
-                : false;
+        }
 
-            if (projectHasStarted) {
-                gridItems.push(
-                    <div key="repo" className="space-y-2">
-                        <h4 className="font-semibold text-sm">Repository</h4>
-                        <a
-                            href={`https://github.com/Claude-Builder-Club-MSU/${item.repository_name}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-sm text-primary hover:underline"
-                        >
-                            <Github className="h-4 w-4" />
-                            View on GitHub
-                        </a>
-                    </div>
-                );
-            }
+        if (hasStarted && 'repository_name' in item && item.repository_name) {
+            gridItems.push(
+                <div key="repo" className="space-y-2">
+                    <h4 className="font-semibold text-sm">Repository</h4>
+                    <a
+                        href={`https://github.com/Claude-Builder-Club-MSU/${item.repository_name}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                        <Github className="h-4 w-4" />
+                        View on GitHub
+                    </a>
+                </div>
+            );
         }
 
         sections.push({
@@ -768,8 +739,7 @@ const ApplicationViewerPage = () => {
                                     title={(classData || projectData).name}
                                     subtitle={projectData?.client_name ? `Client: ${projectData.client_name}` : undefined}
                                     sections={buildDetailSections(
-                                        classData || projectData,
-                                        classData ? 'class' : 'project'
+                                        classData || projectData
                                     )}
                                     embedded
                                 />
