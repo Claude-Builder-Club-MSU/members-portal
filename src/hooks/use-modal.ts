@@ -29,7 +29,7 @@ export const useModalState = <T,>() => {
 };
 
 // Hook for computing item status (available/in-progress/completed)
-export const useItemStatus = (item: any) => {
+export const useItemStatus = (item) => {
     if (!item) return null;
 
     const now = new Date();

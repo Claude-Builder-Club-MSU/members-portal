@@ -29,6 +29,7 @@ import {
 import { Save, X } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/database.types';
 
+type Application = Database['public']['Tables']['applications']['Row'];
 type ApplicationType = Database['public']['Enums']['application_type'];
 type Class = Database['public']['Tables']['classes']['Row'] & {
   semesters: { code: string; name: string } | null;
@@ -407,7 +408,7 @@ export const ApplicationCreateModal = ({
         transcriptUrl = await uploadFile(transcriptFile, 'transcript');
       }
 
-      const applicationData: any = {
+      const baseData: Partial<Application> = {
         user_id: user.id,
         application_type: applicationType,
         full_name: fullName,
@@ -417,25 +418,35 @@ export const ApplicationCreateModal = ({
         status: 'pending',
       };
 
+      let extraData: Partial<Application> = {};
+
       if (applicationType === 'board') {
-        applicationData.board_position = selectedBoardPosition;
-        applicationData.why_position = whyPosition;
-        applicationData.relevant_experience = relevantExperience;
-        applicationData.previous_experience = previousExperience;
-        applicationData.other_commitments = otherCommitments;
+        extraData = {
+          board_position: selectedBoardPosition,
+          why_position: whyPosition,
+          relevant_experience: relevantExperience,
+          previous_experience: previousExperience,
+          other_commitments: otherCommitments,
+        };
       } else if (applicationType === 'class') {
-        applicationData.class_id = selectedClassId;
-        applicationData.class_role = selectedClassRole;
-        applicationData.relevant_experience = relevantExperience;
-        applicationData.other_commitments = otherCommitments;
+        extraData = {
+          class_id: selectedClassId,
+          class_role: selectedClassRole,
+          relevant_experience: relevantExperience,
+          other_commitments: otherCommitments,
+        };
       } else if (applicationType === 'project') {
-        applicationData.project_id = selectedProjectId;
-        applicationData.project_role = selectedProjectRole;
-        applicationData.project_detail = projectDetail;
-        applicationData.problem_solved = problemSolved;
-        applicationData.relevant_experience = relevantExperience;
-        applicationData.other_commitments = otherCommitments;
+        extraData = {
+          project_id: selectedProjectId,
+          project_role: selectedProjectRole,
+          project_detail: projectDetail,
+          problem_solved: problemSolved,
+          relevant_experience: relevantExperience,
+          other_commitments: otherCommitments,
+        };
       }
+
+      const applicationData: Application = { ...baseData, ...extraData } as Application;
 
       const { error } = await supabase.from('applications').insert(applicationData);
 
@@ -448,7 +459,7 @@ export const ApplicationCreateModal = ({
       const updatedApplications = await fetchExistingApplications();
       await fetchAvailableOptions(updatedApplications);
       onSuccess();
-    } catch (error: any) {
+    } catch (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);

@@ -134,7 +134,7 @@ const SemesterModal = ({ open, onClose, onSuccess, required = true }: SemesterMo
       });
 
       onSuccess(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error creating semester:', error);
       toast({
         title: 'Error',
