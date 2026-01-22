@@ -21,7 +21,6 @@ import {
   BookMarkedIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Database } from '@/integrations/supabase/database.types';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Dashboard uses types from ProfileContext and separate queries

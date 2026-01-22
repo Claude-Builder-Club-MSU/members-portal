@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/contexts/ProfileContext';
+import { useProfile, type Project } from '@/contexts/ProfileContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,9 +36,6 @@ import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/database.types';
 import type { MembershipInfo, ItemWithMembers } from '@/types/modal.types';
 
-type Project = Database['public']['Tables']['projects']['Row'] & {
-  semesters: { code: string; name: string; start_date: string; end_date: string } | null;
-};
 type Semester = Database['public']['Tables']['semesters']['Row'];
 
 type ProjectWithMembers = ItemWithMembers<Project>;

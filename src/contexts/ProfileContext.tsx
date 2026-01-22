@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/database.types';
 
-// Types
 export type Project = Database['public']['Tables']['projects']['Row'] & {
     semesters: { code: string; name: string; start_date: string; end_date: string } | null;
     project_members: { count: number }[];
@@ -15,9 +14,9 @@ export type Class = Database['public']['Tables']['classes']['Row'] & {
     class_enrollments: { count: number }[];
 };
 
-export type Application = Database['public']['Tables']['applications']['Row'];
-export type Event = Database['public']['Tables']['events']['Row'];
-export type AppRole = Database['public']['Enums']['app_role'];
+type Application = Database['public']['Tables']['applications']['Row'];
+type Event = Database['public']['Tables']['events']['Row'];
+type AppRole = Database['public']['Enums']['app_role'];
 
 interface UserProjects {
     inProgress: Project[];

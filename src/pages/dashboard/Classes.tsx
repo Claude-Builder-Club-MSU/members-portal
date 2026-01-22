@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/contexts/ProfileContext';
+import { useProfile, type Class } from '@/contexts/ProfileContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,9 +35,6 @@ import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/database.types';
 import type { MembershipInfo, ItemWithMembers } from '@/types/modal.types';
 
-type Class = Database['public']['Tables']['classes']['Row'] & {
-  semesters: { code: string; name: string; start_date: string; end_date: string } | null;
-};
 type Semester = Database['public']['Tables']['semesters']['Row'];
 
 type ClassWithMembers = ItemWithMembers<Class>;
