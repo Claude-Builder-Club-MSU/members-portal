@@ -74,13 +74,13 @@ export const PersonCard = ({
     type,
 }: PersonCardProps) => {
     // Board cannot manage themselves, board members, or e-board members
-    const canManageThisPerson = 
-        canManage && 
+    const canManageThisPerson =
+        canManage &&
         currentUserId !== person.id &&
         !(currentUserRole === 'board' && (person.role === 'board' || person.role === 'e-board'));
-    
+
     const showManageButton = canManageThisPerson && !isMobile;
-    
+
     // Board cannot promote to e-board
     const canPromoteToEBoard = currentUserRole !== 'board';
 
@@ -121,7 +121,7 @@ export const PersonCard = ({
                                 <span className="relative z-10">{person.role.replace('-', ' ')}</span>
                             </Badge>
                         ) : (
-                            <Badge variant={getRoleBadgeVariant(person.role) as any} className="capitalize shrink-0 whitespace-nowrap">
+                            <Badge variant={getRoleBadgeVariant(person.role)} className="capitalize shrink-0 whitespace-nowrap">
                                 {person.role.replace('-', ' ')}
                             </Badge>
                         )

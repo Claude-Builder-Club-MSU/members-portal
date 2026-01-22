@@ -384,7 +384,7 @@ const Projects = () => {
 
       modalState.close();
       setIsCreateModalOpen(false);
-    } catch (error: any) {
+    } catch (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setSaveLoading(false);

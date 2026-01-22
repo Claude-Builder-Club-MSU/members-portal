@@ -87,7 +87,7 @@ const ProfileViewer = ({ open = false, onClose, member, embedded = false, classN
                 <span className="relative z-10">{member.role.replace('-', ' ')}</span>
               </Badge>
             ) : (
-              <Badge variant={getRoleBadgeVariant(member.role) as any} className="capitalize">
+              <Badge variant={getRoleBadgeVariant(member.role)} className="capitalize">
                 {member.role.replace('-', ' ')}
               </Badge>
             )}

@@ -40,6 +40,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useState, useEffect } from 'react';
+import { Database } from '@/integrations/supabase/database.types';
+import { User } from '@supabase/supabase-js';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -48,7 +50,7 @@ interface DashboardLayoutProps {
 interface MenuItem {
   title: string;
   url: string;
-  icon: any;
+  icon;
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
@@ -156,9 +158,9 @@ const getInitials = (name: string) => {
 
 // --- Sidebar Component ---
 interface AppSidebarProps {
-  user: any;
-  profile: any;
-  role: string | null;
+  user: User;
+  profile: Database['public']['Tables']['profiles']['Row'];
+  role: string ;
   isBoardOrAbove: boolean;
   signOut: () => void;
   navigate: (path: string) => void;

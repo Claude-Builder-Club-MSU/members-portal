@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/database.types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -42,7 +41,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
   const mountedRef = useRef(true);
   const fetchingRef = useRef(false);
   const profileCacheRef = useRef<{ userId: string; data: Profile; timestamp: number } | null>(null);

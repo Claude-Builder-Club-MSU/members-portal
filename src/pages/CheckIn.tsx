@@ -20,58 +20,58 @@ const Checkin = () => {
 
     useEffect(() => {
         // User must be logged in to check in (ProtectedRoute handles redirect)
-        if (!loading && user && token) {
-            handleCheckin();
-        }
-    }, [user, loading, token]);
+        const doCheckin = async () => {
+            if (!token || checking) return;
 
-    const handleCheckin = async () => {
-        if (!token || checking) return;
+            setChecking(true);
 
-        setChecking(true);
+            try {
+                const { data, error } = await supabase.rpc('checkin_user_for_event', {
+                    p_token: token,
+                });
 
-        try {
-            const { data, error } = await supabase.rpc('checkin_user_for_event', {
-                p_token: token,
-            });
+                if (error) throw error;
 
-            if (error) throw error;
+                const resultData = data as {
+                    success: boolean;
+                    message: string;
+                    points_awarded?: number;
+                    event_name?: string;
+                };
 
-            const resultData = data as {
-                success: boolean;
-                message: string;
-                points_awarded?: number;
-                event_name?: string;
-            };
+                // For RSVP violations (negative points), show as failure in UI
+                if (resultData.success && resultData.points_awarded && resultData.points_awarded < 0) {
+                    setResult({
+                        success: false,
+                        message: resultData.message,
+                        points_awarded: resultData.points_awarded,
+                        event_name: resultData.event_name
+                    });
+                } else {
+                    setResult(resultData);
+                }
 
-            // For RSVP violations (negative points), show as failure in UI
-            if (resultData.success && resultData.points_awarded && resultData.points_awarded < 0) {
+                // Clear redirect URL and refresh profile (to update points) after check-in (success or penalty)
+                if (resultData?.points_awarded !== undefined) {
+                    sessionStorage.removeItem('redirectAfterLogin');
+                    // Refresh profile to get updated points
+                    await refreshProfile();
+                }
+            } catch (error) {
+                console.error('Check-in error:', error);
                 setResult({
                     success: false,
-                    message: resultData.message,
-                    points_awarded: resultData.points_awarded,
-                    event_name: resultData.event_name
+                    message: 'Failed to check in. Please try again.',
                 });
-            } else {
-                setResult(resultData);
+            } finally {
+                setChecking(false);
             }
+        };
 
-            // Clear redirect URL and refresh profile (to update points) after check-in (success or penalty)
-            if (resultData?.points_awarded !== undefined) {
-                sessionStorage.removeItem('redirectAfterLogin');
-                // Refresh profile to get updated points
-                await refreshProfile();
-            }
-        } catch (error: any) {
-            console.error('Check-in error:', error);
-            setResult({
-                success: false,
-                message: 'Failed to check in. Please try again.',
-            });
-        } finally {
-            setChecking(false);
+        if (!loading && user && token) {
+            doCheckin();
         }
-    };
+    }, [user, loading, token]);
 
     if (loading || checking) {
         return (
@@ -106,22 +106,19 @@ const Checkin = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {result?.points_awarded !== undefined && (
-                        <div className={`rounded-lg p-4 text-center ${
-                            result.points_awarded >= 0
+                        <div className={`rounded-lg p-4 text-center ${result.points_awarded >= 0
                                 ? 'bg-orange-50 dark:bg-orange-950'
                                 : 'bg-red-50 dark:bg-red-950'
-                        }`}>
+                            }`}>
                             <div className="flex items-center justify-center gap-2 mb-2">
-                                <Trophy className={`h-6 w-6 ${
-                                    result.points_awarded >= 0
+                                <Trophy className={`h-6 w-6 ${result.points_awarded >= 0
                                         ? 'text-orange-600'
                                         : 'text-red-600'
-                                }`} />
-                                <span className={`text-3xl font-bold ${
-                                    result.points_awarded >= 0
+                                    }`} />
+                                <span className={`text-3xl font-bold ${result.points_awarded >= 0
                                         ? 'text-orange-600'
                                         : 'text-red-600'
-                                }`}>
+                                    }`}>
                                     {result.points_awarded >= 0 ? '+' : ''}{result.points_awarded}
                                 </span>
                             </div>

@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Trophy, Mail, Award, Linkedin, Github, FileText, Camera, RotateCw, Crown, Users, ExternalLink, Trash2 } from 'lucide-react';
+import { Trophy, Mail, Award, Linkedin, Github, FileText, Camera, RotateCw, ExternalLink, Trash2 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import {
   Select,
@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import Cropper from 'react-easy-crop';
+import Cropper, { Area } from 'react-easy-crop';
 import type { Database } from '@/integrations/supabase/database.types';
 
 const Profile = () => {
@@ -46,7 +46,7 @@ const Profile = () => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,7 +61,7 @@ const Profile = () => {
     }
   }, [profile]);
 
-  const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
+  const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
@@ -75,7 +75,7 @@ const Profile = () => {
 
   const getCroppedImg = async (
     imageSrc: string,
-    pixelCrop: any,
+    pixelCrop,
     rotation = 0
   ): Promise<Blob> => {
     const image = await createImage(imageSrc);
@@ -211,7 +211,7 @@ const Profile = () => {
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setRotation(0);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error.message || 'Failed to upload image',
@@ -332,7 +332,7 @@ const Profile = () => {
       });
 
       await refreshProfile();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error.message || 'Failed to delete resume',
@@ -387,7 +387,7 @@ const Profile = () => {
         sessionStorage.removeItem('redirectAfterLogin');
         navigate(redirectUrl, { replace: true });
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error.message,

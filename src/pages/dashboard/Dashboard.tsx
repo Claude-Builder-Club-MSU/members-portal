@@ -1,4 +1,4 @@
-import { useProfile } from '@/contexts/ProfileContext';
+import { useProfile, type Project, type Class } from '@/contexts/ProfileContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -25,16 +25,6 @@ import type { Database } from '@/integrations/supabase/database.types';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Dashboard uses types from ProfileContext and separate queries
-
-type Project = Database['public']['Tables']['projects']['Row'] & {
-  semesters: { code: string; name: string; start_date: string; end_date: string } | null;
-  project_members: { count: number }[];
-};
-
-type Class = Database['public']['Tables']['classes']['Row'] & {
-  semesters: { code: string; name: string; start_date: string; end_date: string } | null;
-  class_enrollments: { count: number }[];
-};
 
 type AdminStats = {
   members: number;
@@ -114,7 +104,7 @@ export default function Dashboard() {
   });
 
   // Fetch all projects and classes for board members
-  const { data: allProjects, isLoading: allProjectsLoading } = useQuery({
+  const { data: allProjects, isLoading: allProjectsLoading } = useQuery<Project[]>({
     queryKey: ['all-projects'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -142,7 +132,7 @@ export default function Dashboard() {
     gcTime: 1000 * 60 * 10,
   });
 
-  const { data: allClasses, isLoading: allClassesLoading } = useQuery({
+  const { data: allClasses, isLoading: allClassesLoading } = useQuery<Class[]>({
     queryKey: ['all-classes'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -225,7 +215,16 @@ export default function Dashboard() {
     </div>
   );
 
-  const StatItem = ({ icon: Icon, color, bg, value, label, link }: any) => (
+  type StatItemProps = {
+    icon: React.ElementType,
+    color: string,
+    bg: string,
+    value: number | string,
+    label: string,
+    link?: string
+  };
+
+  const StatItem = ({ icon: Icon, color, bg, value, label, link }: StatItemProps) => (
     <Card
       className={`relative overflow-hidden hover:shadow-lg transition-all group${link ? ' cursor-pointer' : ''}`}
       onClick={() => link && navigate(link)}
@@ -427,7 +426,7 @@ export default function Dashboard() {
 
     // For board/e-board: show all projects/classes from dashboard query
     // For members: show their projects/classes from ProfileContext
-    let items: any[] = [];  // Use any[] to handle different data shapes
+    let items: (Project | Class)[] = [];
     let title = '';
 
     if (isBoardOrAbove) {
@@ -478,16 +477,9 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className={`grid gap-3 ${isBoardOrAbove && !isMobile ? 'grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' : type === 'Classes' && !isMobile && !isBoardOrAbove ? 'grid-cols-1 md:grid-cols-1 lg:grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'}`}>
-              {items.map((item: any) => {
-                const status = isProject ? getProjectStatus(item, isBoardOrAbove) : getClassStatus(item, isBoardOrAbove);
-
-                // For dashboard data (board/e-board), count comes from aggregated query
-                // For ProfileContext data (members), we don't have the count, so default to 0
-                const count = isBoardOrAbove
-                  ? (isProject
-                    ? (item.project_members?.[0]?.count || 0)
-                    : (item.class_enrollments?.[0]?.count || 0))
-                  : 0;
+              {items.map((item) => {
+                const status = 'project_members' in item ? getProjectStatus(item, isBoardOrAbove) : getClassStatus(item, isBoardOrAbove);
+                const count = 'project_members' in item ? item.project_members[0].count : item.class_enrollments[0].count;
 
                 return (
                   <Card key={item.id} className="w-full border bg-card hover:bg-primary/5 transition-colors cursor-pointer" onClick={(e) => {
@@ -513,13 +505,13 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent className={`${isMobile ? "p-5" : "xl:p-5 lg:p-3 md:p-4"} !pt-0 space-y-1`}>
                       <div className="flex items-center justify-between text-[14px] text-muted-foreground mt-1">
-                        {type === 'Projects' && item.client_name && (
+                        {'client_name' in item && item.client_name && (
                           <span className="flex items-center gap-1">
                             <FolderKanban className="h-3 w-3" />
                             <span className="capitalize">{item.client_name}</span>
                           </span>
                         )}
-                        {type === 'Classes' && item.location && (
+                        {'location' in item && item.location && (
                           <span className="flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
                             <span className="capitalize">{item.location}</span>

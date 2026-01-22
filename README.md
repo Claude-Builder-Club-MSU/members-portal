@@ -1,40 +1,50 @@
-# Claude Builder Club MSU Members Portal
+# Claude Builder Club @ MSU - Members Portal
 
-A comprehensive web application for managing the Claude Builder Club at Michigan State University, built with modern React technologies and Supabase backend.
+A comprehensive web application for managing the Claude Builder Club at Michigan State University. This portal handles member management, event coordination, project tracking, class organization, and application processing for the club.
 
-## 🚀 Features
+---
 
-- **Member Management**: Complete member lifecycle management including applications, approvals, and profile management
-- **Event Management**: Create and manage club events with member registration
-- **Class Management**: Organize and track educational sessions and workshops
-- **Project Management**: Coordinate collaborative projects and track progress
-- **Application System**: Streamlined application process for prospective members
-- **Dashboard Analytics**: Comprehensive dashboards for admins and members
-- **Responsive Design**: Fully responsive interface optimized for desktop and mobile
+## 🎯 What This Portal Does
+
+The Members Portal is the central hub for all Claude Builder Club operations at MSU:
+
+- **Member Management**: Track members from prospect to e-board, manage roles and permissions
+- **Event System**: Create events with RSVP, QR code check-ins, and automatic points allocation
+- **Project Coordination**: Organize client projects with GitHub integration and team management
+- **Class Organization**: Schedule educational sessions with teacher/student enrollment
+- **Application Processing**: Handle applications for board positions, projects, and classes
+- **Points System**: Track member engagement and contributions
 - **Real-time Updates**: Live data synchronization across all users
+
+---
 
 ## 🛠 Tech Stack
 
 - **Frontend**: React 18, TypeScript, Tailwind CSS
-- **UI Components**: shadcn/ui, Radix UI
+- **UI Components**: shadcn/ui, Radix UI, Framer Motion
 - **Backend**: Supabase (PostgreSQL, Authentication, Storage)
 - **State Management**: React Query (TanStack Query)
-- **Form Handling**: React Hook Form with Zod validation
-- **Routing**: React Router
 - **Build Tool**: Vite
-- **Deployment**: Vercel/Netlify compatible
+- **Deployment**: Vercel
 
-## 📋 Prerequisites
+---
 
-- Node.js 18+
-- npm or yarn
-- Supabase account and project
+## 🚀 Getting Started for Development
 
-## 🚀 Getting Started
+### Prerequisites
+
+- **Node.js 18+** and npm/yarn
+- **Docker Desktop** (for local Supabase)
+- **Supabase CLI** - Install via:
+  ```bash
+  npm install -g supabase
+  ```
+
+### Setup Instructions
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/claude-msu/members-portal.git
    cd members-portal
    ```
 
@@ -43,108 +53,172 @@ A comprehensive web application for managing the Claude Builder Club at Michigan
    npm install
    ```
 
-3. **Environment Setup**
-   Create a `.env.local` file with your Supabase credentials:
-   ```env
-   VITE_SUPABASE_URL=your-supabase-url
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+3. **Start local Supabase instance**
+   ```bash
+   supabase init  # Only needed first time
+   supabase start
    ```
 
-4. **Database Setup**
-   Run the Supabase migrations in the `supabase/migrations` directory to set up the database schema.
+   This will:
+   - Spin up a local Supabase stack in Docker
+   - Apply all migrations from `supabase/migrations/`
+   - Generate local development credentials
+   - Display your local API URL and anon key
 
-5. **Start development server**
+4. **Configure environment variables**
+
+   Create a `.env.local` file using the credentials from `supabase start`:
+   ```env
+   VITE_SUPABASE_URL=http://localhost:54321
+   VITE_SUPABASE_ANON_KEY=<your-local-anon-key>
+   VITE_APP_URL=http://localhost:8080
+   ```
+
+5. **Start the development server**
    ```bash
    npm run dev
    ```
 
-6. **Open your browser**
-   Navigate to `http://localhost:8080`
+6. **Access the application**
+   - Portal: `http://localhost:8080`
+   - Supabase Studio: `http://localhost:54323` (local database admin UI)
+
+### Stopping Development Environment
+
+```bash
+supabase stop
+```
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Follow these steps to contribute:
+
+### Step 1: Create an Issue
+
+Before making any changes, [create an issue](https://github.com/claude-msu/members-portal/issues/new/choose) describing the bug or feature. We have templates for:
+- 🐛 [Bug Reports](.github/ISSUE_TEMPLATE/bug_report.yml)
+- ✨ [Feature Requests](.github/ISSUE_TEMPLATE/feature_request.yml)
+
+This helps us:
+- Track all proposed changes
+- Discuss implementation approaches
+- Avoid duplicate work
+- Maintain a clear project roadmap
+
+### Step 2: Implement Changes (Optional)
+
+If you'd like to implement the fix or feature yourself:
+
+1. **Fork the repository** and clone your fork
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/members-portal.git
+   cd members-portal
+   ```
+
+2. **Create a feature branch** linked to the issue
+   ```bash
+   git checkout -b feature/issue-123-your-feature-name
+   ```
+
+3. **Set up your development environment** (see [Getting Started](#-getting-started-for-development))
+
+4. **Make your changes**
+   - Follow existing code style and naming conventions
+   - Use TypeScript for all new code
+   - Test thoroughly with your local Supabase instance
+
+5. **Database schema changes?**
+   If you modify the database schema:
+   ```bash
+   supabase migration new your_migration_name
+   # Edit the generated file in supabase/migrations/
+   supabase migration up  # Test locally
+   ```
+
+6. **Commit your changes**
+   - Write clear, descriptive commit messages
+   - Use Conventional Commits format (e.g., `feat:`, `fix:`, `docs:`)
+   - Reference the issue number in commits (e.g., `feat: add dark mode (#123)`)
+
+7. **Push to your fork**
+   ```bash
+   git push origin feature/issue-123-your-feature-name
+   ```
+
+8. **Open a Pull Request**
+   - Navigate to the [original repository](https://github.com/claude-msu/members-portal)
+   - Click "New Pull Request" and select your fork's branch
+   - Reference the issue number in the PR description (e.g., `Closes #123`)
+   - Provide a clear description of your changes
+   - Ensure all checks pass
+
+### Code Style Guidelines
+
+- **Components**: Functional components with hooks (PascalCase filenames)
+- **Utilities**: camelCase filenames
+- **Styling**: Tailwind CSS utility classes
+- **Types**: Explicit TypeScript types from `database.types.ts`
+- **Imports**: Group by external libraries, then internal modules
+
+### What to Contribute
+
+- 🐛 Bug fixes
+- ✨ New features (UI improvements, mobile enhancements)
+- ♿ Accessibility improvements
+- 📚 Documentation updates
+- 🎨 Design refinements
+- ⚡ Performance optimizations
+
+---
 
 ## 📁 Project Structure
 
 ```
 src/
 ├── components/          # Reusable UI components
-│   ├── ui/             # shadcn/ui components
-│   └── DashboardLayout.tsx
-├── contexts/           # React contexts (Auth, etc.)
+│   ├── ui/             # shadcn/ui base components
+│   ├── modals/         # Modal dialogs
+│   └── ...
+├── contexts/           # React contexts (Auth, Profile, Theme)
 ├── hooks/              # Custom React hooks
-├── integrations/       # External service integrations
+├── integrations/
 │   └── supabase/       # Supabase client and types
-├── lib/                # Utility functions
-├── pages/              # Route components
+├── pages/
 │   ├── dashboard/      # Dashboard pages
-│   ├── Auth.tsx        # Authentication page
-│   ├── Index.tsx       # Landing page
-│   └── NotFound.tsx    # 404 page
-└── main.tsx           # Application entry point
+│   └── ...
+└── main.tsx
 
 supabase/
-└── migrations/        # Database schema migrations
+└── migrations/         # Database schema migrations (version controlled)
 ```
+
+---
 
 ## 🔧 Available Scripts
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
-- `npm run build:dev` - Build for development
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
 
-## 🤝 Contributing
-
-We welcome contributions to improve the Claude Builder Club Members Portal! Please follow these guidelines:
-
-### Development Workflow
-
-1. **Fork the repository** and create your feature branch
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-2. **Follow coding standards**
-   - Use TypeScript for all new code
-   - Follow the existing code style and naming conventions
-   - Write meaningful commit messages
-
-3. **Testing**
-   - Test your changes thoroughly
-   - Ensure no existing functionality is broken
-   - Run `npm run lint` to check code quality
-
-4. **Pull Request Process**
-   - Create a clear, descriptive PR title
-   - Provide a detailed description of your changes
-   - Reference any related issues
-   - Ensure all CI checks pass
-
-### Code Style Guidelines
-
-- **TypeScript**: Strict type checking enabled
-- **Component Structure**: Functional components with hooks
-- **Styling**: Tailwind CSS with component-based approach
-- **File Naming**: PascalCase for components, camelCase for utilities
-- **Imports**: Group imports by external libraries, then internal modules
-
-### Areas for Contribution
-
-- UI/UX improvements
-- Performance optimizations
-- New features for member management
-- Mobile responsiveness enhancements
-- Accessibility improvements
-- Documentation updates
+---
 
 ## 📄 License
 
 This project is private and proprietary to the Claude Builder Club at Michigan State University.
 
-## 👨‍💻 Contributors
+---
 
-**Ankur Desai**
+## 👨‍💻 Maintainer
 
-For questions or support, please contact the development team.
+**Ankur Desai** - Creator & Maintainer
+
+For questions or support:
+- Instagram: [@claudemsu](https://www.instagram.com/claudemsu)
+- LinkedIn: [Claude Builder Club @ MSU](https://www.linkedin.com/company/claude-builder-club-michigan-state/)
+- GitHub Issues: [Report a problem](https://github.com/claude-msu/members-portal/issues)
 
 ---
 

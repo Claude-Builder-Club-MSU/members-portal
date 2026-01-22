@@ -51,7 +51,7 @@ const Prospects = () => {
 
     const roleMap = new Map(rolesData?.map(r => [r.user_id, r.role]) || []);
 
-    let prospectsWithRoles: ProspectWithRole[] = profilesData
+    const prospectsWithRoles: ProspectWithRole[] = profilesData
       .map(profile => ({
         ...profile,
         role: roleMap.get(profile.id) || 'prospect',
@@ -134,11 +134,11 @@ const Prospects = () => {
 
       if (error) throw error;
 
-      const success = typeof data === 'object' && data !== null && 'success' in data ? (data as any).success : data;
-      const banError = typeof data === 'object' && data !== null && 'error' in data ? (data as any).error : undefined;
+      const success = typeof data === 'object' && data !== null && 'success' in data ? (data).success : data;
+      const banError = typeof data === 'object' && data !== null && 'error' in data ? (data).error : undefined;
 
       if (!success) {
-        throw new Error(banError || 'Failed to ban prospect');
+        throw new Error(typeof banError === 'string' ? banError : 'Failed to ban prospect');
       }
 
       toast({

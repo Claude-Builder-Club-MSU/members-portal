@@ -2,8 +2,9 @@ import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "./button";
+import { cn, createButtonVariants, InterfaceVariant, InterfaceSize } from "@/lib/utils";
+
+const buttonVariants = createButtonVariants();
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
@@ -11,8 +12,8 @@ const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger> & {
-    variant?: string;
-    size?: string;
+    variant?: InterfaceVariant;
+    size?: InterfaceSize;
   }
 >(({ className, variant = "ghost", size = "default", ...props }, ref) => (
   <DropdownMenuPrimitive.Trigger
@@ -38,14 +39,14 @@ const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
     inset?: boolean;
-    variant?: string;
-    size?: string;
+    variant?: InterfaceVariant;
+    size?: InterfaceSize;
   }
 >(({ className, inset, children, variant = "ghost", size = "default", ...props }, ref) => (
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      buttonVariants({ variant: variant as any, size: size as any }),
+      buttonVariants({ variant, size }),
       "w-full justify-center px-2 py-1.5 text-sm rounded-sm flex select-none items-center data-[state=open]:bg-primary data-[state=open]:text-cream",
       inset && "pl-8",
       className
@@ -96,15 +97,15 @@ const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
-    variant?: string;
-    size?: string;
+    variant?: InterfaceVariant;
+    size?: InterfaceSize;
     disabled?: boolean;
   }
 >(({ className, inset, variant = "ghost", size = "default", disabled = false, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      buttonVariants({ variant: variant as any, size: size as any }),
+      buttonVariants({ variant, size }),
       "relative flex items-center w-full rounded-sm px-2 py-1.5 text-sm transition-colors",
       inset && "pl-8",
       disabled && "opacity-50 pointer-events-none cursor-not-allowed bg-background text-gray-700",
@@ -118,14 +119,14 @@ DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 const DropdownMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem> & {
-    variant?: string;
-    size?: string;
+    variant?: InterfaceVariant;
+    size?: InterfaceSize;
   }
 >(({ className, children, checked, variant = "ghost", size = "default", ...props }, ref) => (
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      buttonVariants({ variant: variant as any, size: size as any }),
+      buttonVariants({ variant, size }),
       "relative flex select-none items-center w-full rounded-sm py-1.5 pl-8 pr-2 text-sm transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
@@ -145,14 +146,14 @@ DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displa
 const DropdownMenuRadioItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem> & {
-    variant?: string;
-    size?: string;
+    variant?: InterfaceVariant;
+    size?: InterfaceSize;
   }
 >(({ className, children, variant = "ghost", size = "default", ...props }, ref) => (
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
-      buttonVariants({ variant: variant as any, size: size as any }),
+      buttonVariants({ variant, size }),
       "relative flex select-none items-center w-full rounded-sm py-1.5 pl-8 pr-2 text-sm transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}

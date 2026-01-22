@@ -5,15 +5,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/database.types';
 
 // Types
-type Project = Database['public']['Tables']['projects']['Row'] & {
-    semesters: { start_date: string, end_date: string, code: string } | null;
+export type Project = Database['public']['Tables']['projects']['Row'] & {
+    semesters: { code: string; name: string; start_date: string; end_date: string } | null;
+    project_members: { count: number }[];
 };
-type Class = Database['public']['Tables']['classes']['Row'] & {
-    semesters: { start_date: string, end_date: string, code: string } | null;
+
+export type Class = Database['public']['Tables']['classes']['Row'] & {
+    semesters: { code: string; name: string; start_date: string; end_date: string } | null;
+    class_enrollments: { count: number }[];
 };
-type Application = Database['public']['Tables']['applications']['Row'];
-type Event = Database['public']['Tables']['events']['Row'];
-type AppRole = Database['public']['Enums']['app_role'];
+
+export type Application = Database['public']['Tables']['applications']['Row'];
+export type Event = Database['public']['Tables']['events']['Row'];
+export type AppRole = Database['public']['Enums']['app_role'];
 
 interface UserProjects {
     inProgress: Project[];
@@ -125,14 +129,7 @@ async function fetchUserProjects(userId: string): Promise<UserProjects> {
     // Fetch all projects with semester data (for available calculation)
     const { data: allProjects, error: allProjectsError } = await supabase
         .from('projects')
-        .select(`
-            *,
-            semesters (
-                start_date,
-                end_date,
-                code
-            )
-        `);
+        .select(`*, semesters (code, name, start_date, end_date), project_members(count)`);
 
     if (allProjectsError) throw allProjectsError;
 
@@ -218,14 +215,7 @@ async function fetchUserClasses(userId: string): Promise<UserClasses> {
     // Fetch all classes with semesters (for available calculation)
     const { data: allClasses, error: allClassesError } = await supabase
         .from('classes')
-        .select(`
-            *,
-            semesters (
-                start_date,
-                end_date,
-                code
-            )
-        `);
+        .select(`*, semesters (code, name, start_date, end_date), class_enrollments(count)`)
 
     if (allClassesError) throw allClassesError;
 

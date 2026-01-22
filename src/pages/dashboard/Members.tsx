@@ -121,11 +121,11 @@ const Members = () => {
 
       if (error) throw error;
 
-      const success = typeof data === 'object' && data !== null && 'success' in data ? (data as any).success : data;
-      const banError = typeof data === 'object' && data !== null && 'error' in data ? (data as any).error : undefined;
+      const success = typeof data === 'object' && data !== null && 'success' in data ? (data).success : data;
+      const banError = typeof data === 'object' && data !== null && 'error' in data ? (data).error : undefined;
 
       if (!success) {
-        throw new Error(banError || 'Failed to ban member');
+        throw new Error(typeof banError === 'string' ? banError : 'Failed to ban member');
       }
 
       toast({

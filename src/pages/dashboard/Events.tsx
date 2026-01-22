@@ -367,7 +367,7 @@ const Events = () => {
       await refreshEvents();
       modalState.close();
       setIsCreateModalOpen(false);
-    } catch (error: any) {
+    } catch (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setSaveLoading(false);
@@ -498,7 +498,7 @@ const Events = () => {
       } else {
         window.open(publicUrl, '_blank');
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error.message || 'Failed to generate QR code',

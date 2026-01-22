@@ -1,8 +1,9 @@
 import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
+import { cn, createButtonVariants, InterfaceVariant, InterfaceSize } from "@/lib/utils";
+
+const buttonVariants = createButtonVariants();
 
 const AlertDialog = AlertDialogPrimitive.Root;
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
@@ -97,8 +98,8 @@ const AlertDialogDescription = React.forwardRef<
 AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName;
 
 type AlertDialogButtonProps = React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action> & {
-  variant?: "default" | "secondary" | "destructive" | "enable" | "outline" | "ghost" | "link";
-  size?: "default" | "sm" | "lg" | "icon";
+  variant?: InterfaceVariant;
+  size?: InterfaceSize;
 };
 
 const AlertDialogAction = React.forwardRef<
