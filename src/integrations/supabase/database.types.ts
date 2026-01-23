@@ -335,6 +335,7 @@ export type Database = {
           position: string | null
           profile_picture_url: string | null
           resume_url: string | null
+          slack_user_id: string | null
           term_joined: string | null
           theme: Database["public"]["Enums"]["theme"]
           updated_at: string
@@ -352,6 +353,7 @@ export type Database = {
           position?: string | null
           profile_picture_url?: string | null
           resume_url?: string | null
+          slack_user_id?: string | null
           term_joined?: string | null
           theme?: Database["public"]["Enums"]["theme"]
           updated_at?: string
@@ -369,6 +371,7 @@ export type Database = {
           position?: string | null
           profile_picture_url?: string | null
           resume_url?: string | null
+          slack_user_id?: string | null
           term_joined?: string | null
           theme?: Database["public"]["Enums"]["theme"]
           updated_at?: string

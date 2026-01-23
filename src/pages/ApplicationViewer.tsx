@@ -147,16 +147,19 @@ const ApplicationViewerPage = () => {
         if (!user || !application) return;
 
         try {
-            const { error } = await supabase
-                .from('applications')
-                .update({
+            // Call edge function to process acceptance (DB updates + side effects)
+            const { data, error } = await supabase.functions.invoke('process-application-update', {
+                body: {
+                    application_id: application.id,
                     status: 'accepted',
-                    reviewed_by: user.id,
-                    reviewed_at: new Date().toISOString(),
-                })
-                .eq('id', application.id);
+                    reviewer_id: user.id,
+                },
+            });
 
             if (error) throw error;
+            if (!data?.success) {
+                throw new Error(data?.message || 'Failed to process application acceptance');
+            }
 
             // Show success screen
             setTimeout(() => {
@@ -180,16 +183,19 @@ const ApplicationViewerPage = () => {
         if (!user || !application) return;
 
         try {
-            const { error } = await supabase
-                .from('applications')
-                .update({
+            // Call edge function to process rejection (DB updates + email)
+            const { data, error } = await supabase.functions.invoke('process-application-update', {
+                body: {
+                    application_id: application.id,
                     status: 'rejected',
-                    reviewed_by: user.id,
-                    reviewed_at: new Date().toISOString(),
-                })
-                .eq('id', application.id);
+                    reviewer_id: user.id,
+                },
+            });
 
             if (error) throw error;
+            if (!data?.success) {
+                throw new Error(data?.message || 'Failed to process application rejection');
+            }
 
             // Show rejection screen
             setTimeout(() => {
