@@ -8,6 +8,11 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/__tests__/setup.ts'],
+    server: {
+      deps: {
+        inline: ['@exodus/bytes'],
+      },
+    },
     environmentOptions: {
       jsdom: {
         resources: 'usable',
