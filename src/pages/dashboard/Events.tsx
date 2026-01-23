@@ -723,7 +723,7 @@ const Events = () => {
   };
 
   return (
-    <div className="p-6 w-full">
+    <div className="p-6 w-full h-full overflow-y-auto">
       <div className="flex justify-between items-center">
         <div>
           <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Events</h1>

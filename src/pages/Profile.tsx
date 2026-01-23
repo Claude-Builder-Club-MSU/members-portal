@@ -430,8 +430,7 @@ const Profile = () => {
   }
 
   return (
-    <div
-      className="flex flex-col h-full w-full p-4 gap-4 overflow-y-auto justify-center">
+    <div className="p-6 w-full h-full overflow-y-auto">
       <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'} h-full lg:justify-start justify-center items-center`}>
         {/* Left Column - Profile Overview */}
         <div className="lg:col-span-1">
