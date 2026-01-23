@@ -65,7 +65,7 @@ export const createBadgeVariants = (baseClasses: string = "") => {
           destructive: "border-2 border-destructive bg-destructive text-destructive-foreground",
           enable: "border-2 border-green-600 bg-green-600 text-primary-foreground",
           outline: "text-foreground",
-          ghost: "border-transparent",
+          ghost: "border-primary",
           link: "text-primary underline-offset-4",
         },
       },

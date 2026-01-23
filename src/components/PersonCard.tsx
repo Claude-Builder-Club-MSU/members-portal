@@ -18,13 +18,13 @@ import type { Database } from '@/integrations/supabase/database.types';
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type AppRole = Database['public']['Enums']['app_role'];
 
-interface PersonWithRole extends Profile {
+interface MemberWithRole extends Profile {
     role: AppRole;
 }
 
 interface PersonCardProps {
-    person: PersonWithRole;
-    onViewProfile: (person: PersonWithRole) => void;
+    person: MemberWithRole;
+    onViewProfile: (person: MemberWithRole) => void;
     onRoleChange?: (personId: string, newRole: AppRole) => void;
     onKick?: (personId: string, personName: string) => void;
     onBan?: (personId: string, personName: string) => void;
@@ -49,11 +49,11 @@ const getInitials = (name: string) => {
 const getRoleBadgeVariant = (role: AppRole) => {
     switch (role) {
         case 'e-board':
-            return 'outline';
+            return 'default';
         case 'board':
             return 'default';
         case 'member':
-            return 'ghost';
+            return 'secondary';
         default:
             return 'outline';
     }

@@ -43,6 +43,9 @@ import { useState, useEffect } from 'react';
 import { Database } from '@/integrations/supabase/database.types';
 import { User } from '@supabase/supabase-js';
 
+type Profile = Database['public']['Tables']['profiles']['Row'];
+type AppRole = Database['public']['Enums']['app_role'];
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
@@ -141,10 +144,17 @@ const getMenuItems = (isBoardOrAbove: boolean): MenuItem[] => {
   return baseItems;
 };
 
-const getRoleBadgeVariant = (roleValue: string | null): "default" | "secondary" | "outline" => {
-  if (roleValue === 'e-board' || roleValue === 'board') return 'default';
-  if (roleValue === 'member') return 'secondary';
-  return 'outline';
+const getRoleBadgeVariant = (role: AppRole) => {
+  switch (role) {
+    case 'e-board':
+      return 'default';
+    case 'board':
+      return 'default';
+    case 'member':
+      return 'secondary';
+    default:
+      return 'outline';
+  }
 };
 
 const getInitials = (name: string) => {
@@ -159,8 +169,8 @@ const getInitials = (name: string) => {
 // --- Sidebar Component ---
 interface AppSidebarProps {
   user: User;
-  profile: Database['public']['Tables']['profiles']['Row'];
-  role: string ;
+  profile: Profile;
+  role: AppRole;
   isBoardOrAbove: boolean;
   signOut: () => void;
   navigate: (path: string) => void;
@@ -298,7 +308,7 @@ const AppSidebar = ({
 };
 
 // --- Role Badge Component ---
-const RoleBadge = ({ role }: { role: string }) => {
+const RoleBadge = ({ role }: { role: AppRole }) => {
   if (role === 'e-board') {
     return (
       <Badge className="text-xs capitalize px-2 py-0 shrink-0 whitespace-nowrap sparkle gold-shimmer text-yellow-900 font-semibold border-2 border-yellow-400/50 relative">
@@ -306,14 +316,6 @@ const RoleBadge = ({ role }: { role: string }) => {
         <span className="sparkle-particle"></span>
         <span className="sparkle-particle"></span>
         <span className="relative z-10">{role.replace('-', ' ')}</span>
-      </Badge>
-    );
-  }
-
-  if (role === 'board') {
-    return (
-      <Badge className="text-xs capitalize px-2 py-0 shrink-0 whitespace-nowrap bg-primary text-cream font-semibold border-2 border-primary/50">
-        {role.replace('-', ' ')}
       </Badge>
     );
   }

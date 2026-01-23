@@ -58,9 +58,8 @@ export const MembersListModal = ({
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent
-                className={`max-w-lg ${isMobile ? 'mx-4 max-w-[90vw] overflow-y-auto rounded-xl m-0' : ''}`}
-            >
+            <DialogContent className="max-w-lg w-[80vw] mx-auto rounded-lg">
+
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>{displaySubtitle}</DialogDescription>
