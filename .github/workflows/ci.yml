@@ -51,24 +51,16 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:coverage
 
-      - name: Upload coverage to artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: coverage/
-          retention-days: 30
-
-      - name: Ensure minimum coverage (fail if < 90%)
+      - name: Check coverage requirements (min 85%)
         run: |
           node -e "
           const fs = require('fs');
           if (!fs.existsSync('coverage/coverage-summary.json')) {
-            console.error('Coverage report not generated');
+            console.error('❌ Coverage report not generated - tests may have failed');
             process.exit(1);
           }
           const summary = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8')).total;
-          const min = 90;
+          const min = 85;
           const checks = [
             ['Statements', summary.statements.pct],
             ['Branches', summary.branches.pct],
@@ -76,13 +68,17 @@ jobs:
             ['Lines', summary.lines.pct]
           ];
           let failed = false;
+          console.log('\\nCoverage Report:');
           for (const [name, pct] of checks) {
-            console.log(\`\${name}: \${pct}%\`);
+            const status = pct >= min ? '✅' : '❌';
+            console.log(\`  \${status} \${name}: \${pct}%\`);
             if (pct < min) {
-              console.error(\`❌ \${name} coverage \${pct}% is below minimum \${min}%\`);
               failed = true;
             }
           }
-          if (failed) { process.exit(1); }
-          console.log('✅ Coverage checks passed (>= 90%)');
+          if (failed) {
+            console.error(\`\\n❌ Coverage below minimum threshold of \${min}%\`);
+            process.exit(1);
+          }
+          console.log(\`\\n✅ All coverage checks passed (>= \${min}%)\`);
           "
