@@ -69,7 +69,7 @@ export const EditModal = ({
         <>
             <Dialog open={open} onOpenChange={onClose}>
                 <DialogContent
-                    className={`max-w-3xl rounded-xl ${isMobile ? 'mx-4 max-w-[85vw] max-h-[85vh] overflow-y-auto overflow-x-hidden m-0' : 'py-10'}`}
+                    className={`max-w-3xl rounded-xl overflow-y-auto ${isMobile ? 'mx-4 max-w-[85vw] max-h-[85vh] overflow-x-hidden m-0' : 'max-h-[90vh]'}`}
                 >
                     <DialogHeader className="flex-shrink-0">
                         <DialogTitle>{title}</DialogTitle>

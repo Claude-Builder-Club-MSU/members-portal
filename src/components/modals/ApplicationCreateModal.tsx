@@ -685,10 +685,10 @@ export const ApplicationCreateModal = ({
         className={`${isMobile ? 'max-w-[92vw] max-h-[90vh]' : 'max-w-2xl max-h-[90vh] p-6'
           } overflow-y-auto overflow-x-hidden rounded-xl`}
       >
-        <DialogHeader className="pb-4">
+        <DialogHeader>
           <DialogTitle>New Application</DialogTitle>
           <DialogDescription>
-            You can only apply to each class or project once. Submit your application to Claude Builder Club below.
+            You may only apply to each class or project once, as the teacher/lead or a student/member.
           </DialogDescription>
         </DialogHeader>
 
