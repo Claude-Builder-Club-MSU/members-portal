@@ -11,7 +11,6 @@ const corsHeaders = {
 interface ApplicationDecisionPayload {
     application_id: string
     status: 'accepted' | 'rejected'
-    reviewed_by: string
 }
 
 serve(async (req) => {
@@ -21,6 +20,35 @@ serve(async (req) => {
     }
 
     try {
+        // 1. Verify User (Security Step)
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) throw new Error('Missing Authorization header')
+
+        const authClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: authHeader } } }
+        )
+
+        const { data: { user }, error: userError } = await authClient.auth.getUser()
+        if (userError || !user) throw new Error('Invalid user token')
+
+        // Verify Admin Role
+        const { data: roleData, error: roleError } = await authClient
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .single()
+
+        if (
+            roleError ||
+            !roleData?.role ||
+            (roleData.role !== 'board' && roleData.role !== 'e-board')
+        ) {
+            throw new Error('Unauthorized: Admin access required')
+        }
+
+        // 2. Initialize Admin Client for Operations
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -32,23 +60,21 @@ serve(async (req) => {
             }
         )
 
-        const { application_id, status, reviewed_by }: ApplicationDecisionPayload = await req.json()
+        const { application_id, status }: ApplicationDecisionPayload = await req.json()
+        const reviewed_by = user.id
 
-        // 1. Get application details
+        // 3. Get application details
+        // Note: profiles.id = applications.user_id (both reference auth.users.id)
+        // Since there's no direct FK from applications to profiles, we fetch separately
         const { data: application, error: appError } = await supabaseClient
             .from('applications')
             .select(`
         *,
-        profiles!applications_user_id_fkey (
-          id,
-          email,
-          full_name
-        ),
-        projects (
+        projects!applications_project_id_fkey (
           id,
           name
         ),
-        classes (
+        classes!applications_class_id_fkey (
           id,
           name
         )
@@ -56,11 +82,31 @@ serve(async (req) => {
             .eq('id', application_id)
             .single()
 
-        if (appError || !application) {
+        if (appError) {
+            console.error('Error fetching application:', appError)
+            throw new Error(`Application not found: ${appError.message}`)
+        }
+
+        if (!application) {
             throw new Error('Application not found')
         }
 
-        // 2. Update application status
+        // Fetch profile separately since there's no direct FK relationship
+        const { data: profile, error: profileError } = await supabaseClient
+            .from('profiles')
+            .select('id, email, full_name')
+            .eq('id', application.user_id)
+            .single()
+
+        if (profileError) {
+            console.error('Error fetching profile:', profileError)
+            throw new Error(`Profile not found: ${profileError.message}`)
+        }
+
+        // Attach profile to application object for consistency with existing code
+        application.profiles = profile
+
+        // 4. Update application status
         const { error: updateError } = await supabaseClient
             .from('applications')
             .update({
@@ -72,7 +118,7 @@ serve(async (req) => {
 
         if (updateError) throw updateError
 
-        // 3. If accepted for project/class, upgrade prospect to member
+        // 5. If accepted for project/class, upgrade prospect to member
         if (status === 'accepted' && (application.application_type === 'project' || application.application_type === 'class')) {
             // Get current role
             const { data: roleData } = await supabaseClient
@@ -90,7 +136,7 @@ serve(async (req) => {
 
                 if (roleError) throw roleError
 
-                // 4. Invite to Slack workspace
+                // 6. Invite to Slack workspace
                 await inviteToSlack(
                     application.profiles.email,
                     application.profiles.full_name,
@@ -98,7 +144,7 @@ serve(async (req) => {
                 )
             }
 
-            // 5. Add to project/class
+            // 7. Add to project/class
             if (application.application_type === 'project' && application.project_id) {
                 await supabaseClient
                     .from('project_members')
@@ -132,7 +178,7 @@ serve(async (req) => {
             }
         }
 
-        // 6. Send email notification
+        // 8. Send email notification
         await sendDecisionEmail(
             application,
             status,
@@ -203,9 +249,11 @@ async function assignToProjectChannel(userId: string, projectId: string, supabas
             .eq('id', projectId)
             .single()
 
-        if (!project?.slack_channel_id) {
+        let channelId = project?.slack_channel_id
+
+        if (!channelId) {
             // Create channel if it doesn't exist
-            const channelId = await createProjectChannel(project.name)
+            channelId = await createProjectChannel(project.name)
 
             // Store channel ID
             await supabaseClient
@@ -235,7 +283,7 @@ async function assignToProjectChannel(userId: string, projectId: string, supabas
         // Add user to channel
         await addUserToChannel(
             profile.slack_user_id || await getSlackUserByEmail(profile.email),
-            project.slack_channel_id || channelId
+            channelId
         )
     } catch (error) {
         console.error('Error assigning to project channel:', error)
@@ -251,9 +299,11 @@ async function assignToClassChannel(userId: string, classId: string, supabaseCli
             .eq('id', classId)
             .single()
 
-        if (!classData?.slack_channel_id) {
+        let channelId = classData?.slack_channel_id
+
+        if (!channelId) {
             // Create channel if it doesn't exist
-            const channelId = await createClassChannel(classData.name)
+            channelId = await createClassChannel(classData.name)
 
             // Store channel ID
             await supabaseClient
@@ -283,7 +333,7 @@ async function assignToClassChannel(userId: string, classId: string, supabaseCli
         // Add user to channel
         await addUserToChannel(
             profile.slack_user_id || await getSlackUserByEmail(profile.email),
-            classData.slack_channel_id || channelId
+            channelId
         )
     } catch (error) {
         console.error('Error assigning to class channel:', error)

@@ -17,6 +17,9 @@ extra_search_path = ["public", "extensions"]
 # for accidental or malicious requests.
 max_rows = 1000
 
+[functions.handle-application-decision]
+verify_jwt = false
+
 [api.tls]
 # Enable HTTPS endpoints locally using a self-signed certificate.
 enabled = false
