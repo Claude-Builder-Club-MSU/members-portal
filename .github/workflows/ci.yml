@@ -56,7 +56,7 @@ jobs:
           node -e "
           const fs = require('fs');
           if (!fs.existsSync('coverage/coverage-summary.json')) {
-            console.error('❌ Coverage report not generated - tests may have failed');
+            console.error('Coverage report not generated - tests may have failed');
             process.exit(1);
           }
           const summary = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8')).total;
