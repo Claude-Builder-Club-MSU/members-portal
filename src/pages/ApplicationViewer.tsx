@@ -147,29 +147,12 @@ const ApplicationViewerPage = () => {
         if (!user || !application) return;
 
         try {
-            // 1) Mark application as accepted in the DB
-            const { error: updateError } = await supabase
-                .from('applications')
-                .update({
-                    status: 'accepted',
-                    reviewed_by: user.id,
-                    reviewed_at: new Date().toISOString(),
-                })
-                .eq('id', application.id);
-
-            if (updateError) throw updateError;
-
-            // 2) Call edge function to process side‑effects of acceptance
-            const { data, error } = await supabase.functions.invoke('process-application-acceptance', {
+            // Call edge function to process acceptance (DB updates + side effects)
+            const { data, error } = await supabase.functions.invoke('process-application-update', {
                 body: {
                     application_id: application.id,
-                    user_id: application.user_id,
-                    application_type: application.application_type,
-                    board_position: application.board_position,
-                    project_id: application.project_id,
-                    class_id: application.class_id,
-                    user_email: applicantProfile?.email,
-                    user_name: applicantProfile?.full_name ?? application.full_name,
+                    status: 'accepted',
+                    reviewer_id: user.id,
                 },
             });
 
@@ -200,17 +183,19 @@ const ApplicationViewerPage = () => {
         if (!user || !application) return;
 
         try {
-            // Just mark the application as rejected; no edge function needed
-            const { error: updateError } = await supabase
-                .from('applications')
-                .update({
+            // Call edge function to process rejection (DB updates + email)
+            const { data, error } = await supabase.functions.invoke('process-application-update', {
+                body: {
+                    application_id: application.id,
                     status: 'rejected',
-                    reviewed_by: user.id,
-                    reviewed_at: new Date().toISOString(),
-                })
-                .eq('id', application.id);
+                    reviewer_id: user.id,
+                },
+            });
 
-            if (updateError) throw updateError;
+            if (error) throw error;
+            if (!data?.success) {
+                throw new Error(data?.message || 'Failed to process application rejection');
+            }
 
             // Show rejection screen
             setTimeout(() => {

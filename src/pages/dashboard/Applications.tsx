@@ -26,10 +26,10 @@ const Applications = () => {
   const [reviewPendingCollapsed, setReviewPendingCollapsed] = useState(false);
   const [reviewReviewedCollapsed, setReviewReviewedCollapsed] = useState(true);
 
-  const getStatusVariant = (status: string): 'default' | 'destructive' | 'secondary' => {
+  const getStatusVariant = (status: string): 'enable' | 'destructive' | 'secondary' => {
     switch (status) {
       case 'accepted':
-        return 'default';
+        return 'enable';
       case 'rejected':
         return 'destructive';
       default:
