@@ -69,8 +69,7 @@ export const EditModal = ({
         <>
             <Dialog open={open} onOpenChange={onClose}>
                 <DialogContent
-                    className={`${isMobile ? 'max-w-[95vw] max-h-[90vh]' : 'max-w-2xl max-h-[90vh]'
-                        } overflow-y-auto rounded-xl flex flex-col`}
+                    className={`max-w-3xl rounded-xl ${isMobile ? 'mx-4 max-w-[85vw] max-h-[85vh] overflow-y-auto overflow-x-hidden m-0' : 'py-10'}`}
                 >
                     <DialogHeader className="flex-shrink-0">
                         <DialogTitle>{title}</DialogTitle>
@@ -78,7 +77,7 @@ export const EditModal = ({
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto">
-                        <form id="edit-modal-form" onSubmit={handleSubmit} className={`space-y-4 p-1 ${isMobile ? 'w-[80vw]' : ''}`}>
+                        <form id="edit-modal-form" onSubmit={handleSubmit} className={`space-y-4 p-1`}>
                             {children}
                         </form>
                     </div>
