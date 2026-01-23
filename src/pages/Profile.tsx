@@ -347,8 +347,6 @@ const Profile = () => {
     e.preventDefault();
     setLoading(true);
 
-
-
     try {
       let newResumeUrl = profile?.resume_url || null;
 
