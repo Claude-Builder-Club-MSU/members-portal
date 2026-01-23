@@ -7,7 +7,6 @@ import {
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { GraduationCap } from 'lucide-react';
 import type { MembershipInfo } from '@/types/modal.types';
 
@@ -51,8 +50,6 @@ export const MembersListModal = ({
     showRole = true,
     roleIcon = defaultRoleIcon,
 }: MembersListModalProps) => {
-    const isMobile = useIsMobile();
-
     const memberCount = members.length;
     const displaySubtitle = subtitle || `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`;
 
