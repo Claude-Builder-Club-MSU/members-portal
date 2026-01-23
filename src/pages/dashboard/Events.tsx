@@ -278,7 +278,6 @@ const Events = () => {
         max_attendance: maxAttendance,
         rsvp_required: rsvpRequired,
         allowed_roles: getAllowedRoles(),
-        created_by: user.id,
       };
 
       if (modalState.selectedItem) {
@@ -318,6 +317,7 @@ const Events = () => {
             const eventData = {
               ...baseEventData,
               event_date: currentDate.toISOString(),
+              created_by: user.id,
             };
 
             eventsToCreate.push(eventData);
@@ -354,6 +354,7 @@ const Events = () => {
           const eventData = {
             ...baseEventData,
             event_date: baseEventDateTime.toISOString(),
+            created_by: user.id,
           };
 
           const { error } = await supabase
