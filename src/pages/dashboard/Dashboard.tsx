@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+import TextType from '@/components/ui/TextType';
 
 // Dashboard uses types from ProfileContext and separate queries
 
@@ -163,6 +164,7 @@ export default function Dashboard() {
 
   // --- Sub-Components ---
 
+
   const WelcomeCard = () => (
     <div className={`relative rounded-xl border border-primary/20 dark:border-primary/30 overflow-hidden ${isMobile ? 'p-6' : 'p-8'} opacity-80 hover:opacity-90 dark:opacity-90 dark:hover:opacity-95 transition-all duration-500 bg-gradient-to-br from-orange-100 to-orange-200 dark:from-slate-800 dark:to-slate-900`}>
       <div className="absolute inset-0 flex items-center justify-center opacity-25 dark:opacity-30 pointer-events-none animate-pulse">
@@ -206,9 +208,28 @@ export default function Dashboard() {
         </svg>
       </div>
       <div className="relative z-10 text-center">
-        <h1 className={`${isMobile ? 'text-3xl' : 'text-4xl'} font-black text-primary dark:text-primary drop-shadow-lg dark:drop-shadow-2xl tracking-tight hover:scale-105 transition-transform duration-300`}
+        <h1
+          className={`
+            ${isMobile ? 'text-3xl' : 'text-4xl'}
+            font-black
+            text-primary
+            dark:text-primary
+            drop-shadow-lg
+            dark:drop-shadow-2xl
+            tracking-tight
+            flex items-center justify-center
+          `}
           style={{ fontFamily: `'Roboto Mono', monospace`, letterSpacing: '0.05em', fontWeight: 800 }}>
-          <span className="inline-block">Welcome back,&nbsp;<span className="font-extrabold">{profile?.full_name?.split(' ')[0] || 'User'}</span></span>
+
+          <TextType
+            text={[`Welcome back, ${profile.full_name}!`]}
+            // cursorCharacter="|"
+            cursorCharacter="█"
+            loop={false}
+            variableSpeed={{ min: 50, max: 120 }}
+            cursorBlinkDuration={0.5}
+            hideCursorWhileTyping={false}
+          />
         </h1>
       </div>
     </div>
