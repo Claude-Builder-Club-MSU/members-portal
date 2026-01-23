@@ -4,8 +4,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
+const SLACK_JOIN_LINK = Deno.env.get('SLACK_JOIN_LINK')
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -22,37 +22,16 @@ interface ApplicationUpdatePayload {
 // HELPER FUNCTIONS
 // ============================================================================
 
-async function sendSlackInvitation(email: string, fullName: string): Promise<void> {
-    // Use the correct endpoint for inviting users
-    const response = await fetch('https://slack.com/api/users.admin.invite', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
-        },
-        body: new URLSearchParams({
-            email: email,
-            real_name: fullName,
-            resend: 'true',
-        }).toString()
-    })
-
-    const data = await response.json()
-
-    if (!data.ok) {
-        throw new Error(`Slack invitation failed for ${email}: ${data.error}`)
-    }
-}
-
 async function sendDecisionEmail(
     email: string,
     fullName: string,
     applicationType: string,
     boardPosition: string | null,
-    status: 'accepted' | 'rejected'
+    status: 'accepted' | 'rejected',
+    hasSlackAccount: boolean
 ): Promise<void> {
     const subject = getEmailSubject(applicationType, boardPosition)
-    const html = getEmailHtml(fullName, applicationType, boardPosition, status)
+    const html = getEmailHtml(fullName, applicationType, boardPosition, status, hasSlackAccount)
 
     const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -94,10 +73,25 @@ function getEmailHtml(
     fullName: string,
     applicationType: string,
     boardPosition: string | null,
-    status: 'accepted' | 'rejected'
+    status: 'accepted' | 'rejected',
+    hasSlackAccount: boolean // <--- New Parameter
 ): string {
     const target = getApplicationTarget(applicationType, boardPosition)
     const accepted = status === 'accepted'
+
+    // Logic for the Slack Section based on if they are already on it
+    const slackSection = hasSlackAccount
+        ? `<li style="margin: 10px 0;"><strong>Slack:</strong> Look out for an invitation to the specific ${applicationType} channel coming soon!</li>`
+        : `<li style="margin: 10px 0;"><strong>Join Slack:</strong> This is where we communicate. Please join using the button below.</li>`
+
+    const slackButton = !hasSlackAccount
+        ? `<div style="text-align: center; margin-top: 15px; margin-bottom: 15px;">
+             <a href="${SLACK_JOIN_LINK}"
+                style="display: inline-block; background: #4A154B; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+               Join Slack Workspace
+             </a>
+           </div>`
+        : ''
 
     return `
 <!DOCTYPE html>
@@ -107,7 +101,7 @@ function getEmailHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+  <div style="background: linear-gradient(135deg, rgb(223, 115, 83) 0%, rgb(223, 115, 83) 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
     <h1 style="color: white; margin: 0; font-size: 28px;">
       Application Update
     </h1>
@@ -121,19 +115,19 @@ function getEmailHtml(
           We're excited to inform you that your application to <strong>${target}</strong> has been accepted!
         </p>
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
-          <h3 style="margin-top: 0; color: #FF6B35;">Next Steps:</h3>
+          <h3 style="margin-top: 0; color: rgb(223, 115, 83);">Next Steps:</h3>
           <ul style="padding-left: 20px;">
-            <li style="margin: 10px 0;">Check your email for a Slack invitation to join our community</li>
+            ${slackSection}
             <li style="margin: 10px 0;">Log in to the members portal to access your dashboard</li>
             <li style="margin: 10px 0;">Attend our next meeting to meet the team</li>
-            ${applicationType === 'project' || applicationType === 'class'
-                ? '<li style="margin: 10px 0;">You\'ll be added to your project/class channel when it starts</li>'
-                : ''}
           </ul>
         </div>
-        <div style="text-align: center; margin-top: 30px;">
+
+        ${slackButton}
+
+        <div style="text-align: center; margin-top: 15px;">
           <a href="https://members.claudemsu.dev/dashboard"
-             style="display: inline-block; background: #FF6B35; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+             style="display: inline-block; background: rgb(223, 115, 83); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
             Go to Dashboard
           </a>
         </div>`
@@ -141,7 +135,7 @@ function getEmailHtml(
           Thank you for your application to <strong>${target}</strong>. After careful review, we've decided not to move forward at this time.
         </p>
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
-          <h3 style="margin-top: 0; color: #FF6B35;">Stay Involved:</h3>
+          <h3 style="margin-top: 0; color: rgb(223, 115, 83);">Stay Involved:</h3>
           <ul style="padding-left: 20px;">
             <li style="margin: 10px 0;">We encourage you to stay active in Claude Builder Club events</li>
             <li style="margin: 10px 0;">You're welcome to apply again in a future semester</li>
@@ -149,7 +143,7 @@ function getEmailHtml(
         </div>
         <div style="text-align: center; margin-top: 30px;">
           <a href="https://members.claudemsu.dev/applications"
-             style="display: inline-block; background: #FF6B35; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+             style="display: inline-block; background: rgb(223, 115, 83); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
             View Applications
           </a>
         </div>`
@@ -210,7 +204,7 @@ serve(async (req) => {
 
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('email, full_name')
+            .select('email, full_name, slack_user_id') // <--- Added slack_user_id
             .eq('id', application.user_id)
             .single()
 
@@ -220,6 +214,7 @@ serve(async (req) => {
 
         const userEmail = profile.email
         const userName = profile.full_name || application.full_name
+        const hasSlackAccount = !!profile.slack_user_id // <--- Check for existence
 
         // Save original values for rollback
         const originalStatus = application.status
@@ -356,15 +351,10 @@ serve(async (req) => {
                     })
                 }
             }
-
-            // ======================================================================
-            // STEP 5: Send Slack invitation
-            // ======================================================================
-            await sendSlackInvitation(userEmail, userName)
         }
 
         // ========================================================================
-        // STEP 6: Send decision email (non-critical - don't throw on failure)
+        // STEP 5: Send decision email (non-critical - don't throw on failure)
         // ========================================================================
         try {
             await sendDecisionEmail(
@@ -372,7 +362,8 @@ serve(async (req) => {
                 userName,
                 application.application_type,
                 application.board_position,
-                payload.status
+                payload.status,
+                hasSlackAccount
             )
         } catch (emailError) {
             console.warn('⚠️ Email sending failed:', emailError)

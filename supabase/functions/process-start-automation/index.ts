@@ -438,7 +438,7 @@ async function getSlackUserIds(emails: string[]): Promise<string[]> {
         userIds.push(data.user.id)
       }
     } catch (error) {
-      console.warn(`Failed to lookup Slack user for ${email}`)
+      console.warn(`Failed to lookup Slack user for ${email}: ${error}`)
     }
   }
 
