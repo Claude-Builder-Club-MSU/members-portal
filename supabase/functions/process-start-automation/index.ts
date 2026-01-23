@@ -40,7 +40,7 @@ async function ensureGitHubTeam(name: string, description: string): Promise<stri
   if (res.ok) return data.slug
 
   // 2. If exists, return slug
-  if (data.errors?.some((e: any) => e.code === 'already_exists')) {
+  if (data.errors?.some((e) => e.code === 'already_exists')) {
     console.log(`GitHub Team ${slug} already exists`)
     return slug
   }
@@ -80,7 +80,7 @@ async function ensureGitHubRepo(name: string, description: string, teamSlug: str
   const data = await res.json()
 
   // Ignore error if it exists, otherwise throw
-  if (!res.ok && !data.errors?.some((e: any) => e.message === 'name already exists on this account')) {
+  if (!res.ok && !data.errors?.some((e) => e.message === 'name already exists on this account')) {
     throw new Error(`Failed to create Repo: ${JSON.stringify(data)}`)
   }
 
