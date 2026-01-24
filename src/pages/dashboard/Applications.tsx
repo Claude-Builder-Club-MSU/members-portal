@@ -158,7 +158,7 @@ const Applications = () => {
             {isBoardOrAbove ? 'Manage applications' : 'Your applications'}
           </p>
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)} disabled={false} >
+        <Button onClick={() => setIsCreateModalOpen(true)} disabled={true} >
           <Plus className="h-4 w-4 mr-2" />
           New Application
         </Button>

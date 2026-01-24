@@ -129,12 +129,12 @@ export const EditModal = ({
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter
-                            className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : ''}`}
+                            className={`flex !justify-around ${isMobile ? 'space-y-2 flex-col-reverse' : 'flex-row'}`}
                         >
                             <AlertDialogCancel
                                 variant="outline"
                                 disabled={deleteLoading}
-                                className={!isMobile ? 'w-[47%]' : ''}
+                                className={isMobile ? '' : 'w-[47%] mt-0'}
                             >
                                 Cancel
                             </AlertDialogCancel>
