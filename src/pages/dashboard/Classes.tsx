@@ -618,7 +618,7 @@ const Classes = () => {
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="w-96 p-0"
+              className={`${isMobile ? 'w-72' : 'w-96'} p-0`}
               align="center"
               onOpenAutoFocus={e => e.preventDefault()}
             >

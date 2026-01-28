@@ -82,14 +82,18 @@ export const EditModal = ({
                         </form>
                     </div>
 
-                    <div className="flex gap-2 pt-4 flex-col w-full sm:flex-row flex-shrink-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                    <div
+                        className={`gap-2 pt-4 w-full flex flex-shrink-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60
+                            ${isMobile ? 'flex-col' : 'flex-row'}
+                        `}
+                    >
                         {onDelete && (
                             <Button
                                 type="button"
                                 variant="destructive"
                                 onClick={() => setShowDeleteConfirm(true)}
                                 disabled={loading || deleteLoading}
-                                className="w-full sm:flex-1"
+                                className="w-full"
                             >
                                 <Trash2 className="h-4 w-4 mr-0" />
                                 Delete
@@ -100,12 +104,17 @@ export const EditModal = ({
                             variant="outline"
                             onClick={onClose}
                             disabled={loading || deleteLoading}
-                            className="w-full sm:flex-1"
+                            className="w-full"
                         >
                             <X className="h-4 w-4 mr-0" />
                             Cancel
                         </Button>
-                        <Button type="submit" form="edit-modal-form" disabled={loading || deleteLoading} className="w-full sm:flex-1">
+                        <Button
+                            type="submit"
+                            form="edit-modal-form"
+                            disabled={loading || deleteLoading}
+                            className="w-full"
+                        >
                             <Save className="h-4 w-4 mr-0" />
                             {loading ? 'Saving...' : submitLabel || 'Save'}
                         </Button>

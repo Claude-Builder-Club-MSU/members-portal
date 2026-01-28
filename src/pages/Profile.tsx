@@ -521,20 +521,21 @@ const Profile = () => {
         {/* Right Column - Edit Form */}
         <div className="lg:col-span-2">
           <Card>
-            <CardHeader>
+            <CardHeader className={isMobile ? 'pb-0' : undefined}>
               <CardTitle>Edit Profile</CardTitle>
-              <CardDescription>Update your personal information</CardDescription>
+              <CardDescription>
+                Update your personal information. A well-filled out profile will help you stand out on applications.
+              </CardDescription>
             </CardHeader>
             <CardContent className={isMobile ? 'p-4' : ''}>
               <form onSubmit={handleSubmit} className={`space-y-6 ${isMobile ? 'space-y-4' : 'space-y-6'}`}>
                 <div className={`grid gap-6 ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2'}`}>
                   <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name *</Label>
+                    <Label htmlFor="fullName">Full Name</Label>
                     <Input
                       id="fullName"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      required
                     />
                   </div>
 
@@ -587,7 +588,7 @@ const Profile = () => {
                       value={linkedinUsername}
                       onChange={(e) => setLinkedinUsername(e.target.value)}
                       placeholder="yourprofile"
-                      className="pl-[130px]"
+                      className="pl-[127px]"
                     />
                   </div>
                 </div>
@@ -608,7 +609,7 @@ const Profile = () => {
                       value={githubUsername}
                       onChange={(e) => setGithubUsername(e.target.value)}
                       placeholder="yourusername"
-                      className="pl-[105px]"
+                      className="pl-[100px]"
                     />
                   </div>
                 </div>

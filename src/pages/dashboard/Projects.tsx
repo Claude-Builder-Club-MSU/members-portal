@@ -636,9 +636,9 @@ const Projects = () => {
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               {isMobile ? (
-                "Claude-Builder-Club-MSU/"
+                "claude-msu/"
               ) : (
-                "github.com/Claude-Builder-Club-MSU/"
+                "github.com/claude-msu/"
               )}
             </span>
             <Input
@@ -646,7 +646,7 @@ const Projects = () => {
               value={repositoryName}
               onChange={(e) => setRepositoryName(e.target.value)}
               placeholder="project-name"
-              className={isMobile ? "pl-[210px]" : "pl-[300px]"}
+              className={isMobile ? "pl-[105px]" : "pl-[190px]"}
             />
           </div>
         </div>
@@ -670,7 +670,7 @@ const Projects = () => {
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="w-96 p-0"
+              className={`${isMobile ? 'w-72' : 'w-96'} p-0`}
               align="center"
               onOpenAutoFocus={e => e.preventDefault()}
             >

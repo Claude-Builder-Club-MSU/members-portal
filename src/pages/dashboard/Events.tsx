@@ -604,7 +604,7 @@ const Events = () => {
                 </span>
               </div>
             </PopoverTrigger>
-            <PopoverContent className="w-48 p-2" align="end">
+            <PopoverContent className="w-48 p-2" align={isMobile ? "start" : "end"}>
               <div className="space-y-1">
                 <Button
                   variant="ghost"
