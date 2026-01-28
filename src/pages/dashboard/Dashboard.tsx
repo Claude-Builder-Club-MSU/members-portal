@@ -18,7 +18,6 @@ import {
   Award,
   MapPin,
   TrendingUp,
-  BookMarkedIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
